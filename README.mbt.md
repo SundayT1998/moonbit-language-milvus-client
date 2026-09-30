@@ -4,7 +4,7 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 
 > 本项目是社区驱动的 Milvus 客户端，**不是** Milvus 官方 SDK。"Milvus" 是 LF Projects, LLC
 > 的商标；Apache-2.0 不授予商标权，包名中的 "milvus" 仅为指明兼容对象的描述性使用。
-> 来源、改写定性与同步策略见下节「来源与许可」。
+> 来源与改写定性见「来源与许可」一节。
 
 ## 包结构
 
@@ -24,6 +24,22 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 | `client/native` | 把 `client` 的 unary 调用接到真实连接上 —— native 专属 |
 
 迭代器在 `client/iterator.mbt`，与 `client` 同包。
+
+## 能力边界
+
+覆盖的是一条完整读写链路：集合生命周期、数据面（insert / upsert / delete）、
+检索面（search / query）、分区与加载 / 刷盘、大结果集翻页（两个迭代器）。
+更细的覆盖范围（各包支持哪些列类型、哪些枚举、哪些边界）在下面的分节里。
+
+**只交付 column-based 一路**：写入用 `WriteColumn` 承接 `@column.ColumnValue`，
+回读用 `@column.Column`。row-based API 尚未纳入，在
+[`ROADMAP.mbt.md`](./ROADMAP.mbt.md) 里排期。
+
+`CreateCollection` 不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路是
+「一步到位」的便利，本移植把它拆成显式调用。**顺序不能倒**：
+`create_collection` → `create_index` → `load_collection`（轮询到 `Loaded`）
+→ `search` / `query`。Milvus 拒绝加载没有索引的集合，也拒绝对未加载的集合检索；
+加载是异步的，`load_collection` 返回不代表就绪。
 
 ## 安装
 
@@ -55,10 +71,6 @@ proto/tools/gen.sh trimmed
 
 ### 模块布局
 
-| 模块 | 位置 | 是否发布 |
-|---|---|---|
-| `Tangbuting/milvus-client` | `.` | 是 |
-
 没有第二个模块。协议代码是**本模块的普通包目录** `proto/milvus/proto/`，
 与 `errors` / `client` 同级：
 
@@ -75,38 +87,178 @@ Tangbuting/milvus-client/proto/milvus/proto/{common,milvus,msg,schema}
 「生成物不入库 + `moon.work` 注册成第二个模块」，本地面板能跑，
 但 `moon package` 打出来的 zip 里带着一份指向 `proto/gen/trimmed/proto`
 的 `moon.work`，而那个目录不在包里 —— 装的人一解析工作区就挂。
+理由与试过的两条窄路记在 [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)。
 
 目标平台：模块 `preferred_target = "wasm"`，`client` / `entity` / `index` /
 `column` / `errors` / `transport` 在 `wasm` / `wasm-gc` / `js` / `native` 四个
 后端下都编得过；真连 socket 的 `client/native` + `transport/native` 是
 native 专属，用它们要 `--target native`。
 
-## 能力边界
+## 快速上手
 
-覆盖的是一条完整读写链路，按依赖方向排：
+从空目录到「写得进、检索得到、取得回」的最小闭环。把这里的例子按顺序拼起来
+就能跑通；每一步的边界条件与可选项在后面的分节里。
 
-- **集合生命周期** —— 创建 / 描述 / 是否存在 / 列出 / 删除，Option 构造函数名
-  与默认值对齐上游。
-- **数据面** —— insert / upsert / delete。
-- **检索面** —— search / query。
-- **分区与数据生命周期** —— 分区（创建 / 删除 / 是否存在 / 列出）、加载与卸载
-  （`LoadCollection` / `ReleaseCollection` / `LoadPartitions` /
-  `ReleasePartitions` / `GetLoadState`）、刷盘（`Flush` / `GetFlushState`）。
-  加载与刷盘返回可等待的任务，轮询语义与上游一致（默认 200ms 间隔）。
-- **大结果集翻页** —— `QueryIterator`（客户端侧主键游标）与 `SearchIterator`
-  （服务端侧 v2 游标），见「迭代器」一节。
+### 1. 配连接与建客户端
 
-**只保留 column-based 一路**，row-based API 不移植。
-`CreateCollection` 不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路是
-「一步到位」的便利，本移植把它拆成显式调用 —— 建索引见「索引」一节，
-加载与等待就绪见「分区与数据生命周期」一节，集成测试里的完整顺序见「开发」。
-
-上层调用只要给一个 `Unary` 函数值就能跑，所以测试与 wasm 下不需要真连接：
+传输层把「发字节」抽成一个 `Unary` 函数值：
 
 ```moonbit nocheck
 ///|
-let client = @milvus_client.new_client(cfg, my_unary)
+pub type Unary = async (String, Bytes) -> Bytes raise @transport.RpcError
 ```
+
+所以同一份调用逻辑在 wasm / js 下也编得过，测试里给个假的就行，不必真连网络。
+native 下用 `client/native` 接一条真连接：
+
+```moonbit nocheck
+let cfg = @transport.Config::new("127.0.0.1:19530")
+  .with_token("root:Milvus")
+  .with_db_name("default")
+  .with_timeout_millis(5000)
+let (client, channel) = @native.connect(cfg)
+// ... 跑下面各步 ...
+channel.close()
+```
+
+### 2. 声明 schema 并建集合
+
+```moonbit nocheck
+let schema = @entity.CollectionSchema::new([
+  @entity.Field::new("id", @entity.DataType::Int64).as_primary_key().as_auto_id(),
+  @entity.Field::new("title", @entity.DataType::VarChar).with_max_length(512),
+  @entity.Field::new("vector", @entity.DataType::FloatVector).with_dim(768),
+])
+schema.validate() // 本地就挡下服务端会拒绝的 schema
+
+client.create_collection(@client.new_create_collection_option("demo", schema))
+```
+
+不想手写 schema 就用便利构造，默认 id/vector + 动态字段：
+
+```moonbit nocheck
+client.create_collection(@client.simple_create_collection_option("demo", dim=768))
+```
+
+### 3. 写入
+
+写入是列式的：一列一个 `WriteColumn`，列的行数必须一致，向量维度必须与列声明吻合。
+本地先校验，这些在服务端只表现成「静默少写」。
+
+```moonbit nocheck
+let _ = client.insert(
+  @client.new_write_option("demo", [
+    @client.WriteColumn::new(
+      "title",
+      @column.ColumnValue::VarChar(["第一行", "第二行"]),
+    ),
+    @client.WriteColumn::new(
+      "vector",
+      @column.ColumnValue::FloatVector(768, [vec_a, vec_b]),
+    ),
+  ]),
+)
+```
+
+`upsert` 共用同一个 `WriteOption`（`new_write_option`），多一个 `with_partial_update`
+开关；`delete` 的 Option 是 `new_delete_option`。
+
+### 4. 检索
+
+```moonbit nocheck
+let hits = client.search(
+  @client.new_search_option("demo", 3, [
+    @column.ColumnValue::FloatVector(768, [query_vector]),
+  ])
+  .with_anns_field("vector")
+  .with_output_fields(["title"]),
+)
+for hit in hits.hits {
+  let title = match hit.fields.get("title") {
+    Some(@column.ColumnValue::VarChar(v)) => v[0]
+    _ => ""
+  }
+  println("\{hit.score} \{title}")
+}
+```
+
+`search` 只是这个例子的一个截面，`with_filter` 加标量过滤、`with_metric_type`
+换距离度量、`with_offset` 翻页、`with_search_param` 补构建器没建模的键 ——
+键集合与顺序照搬上游。
+
+### 5. 查询
+
+查询是**表达式 + 逐点列名**。`output_fields` 必须逐点写清楚，不要用 `["*"]`、
+也不要留空：服务端在返回全部字段时不填 `FieldData.field_name`，列名会全空，
+按名取列取不到、行数也会读成 0（症状酷似「过滤条件没生效、全量返回」）。
+
+```moonbit nocheck
+///|
+let rows = client.query(
+  @client.new_query_option("demo")
+  .with_filter("title in [\"第一行\",\"第二行\"]")
+  .with_output_fields(["id", "title"])
+  .with_limit(100),
+)
+
+///|
+let title_column = rows.column("title") // Some(@column.Column)，按名取列
+
+///|
+let first = match title_column {
+  Some(col) => col.get_as_string(0) catch { _ => "" }
+  None => ""
+}
+```
+
+`limit` 不预置，不传就是服务端默认上限；想断言确定行数必须显式 `with_limit`。
+`@column.Column` 按列类型取值（`get_as_int64` / `get_as_json_string` / …），
+读错类型报 `ColumnError`，**不做隐式转换**。
+
+### 6. 起索引、加载、翻页
+
+检索前的硬要求，以及超大结果集的两条翻页路径：
+
+```moonbit nocheck
+// 起索引（HNSW 默认 M=16、efConstruction=200，与上游一致）
+let index = @index.new_hnsw_index(@index.MetricType::COSINE, m=32)
+client.create_index(@client.new_create_index_option("demo", "vector", index))
+
+// 加载：先发请求，再等进度到 100%
+client.load_collection(@client.new_load_collection_option("demo")).wait()
+
+// 查询迭代器：客户端侧主键游标，翻到末尾报 EndOfIterator 而不是故障
+let iterator = client.query_iterator(
+  @client.new_query_iterator_option("demo")
+  .with_filter("title != \"\"")
+  .with_output_fields(["title"])
+  .with_batch_size(500),
+) catch {
+  _ => return
+}
+while true {
+  let page = iterator.next() catch {
+    err => if err.is_end_of_iterator() { break } else { return }
+  }
+  ignore(page.len())
+}
+iterator.close()
+```
+
+`SearchIterator` 是服务端侧 v2 游标，接口同形（`new_search_iterator_option` /
+`next` / `close`），`nq` 恒为 1。
+
+### 7. 分区与刷盘
+
+```moonbit nocheck
+client.create_partition(@client.new_create_partition_option("demo", "p1"))
+client.load_partitions(@client.new_load_partitions_option("demo", ["p1"])).wait()
+client.flush(@client.new_flush_option("demo")).wait()
+client.release_collection(@client.new_release_collection_option("demo"))
+```
+
+`LoadTask::wait` / `FlushTask::wait` 与上游 `Await` 一致，**先等一个间隔再查
+第一次**，间隔默认 200ms（`with_check_interval_millis` 可调）。
 
 ## 来源与许可
 
@@ -128,18 +280,9 @@ API 名称、字段名、协议常量值（如 `FieldType = 101`）、Option 构
 均沿用上游，这些正是 Apache-2.0 覆盖的贡献物。归属说明就是本节，加上每个移植文件
 顶部的来源声明头。
 
-### 同步策略
-
-上游 `client/` 是持续演进的活跃代码，本移植是它在一个时间点上的快照。
-同步策略是**手动评估、不自动合并**：
-
-1. 定期（或按需）比对上游 `client/` 自基线 commit 以来的改动；
-2. 对每处改动判断是否影响已移植的包（`entity` / `index` / `errors` / …）；
-3. 受影响则在对应包内手动回移，并在 PR 中注明对齐的上游 commit；
-4. 不跟随上游做「机械等价」的目录级同步——MoonBit 侧的分包与上游并非一一对应。
-
-流程细节见 [`AGENTS.md`](./AGENTS.md)。基线 commit 变更时，需同步更新本节、
-`proto/upstream/PROVENANCE.md` 与 `AGENTS.md`。
+与上游的同步策略是**手动评估、不自动合并**，流程与理由见
+[`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)。基线 commit 变更时，需同步更新
+本节、`proto/upstream/PROVENANCE.md` 与 `AGENTS.md`。
 
 ## entity
 
@@ -280,7 +423,7 @@ moon run --target native cmd/main -- 127.0.0.1:19530 root:Milvus default
 
 `cmd/main` 失败时以非 0 退出码结束（与 `cmd/integration` 同样的 `abort` 写法），
 CI 直接看退出码。建连失败、Health/Check 报了非超时的错误都算失败；
-「调用超时」反过来算通过 —— 那正是它第 3 条要验的东西。
+「调用超时」反过来算通过 —— 那正是它要验的最后一条标准。
 
 ## 客户端
 
@@ -465,68 +608,12 @@ async fn demo_search(client : @client.Client) -> Unit {
 - `SearchIterator` 依赖服务端实现 SearchIterator V2。老服务端不给
   `search_iterator_v2_results`，`next` 会报 `Setup`（上游这里是
   `ErrServerVersionIncompatible`）。
+- 未覆盖的能力见 [`ROADMAP.mbt.md`](./ROADMAP.mbt.md)。
 
 ## 开发
 
-```sh
-moon check --target all && moon test --target all
-```
+构建与测试、连真实 Milvus 跑集成测试、生成 proto 代码，见
+[`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)。
 
-开发流程、交付范围、验收标准与「当初为什么这么选」的归档见
-[`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)；协作约定与各包的实现约束见
-[`AGENTS.md`](./AGENTS.md)。
-
-### 连真实 Milvus 跑集成测试
-
-单测用假传输跑，不碰网络；要验「协议编排在真服务端上成立」，用容器起一个
-官方 Milvus，再跑 `cmd/integration`：
-
-```sh
-scripts/milvus-start.sh          # 起 milvusdb/milvus:v3.0.2 的 standalone 容器
-moon run --target native cmd/integration -- 127.0.0.1:19530
-scripts/milvus-stop.sh           # 停掉并删除容器
-```
-
-`cmd/integration` 走完整门面：建集合 → 写入 10 行 → 建索引 → 加载集合 →
-检索（最近邻应当是自己）→ 按表达式查询 → 删集合，任一步不符就非 0 退出。
-CI 里同样三步一循环，收尾放在「成功失败都执行」的位置，容器不会漏在 runner 上。
-参数（镜像 / 容器名 / 端口 / 等待秒数）都能用环境变量覆盖，
-`scripts/milvus-start.sh` 头部有清单。
-
-这里的前三步顺序是 Milvus 的硬要求，写检索流程时照抄：
-
-```text
-create_collection → create_index → load_collection →（轮询到 Loaded）→ search / query
-```
-
-- 不建索引就 `load_collection`：服务端回 `index not found`。
-- 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
-- `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要么
-  `LoadTask::wait` 等进度到 100%，要么轮询 `get_load_state` 到 `Loaded`；
-  直接接着检索会偶发失败。
-- `Query` 的 `limit` 不预置，交给服务端默认；要确定行数就显式
-  `with_limit(n)`。另外别拿主键当行号筛数据：`auto_id` 发的是 Snowflake ID，
-  `id >= 5` 在 18 位的主键上等于全表通过。
-- `Query` 必须逐点名 `output_fields`（如 `["id", "title"]`）。服务端在返回
-  **全部字段**时（`["*"]`，或一个 `output_fields` 都不给）不填
-  `FieldData.field_name`，只给 `field_id`：列名会全空，按名取列取不到，
-  行数也会读成 0，症状看起来像「过滤条件没生效、全量返回」。
-
-自检用 `new_flat_index(L2)`：10 行的集合上暴力检索就是最优解，也不用等索引构建。
-
-embedded etcd 的配置文件用 `docker cp` 送进容器（`create` → `cp` → `start`），
-不挂单文件卷：CI 的 docker daemon 跑在 dind 容器里，看不到本任务 `/tmp` 下的文件，
-挂载源不可达时 docker 会把目标路径建成空目录，Milvus 读到目录会直接 segfault。
-写新脚本时按同样方式处理配置文件。
-
-生成 proto 代码（需 `protoc`）：
-
-```sh
-proto/tools/gen.sh trimmed   # P0 + 索引 RPC 的裁剪集
-```
-
-生成物在 `proto/milvus/proto/`，**已入版本库**；也不要手改，改动请在 `.proto`
-或 `gen.sh` 里做，然后重新生成、把生成的 diff 一起提交。
-
-CI 每次都会重跑一遍生成并 `git diff --exit-code`：生成物与 `.proto` 对不上时
-会直接红，不会悄悄漂走。
+协作约定与各包的实现约束见 [`AGENTS.md`](./AGENTS.md)；还没做、打算做的事
+见 [`ROADMAP.mbt.md`](./ROADMAP.mbt.md)。
