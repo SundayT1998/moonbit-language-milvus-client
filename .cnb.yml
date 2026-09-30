@@ -1,69 +1,40 @@
 # CNB 流水线：https://docs.cnb.cool
-# 云端开发环境见 `.cnb/web_trigger.yml` 与 `.cnb/Dockerfile`
+# 构建镜像由 `.cnb/Dockerfile` 提供（预装 MoonBit 工具链），无需外部制品库
+# 云端开发环境见 `.cnb/web_trigger.yml` 与 `.cnb/devcontainer.json`
+
+.ci: &ci
+  docker:
+    build: .cnb/Dockerfile
+  stages:
+    - name: fmt-and-info
+      script: |
+        moon version --all
+        moon update
+        moon fmt
+        git diff --exit-code
+        moon info
+        git diff --exit-code
+    - name: check
+      script: moon check --target all
+    - name: test
+      script: moon test --target all
 
 main:
   push:
     - name: check-and-test
-      docker:
-        image: docker.cnb.cool/tangbuting/moonbit:latest
-      stages:
-        - name: install-moonbit
-          script: |
-            if [ ! -x "$HOME/.moon/bin/moon" ]; then
-              curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-            fi
-        - name: fmt-and-info
-          script: |
-            export PATH="$HOME/.moon/bin:$PATH"
-            moon version --all
-            moon update
-            moon fmt
-            git diff --exit-code
-            moon info
-            git diff --exit-code
-        - name: check
-          script: PATH="$HOME/.moon/bin:$PATH" moon check --target all
-        - name: test
-          script: PATH="$HOME/.moon/bin:$PATH" moon test --target all
-
+      <<: *ci
   pull_request:
     - name: check-and-test
-      docker:
-        image: docker.cnb.cool/tangbuting/moonbit:latest
-      stages:
-        - name: install-moonbit
-          script: |
-            if [ ! -x "$HOME/.moon/bin/moon" ]; then
-              curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-            fi
-        - name: fmt-and-info
-          script: |
-            export PATH="$HOME/.moon/bin:$PATH"
-            moon version --all
-            moon update
-            moon fmt
-            git diff --exit-code
-            moon info
-            git diff --exit-code
-        - name: check
-          script: PATH="$HOME/.moon/bin:$PATH" moon check --target all
-        - name: test
-          script: PATH="$HOME/.moon/bin:$PATH" moon test --target all
+      <<: *ci
 
 "$":
   tag_push:
     - name: publish
       docker:
-        image: docker.cnb.cool/tangbuting/moonbit:latest
+        build: .cnb/Dockerfile
       stages:
-        - name: install-moonbit
-          script: |
-            if [ ! -x "$HOME/.moon/bin/moon" ]; then
-              curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
-            fi
         - name: prepublish-check
           script: |
-            export PATH="$HOME/.moon/bin:$PATH"
             moon version --all
             moon update
             moon fmt
@@ -72,7 +43,6 @@ main:
             moon test --target all
         - name: publish-to-mooncakes
           script: |
-            export PATH="$HOME/.moon/bin:$PATH"
             if [ -z "$MOONCAKES_TOKEN" ]; then
               echo "MOONCAKES_TOKEN 未配置，跳过发布"
               exit 1
