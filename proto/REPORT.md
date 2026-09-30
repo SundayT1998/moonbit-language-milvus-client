@@ -45,7 +45,7 @@ Issue 里的原始命令没带 `-I`，protoc 会把 `import "common.proto"` 判�
 生成器把 `username/proto/...` 硬编码进包 import 路径。
 不传 `username` 时 `moon check` 直接报：
 `Cannot find import 'username/proto/milvus/proto/common'`。
-传 `username=Tangbuting` 后模块名与 import 自洽。
+传 `username=SundayT1998` 后模块名与 import 自洽。
 
 ### 3.3 纠正一处 API 文档偏差
 
@@ -289,7 +289,7 @@ null 行（紧凑与行满两种布局）、行区间切片、`valid_data` 双�
   timetick message，裁剪集只留 `MsgPosition` 一个，`WALName` 落在
   `common.proto`（与上游同处一个 package，只是换文件放）。
 - `gen.sh` 的 trimmed 分支多传一个 `msg.proto`；`moon.pkg` 的 import 由
-  生成器按 package 自动接上，生成的 `Tangbuting/proto/milvus/proto/msg`
+  生成器按 package 自动接上，生成的 `SundayT1998/proto/milvus/proto/msg`
   是与 `common` / `schema` 平级的包，`FlushResponse` 引用它。
 - 与第 10 节同样，删掉了这些 message 上的 `option (common.privilege_ext_obj)`：
   裁剪集里没有 `privilege_ext_obj` 的 `extend` 声明，留着会报 not defined。

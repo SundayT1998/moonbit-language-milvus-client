@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Tangbuting/milvus-client/entity"
+package "SundayT1998/milvus-client/entity"
 
 import {
   "moonbitlang/core/debug",

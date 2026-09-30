@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Tangbuting/milvus-client/column"
+package "SundayT1998/milvus-client/column"
 
 import {
-  "Tangbuting/milvus-client/entity",
-  "Tangbuting/milvus-client/proto/milvus/proto/schema",
+  "SundayT1998/milvus-client/entity",
+  "SundayT1998/milvus-client/proto/milvus/proto/schema",
   "moonbitlang/core/debug",
 }
 

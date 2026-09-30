@@ -2,7 +2,7 @@
 # 用 protoc + protoc-gen-mbt 生成 MoonBit 代码。
 #
 # 生成物**直接落进主模块**：`proto/milvus/proto/...` 就是
-# `Tangbuting/milvus-client` 的普通包目录，与 errors / client 同级。
+# `SundayT1998/milvus-client` 的普通包目录，与 errors / client 同级。
 # 没有第二个模块，也没有 moon.work —— 发布包自带全部依赖（见 README「安装」）。
 #
 # 前置：
@@ -20,9 +20,9 @@ cd "$ROOT"
 PROJECT_NAME=proto
 # 该参数只影响生成器给包起的名字，产物落在哪由 --mbt_out 决定；
 # 下面是生成后统一改写 import 路径，值本身不用改。
-USERNAME=Tangbuting
+USERNAME=SundayT1998
 # 生成的包目录挂到主模块名下的前缀：
-#   Tangbuting/proto/milvus/proto/common  ->  Tangbuting/milvus-client/proto/milvus/proto/common
+#   SundayT1998/proto/milvus/proto/common  ->  SundayT1998/milvus-client/proto/milvus/proto/common
 MODULE_NAME="$(sed -n 's/^name *= *"\(.*\)"/\1/p' "$ROOT/moon.mod" | head -1)"
 [ -n "$MODULE_NAME" ] || { echo "读不到 moon.mod 的 name" >&2; exit 1; }
 
@@ -73,7 +73,7 @@ for suite in p0test indextest rpctest lifecycletest; do
   done
 done
 
-# 把生成物里的 import 路径从 Tangbuting/proto/... 改写到主模块名下。
+# 把生成物里的 import 路径从 SundayT1998/proto/... 改写到主模块名下。
 # 生成器只会写「自己那个模块」的路径，所以这里是纯字符串替换；
 # 只动 moon.pkg，不动 .mbt（.mbt 里不出现包路径）。
 python3 - "$OUT" "$USERNAME" "$PROJECT_NAME" "$MODULE_NAME" <<'PY'
@@ -86,7 +86,7 @@ root, user, project, new = (
     sys.argv[3],
     sys.argv[4],
 )
-# 生成器写的是 Tangbuting/proto/milvus/proto/common 这种全路径，
+# 生成器写的是 SundayT1998/proto/milvus/proto/common 这种全路径，
 # 前缀是「用户名/工程名」而不是模块名，所以这里按这两段拼。
 needle = f'"{user}/{project}/'
 repl = f'"{new}/proto/'

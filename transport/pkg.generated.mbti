@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Tangbuting/milvus-client/transport"
+package "SundayT1998/milvus-client/transport"
 
 import {
   "moonbitstack/moonhttp/header",

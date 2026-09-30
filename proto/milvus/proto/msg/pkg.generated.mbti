@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Tangbuting/milvus-client/proto/milvus/proto/msg"
+package "SundayT1998/milvus-client/proto/milvus/proto/msg"
 
 import {
-  "Tangbuting/milvus-client/proto/milvus/proto/common",
+  "SundayT1998/milvus-client/proto/milvus/proto/common",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "moonbitlang/protobuf",

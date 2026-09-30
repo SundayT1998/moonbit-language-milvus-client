@@ -1,4 +1,4 @@
-# Tangbuting/milvus-client
+# SundayT1998/milvus-client
 
 A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector database.
 
@@ -44,7 +44,7 @@ Apache-2.0 不授予商标权，包名里的 "milvus" 只用来指明兼容对�
 要求 MoonBit 工具链 0.10.14 或更高（`moon version --all` 查看）：
 
 ```sh
-moon add Tangbuting/milvus-client
+moon add SundayT1998/milvus-client
 ```
 
 ## 快速上手
@@ -170,7 +170,7 @@ proto/tools/gen.sh trimmed
 包结构：`entity`（schema 与向量类型）、`index`（索引参数 builder）、
 `column`（响应回读）、`errors`（错误模型）、`transport` 与 `transport/native`
 （配置与真连接）、`client` 与 `client/native`（门面与 RPC 编排）、
-`proto/milvus/proto/*`（生成的协议包）。这些都只是 `Tangbuting/milvus-client`
+`proto/milvus/proto/*`（生成的协议包）。这些都只是 `SundayT1998/milvus-client`
 里的包目录，生成物已入库。
 
 ## 贡献
