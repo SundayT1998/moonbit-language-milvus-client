@@ -35,12 +35,33 @@ You can browse and install extra skills here:
 
 ## CI
 
-- CNB 流水线：`.cnb.yml`，`push` / `pull_request` 跑 `moon fmt`、`moon info`、
-  `moon check --target all`、`moon test --target all`。
-- GitHub Actions：`.github/workflows/check.yml`（三平台检查），
-  `.github/workflows/publish.yml`（手动触发发布到 mooncakes.io）。
+- CNB 流水线：`.cnb.yml`，`push` / `pull_request` 跑两条 pipeline：
+  - `check-and-test` —— `moon fmt`、`moon info`、`moon check --target all`、
+    `moon test --target all`；
+  - `integration` —— 起 Milvus 容器、跑 `cmd/integration`、收尾停容器。
+- GitHub Actions：`.github/workflows/check.yml`（三平台 `build` + ubuntu 上的
+  `integration`），`.github/workflows/publish.yml`（手动触发发布到 mooncakes.io）。
 - 工具链下载源：CNB 侧统一 `cli.moonbitlang.cn`，GitHub 侧统一 `cli.moonbitlang.com`。
 - 本地等价命令：`moon check --target all && moon test --target all`。
+
+## 集成测试与 Milvus 容器（`scripts/`）
+
+连真实服务端的那条链路：`scripts/milvus-start.sh` 起容器 →
+`moon run cmd/integration -- 127.0.0.1:19530` → `scripts/milvus-stop.sh` 收容器。
+
+- 镜像锚定 **`docker.io/milvusdb/milvus:v3.0.2`**，容器参数照搬上游
+  `milvus-io/milvus` 的 `scripts/standalone_embed.sh`：embedded etcd +
+  `COMMON_STORAGETYPE=local`，一个容器自足。**不用 `latest`**，CI 要可复现。
+  换版本时同步改 `.cnb.yml` 的 `MILVUS_IMAGE` 与本节。
+- 就绪判据用容器自带的 healthcheck（容器内打 `9091/healthz`），
+  而不是自己拨 19530 —— 端口在数据面起来之前就监听了。
+- CNB 侧收尾放 `endStages`（`stages` 成功失败都跑），GitHub 侧用 `if: always()`。
+  stop 是幂等的，容器没起来时也只打个跳过。
+- `cmd/integration` 是 native-only 的自检程序，与 `cmd/main`（只管传输层）分工：
+  它走完整门面，验「建集合 → 写入 → 检索 → 查询 → 清理」在真服务端上成立，
+  失败以非 0 退出码结束。
+- 目前**不带建索引一步**：`client/` 还没有 `CreateIndex` / `DescribeIndex` /
+  `LoadCollection` 的编排，集成测试依赖服务端暴力检索。等索引那层补上再加。
 
 ## entity 包
 

@@ -279,6 +279,23 @@ channel.close()
 moon check --target all && moon test --target all
 ```
 
+### 连真实 Milvus 跑集成测试
+
+单测用假传输跑，不碰网络；要验「协议编排在真服务端上成立」，用容器起一个
+官方 Milvus，再跑 `cmd/integration`：
+
+```sh
+scripts/milvus-start.sh          # 起 milvusdb/milvus:v3.0.2 的 standalone 容器
+moon run cmd/integration -- 127.0.0.1:19530
+scripts/milvus-stop.sh           # 停掉并删除容器
+```
+
+`cmd/integration` 走完整门面：建集合 → 写入 10 行 → 检索（最近邻应当是自己）→
+按表达式查询 → 删集合，任一步不符就非 0 退出。CI 里同样三步一循环，
+收尾放在「成功失败都执行」的位置，容器不会漏在 runner 上。
+参数（镜像 / 容器名 / 端口 / 等待秒数）都能用环境变量覆盖，
+`scripts/milvus-start.sh` 头部有清单。
+
 生成 proto 代码（需 `protoc`）：
 
 ```sh
