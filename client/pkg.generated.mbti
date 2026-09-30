@@ -6,9 +6,9 @@ import {
   "Tangbuting/milvus-client/entity",
   "Tangbuting/milvus-client/errors",
   "Tangbuting/milvus-client/index",
+  "Tangbuting/milvus-client/proto/milvus/proto/common",
+  "Tangbuting/milvus-client/proto/milvus/proto/schema",
   "Tangbuting/milvus-client/transport",
-  "Tangbuting/proto/milvus/proto/common",
-  "Tangbuting/proto/milvus/proto/schema",
   "moonbitlang/core/debug",
 }
 

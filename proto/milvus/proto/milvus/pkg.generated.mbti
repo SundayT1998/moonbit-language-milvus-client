@@ -1,0 +1,897 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/proto/milvus/proto/milvus"
+
+import {
+  "Tangbuting/milvus-client/proto/milvus/proto/common",
+  "Tangbuting/milvus-client/proto/milvus/proto/msg",
+  "Tangbuting/milvus-client/proto/milvus/proto/schema",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "moonbitlang/protobuf",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct BoolResponse {
+  mut status : @common.Status?
+  mut value : Bool
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn BoolResponse::BoolResponse(status? : @common.Status, Bool) -> Self
+pub impl Default for BoolResponse
+pub impl ToJson for BoolResponse
+pub impl @json.FromJson for BoolResponse
+pub impl @protobuf.AsyncRead for BoolResponse
+pub impl @protobuf.AsyncWrite for BoolResponse
+pub impl @protobuf.Read for BoolResponse
+pub impl @protobuf.Sized for BoolResponse
+pub impl @protobuf.Write for BoolResponse
+
+pub(all) struct CreateCollectionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut schema : Bytes
+  mut shards_num : Int
+  mut consistency_level : @common.ConsistencyLevel
+  mut properties : Array[@common.KeyValuePair]
+  mut num_partitions : Int64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn CreateCollectionRequest::CreateCollectionRequest(base? : @common.MsgBase, String, String, Bytes, Int, @common.ConsistencyLevel, Array[@common.KeyValuePair], Int64) -> Self
+pub impl Default for CreateCollectionRequest
+pub impl ToJson for CreateCollectionRequest
+pub impl @json.FromJson for CreateCollectionRequest
+pub impl @protobuf.AsyncRead for CreateCollectionRequest
+pub impl @protobuf.AsyncWrite for CreateCollectionRequest
+pub impl @protobuf.Read for CreateCollectionRequest
+pub impl @protobuf.Sized for CreateCollectionRequest
+pub impl @protobuf.Write for CreateCollectionRequest
+
+pub(all) struct CreateIndexRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut field_name : String
+  mut extra_params : Array[@common.KeyValuePair]
+  mut index_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn CreateIndexRequest::CreateIndexRequest(base? : @common.MsgBase, String, String, String, Array[@common.KeyValuePair], String) -> Self
+pub impl Default for CreateIndexRequest
+pub impl ToJson for CreateIndexRequest
+pub impl @json.FromJson for CreateIndexRequest
+pub impl @protobuf.AsyncRead for CreateIndexRequest
+pub impl @protobuf.AsyncWrite for CreateIndexRequest
+pub impl @protobuf.Read for CreateIndexRequest
+pub impl @protobuf.Sized for CreateIndexRequest
+pub impl @protobuf.Write for CreateIndexRequest
+
+pub(all) struct CreatePartitionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn CreatePartitionRequest::CreatePartitionRequest(base? : @common.MsgBase, String, String, String) -> Self
+pub impl Default for CreatePartitionRequest
+pub impl ToJson for CreatePartitionRequest
+pub impl @json.FromJson for CreatePartitionRequest
+pub impl @protobuf.AsyncRead for CreatePartitionRequest
+pub impl @protobuf.AsyncWrite for CreatePartitionRequest
+pub impl @protobuf.Read for CreatePartitionRequest
+pub impl @protobuf.Sized for CreatePartitionRequest
+pub impl @protobuf.Write for CreatePartitionRequest
+
+pub(all) struct DeleteRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_name : String
+  mut expr : String
+  mut hash_keys : Array[UInt]
+  mut consistency_level : @common.ConsistencyLevel
+  mut namespace_ : String?
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DeleteRequest::DeleteRequest(base? : @common.MsgBase, String, String, String, String, Array[UInt], @common.ConsistencyLevel, namespace_? : String) -> Self
+pub impl Default for DeleteRequest
+pub impl ToJson for DeleteRequest
+pub impl @json.FromJson for DeleteRequest
+pub impl @protobuf.AsyncRead for DeleteRequest
+pub impl @protobuf.AsyncWrite for DeleteRequest
+pub impl @protobuf.Read for DeleteRequest
+pub impl @protobuf.Sized for DeleteRequest
+pub impl @protobuf.Write for DeleteRequest
+
+pub(all) struct DescribeCollectionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut collection_id : Int64
+  mut time_stamp : UInt64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DescribeCollectionRequest::DescribeCollectionRequest(base? : @common.MsgBase, String, String, Int64, UInt64) -> Self
+pub impl Default for DescribeCollectionRequest
+pub impl ToJson for DescribeCollectionRequest
+pub impl @json.FromJson for DescribeCollectionRequest
+pub impl @protobuf.AsyncRead for DescribeCollectionRequest
+pub impl @protobuf.AsyncWrite for DescribeCollectionRequest
+pub impl @protobuf.Read for DescribeCollectionRequest
+pub impl @protobuf.Sized for DescribeCollectionRequest
+pub impl @protobuf.Write for DescribeCollectionRequest
+
+pub(all) struct DescribeCollectionResponse {
+  mut status : @common.Status?
+  mut schema : @schema.CollectionSchema?
+  mut collection_id : Int64
+  mut virtual_channel_names : Array[String]
+  mut physical_channel_names : Array[String]
+  mut created_timestamp : UInt64
+  mut created_utc_timestamp : UInt64
+  mut shards_num : Int
+  mut aliases : Array[String]
+  mut start_positions : Array[@common.KeyDataPair]
+  mut consistency_level : @common.ConsistencyLevel
+  mut collection_name : String
+  mut properties : Array[@common.KeyValuePair]
+  mut db_name : String
+  mut num_partitions : Int64
+  mut db_id : Int64
+  mut request_time : UInt64
+  mut update_timestamp : UInt64
+  mut update_timestamp_str : String
+  mut shard_infos : Array[@schema.CollectionShardInfo]
+  mut shard_by : String
+  mut routing_modulus : UInt64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DescribeCollectionResponse::DescribeCollectionResponse(status? : @common.Status, schema? : @schema.CollectionSchema, Int64, Array[String], Array[String], UInt64, UInt64, Int, Array[String], Array[@common.KeyDataPair], @common.ConsistencyLevel, String, Array[@common.KeyValuePair], String, Int64, Int64, UInt64, UInt64, String, Array[@schema.CollectionShardInfo], String, UInt64) -> Self
+pub impl Default for DescribeCollectionResponse
+pub impl ToJson for DescribeCollectionResponse
+pub impl @json.FromJson for DescribeCollectionResponse
+pub impl @protobuf.AsyncRead for DescribeCollectionResponse
+pub impl @protobuf.AsyncWrite for DescribeCollectionResponse
+pub impl @protobuf.Read for DescribeCollectionResponse
+pub impl @protobuf.Sized for DescribeCollectionResponse
+pub impl @protobuf.Write for DescribeCollectionResponse
+
+pub(all) struct DescribeIndexRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut field_name : String
+  mut index_name : String
+  mut timestamp : UInt64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DescribeIndexRequest::DescribeIndexRequest(base? : @common.MsgBase, String, String, String, String, UInt64) -> Self
+pub impl Default for DescribeIndexRequest
+pub impl ToJson for DescribeIndexRequest
+pub impl @json.FromJson for DescribeIndexRequest
+pub impl @protobuf.AsyncRead for DescribeIndexRequest
+pub impl @protobuf.AsyncWrite for DescribeIndexRequest
+pub impl @protobuf.Read for DescribeIndexRequest
+pub impl @protobuf.Sized for DescribeIndexRequest
+pub impl @protobuf.Write for DescribeIndexRequest
+
+pub(all) struct DescribeIndexResponse {
+  mut status : @common.Status?
+  mut index_descriptions : Array[IndexDescription]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DescribeIndexResponse::DescribeIndexResponse(status? : @common.Status, Array[IndexDescription]) -> Self
+pub impl Default for DescribeIndexResponse
+pub impl ToJson for DescribeIndexResponse
+pub impl @json.FromJson for DescribeIndexResponse
+pub impl @protobuf.AsyncRead for DescribeIndexResponse
+pub impl @protobuf.AsyncWrite for DescribeIndexResponse
+pub impl @protobuf.Read for DescribeIndexResponse
+pub impl @protobuf.Sized for DescribeIndexResponse
+pub impl @protobuf.Write for DescribeIndexResponse
+
+pub(all) struct DropCollectionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DropCollectionRequest::DropCollectionRequest(base? : @common.MsgBase, String, String) -> Self
+pub impl Default for DropCollectionRequest
+pub impl ToJson for DropCollectionRequest
+pub impl @json.FromJson for DropCollectionRequest
+pub impl @protobuf.AsyncRead for DropCollectionRequest
+pub impl @protobuf.AsyncWrite for DropCollectionRequest
+pub impl @protobuf.Read for DropCollectionRequest
+pub impl @protobuf.Sized for DropCollectionRequest
+pub impl @protobuf.Write for DropCollectionRequest
+
+pub(all) struct DropIndexRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut field_name : String
+  mut index_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DropIndexRequest::DropIndexRequest(base? : @common.MsgBase, String, String, String, String) -> Self
+pub impl Default for DropIndexRequest
+pub impl ToJson for DropIndexRequest
+pub impl @json.FromJson for DropIndexRequest
+pub impl @protobuf.AsyncRead for DropIndexRequest
+pub impl @protobuf.AsyncWrite for DropIndexRequest
+pub impl @protobuf.Read for DropIndexRequest
+pub impl @protobuf.Sized for DropIndexRequest
+pub impl @protobuf.Write for DropIndexRequest
+
+pub(all) struct DropPartitionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DropPartitionRequest::DropPartitionRequest(base? : @common.MsgBase, String, String, String) -> Self
+pub impl Default for DropPartitionRequest
+pub impl ToJson for DropPartitionRequest
+pub impl @json.FromJson for DropPartitionRequest
+pub impl @protobuf.AsyncRead for DropPartitionRequest
+pub impl @protobuf.AsyncWrite for DropPartitionRequest
+pub impl @protobuf.Read for DropPartitionRequest
+pub impl @protobuf.Sized for DropPartitionRequest
+pub impl @protobuf.Write for DropPartitionRequest
+
+pub(all) struct FlushRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_names : Array[String]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FlushRequest::FlushRequest(base? : @common.MsgBase, String, Array[String]) -> Self
+pub impl Default for FlushRequest
+pub impl ToJson for FlushRequest
+pub impl @json.FromJson for FlushRequest
+pub impl @protobuf.AsyncRead for FlushRequest
+pub impl @protobuf.AsyncWrite for FlushRequest
+pub impl @protobuf.Read for FlushRequest
+pub impl @protobuf.Sized for FlushRequest
+pub impl @protobuf.Write for FlushRequest
+
+pub(all) struct FlushResponse {
+  mut status : @common.Status?
+  mut db_name : String
+  mut coll_seg_ids : Map[String, @schema.LongArray]
+  mut flush_coll_seg_ids : Map[String, @schema.LongArray]
+  mut coll_seal_times : Map[String, Int64]
+  mut coll_flush_ts : Map[String, UInt64]
+  mut channel_cps : Map[String, @msg.MsgPosition]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FlushResponse::FlushResponse(status? : @common.Status, String, Map[String, @schema.LongArray], Map[String, @schema.LongArray], Map[String, Int64], Map[String, UInt64], Map[String, @msg.MsgPosition]) -> Self
+pub impl Default for FlushResponse
+pub impl ToJson for FlushResponse
+pub impl @json.FromJson for FlushResponse
+pub impl @protobuf.AsyncRead for FlushResponse
+pub impl @protobuf.AsyncWrite for FlushResponse
+pub impl @protobuf.Read for FlushResponse
+pub impl @protobuf.Sized for FlushResponse
+pub impl @protobuf.Write for FlushResponse
+
+pub(all) struct FlushResponse_ChannelCpsEntry {
+  mut key : String
+  mut value : @msg.MsgPosition
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FlushResponse_ChannelCpsEntry::FlushResponse_ChannelCpsEntry(String, @msg.MsgPosition) -> Self
+pub impl Default for FlushResponse_ChannelCpsEntry
+pub impl ToJson for FlushResponse_ChannelCpsEntry
+pub impl @json.FromJson for FlushResponse_ChannelCpsEntry
+pub impl @protobuf.AsyncRead for FlushResponse_ChannelCpsEntry
+pub impl @protobuf.AsyncWrite for FlushResponse_ChannelCpsEntry
+pub impl @protobuf.Read for FlushResponse_ChannelCpsEntry
+pub impl @protobuf.Sized for FlushResponse_ChannelCpsEntry
+pub impl @protobuf.Write for FlushResponse_ChannelCpsEntry
+
+pub(all) struct FlushResponse_CollFlushTsEntry {
+  mut key : String
+  mut value : UInt64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FlushResponse_CollFlushTsEntry::FlushResponse_CollFlushTsEntry(String, UInt64) -> Self
+pub impl Default for FlushResponse_CollFlushTsEntry
+pub impl ToJson for FlushResponse_CollFlushTsEntry
+pub impl @json.FromJson for FlushResponse_CollFlushTsEntry
+pub impl @protobuf.AsyncRead for FlushResponse_CollFlushTsEntry
+pub impl @protobuf.AsyncWrite for FlushResponse_CollFlushTsEntry
+pub impl @protobuf.Read for FlushResponse_CollFlushTsEntry
+pub impl @protobuf.Sized for FlushResponse_CollFlushTsEntry
+pub impl @protobuf.Write for FlushResponse_CollFlushTsEntry
+
+pub(all) struct FlushResponse_CollSealTimesEntry {
+  mut key : String
+  mut value : Int64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FlushResponse_CollSealTimesEntry::FlushResponse_CollSealTimesEntry(String, Int64) -> Self
+pub impl Default for FlushResponse_CollSealTimesEntry
+pub impl ToJson for FlushResponse_CollSealTimesEntry
+pub impl @json.FromJson for FlushResponse_CollSealTimesEntry
+pub impl @protobuf.AsyncRead for FlushResponse_CollSealTimesEntry
+pub impl @protobuf.AsyncWrite for FlushResponse_CollSealTimesEntry
+pub impl @protobuf.Read for FlushResponse_CollSealTimesEntry
+pub impl @protobuf.Sized for FlushResponse_CollSealTimesEntry
+pub impl @protobuf.Write for FlushResponse_CollSealTimesEntry
+
+pub(all) struct FlushResponse_CollSegIDsEntry {
+  mut key : String
+  mut value : @schema.LongArray
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FlushResponse_CollSegIDsEntry::FlushResponse_CollSegIDsEntry(String, @schema.LongArray) -> Self
+pub impl Default for FlushResponse_CollSegIDsEntry
+pub impl ToJson for FlushResponse_CollSegIDsEntry
+pub impl @json.FromJson for FlushResponse_CollSegIDsEntry
+pub impl @protobuf.AsyncRead for FlushResponse_CollSegIDsEntry
+pub impl @protobuf.AsyncWrite for FlushResponse_CollSegIDsEntry
+pub impl @protobuf.Read for FlushResponse_CollSegIDsEntry
+pub impl @protobuf.Sized for FlushResponse_CollSegIDsEntry
+pub impl @protobuf.Write for FlushResponse_CollSegIDsEntry
+
+pub(all) struct FlushResponse_FlushCollSegIDsEntry {
+  mut key : String
+  mut value : @schema.LongArray
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FlushResponse_FlushCollSegIDsEntry::FlushResponse_FlushCollSegIDsEntry(String, @schema.LongArray) -> Self
+pub impl Default for FlushResponse_FlushCollSegIDsEntry
+pub impl ToJson for FlushResponse_FlushCollSegIDsEntry
+pub impl @json.FromJson for FlushResponse_FlushCollSegIDsEntry
+pub impl @protobuf.AsyncRead for FlushResponse_FlushCollSegIDsEntry
+pub impl @protobuf.AsyncWrite for FlushResponse_FlushCollSegIDsEntry
+pub impl @protobuf.Read for FlushResponse_FlushCollSegIDsEntry
+pub impl @protobuf.Sized for FlushResponse_FlushCollSegIDsEntry
+pub impl @protobuf.Write for FlushResponse_FlushCollSegIDsEntry
+
+pub(all) struct GetFlushStateRequest {
+  mut segment_ids : Array[Int64]
+  mut flush_ts : UInt64
+  mut db_name : String
+  mut collection_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn GetFlushStateRequest::GetFlushStateRequest(Array[Int64], UInt64, String, String) -> Self
+pub impl Default for GetFlushStateRequest
+pub impl ToJson for GetFlushStateRequest
+pub impl @json.FromJson for GetFlushStateRequest
+pub impl @protobuf.AsyncRead for GetFlushStateRequest
+pub impl @protobuf.AsyncWrite for GetFlushStateRequest
+pub impl @protobuf.Read for GetFlushStateRequest
+pub impl @protobuf.Sized for GetFlushStateRequest
+pub impl @protobuf.Write for GetFlushStateRequest
+
+pub(all) struct GetFlushStateResponse {
+  mut status : @common.Status?
+  mut flushed : Bool
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn GetFlushStateResponse::GetFlushStateResponse(status? : @common.Status, Bool) -> Self
+pub impl Default for GetFlushStateResponse
+pub impl ToJson for GetFlushStateResponse
+pub impl @json.FromJson for GetFlushStateResponse
+pub impl @protobuf.AsyncRead for GetFlushStateResponse
+pub impl @protobuf.AsyncWrite for GetFlushStateResponse
+pub impl @protobuf.Read for GetFlushStateResponse
+pub impl @protobuf.Sized for GetFlushStateResponse
+pub impl @protobuf.Write for GetFlushStateResponse
+
+pub(all) struct GetLoadStateRequest {
+  mut base : @common.MsgBase?
+  mut collection_name : String
+  mut partition_names : Array[String]
+  mut db_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn GetLoadStateRequest::GetLoadStateRequest(base? : @common.MsgBase, String, Array[String], String) -> Self
+pub impl Default for GetLoadStateRequest
+pub impl ToJson for GetLoadStateRequest
+pub impl @json.FromJson for GetLoadStateRequest
+pub impl @protobuf.AsyncRead for GetLoadStateRequest
+pub impl @protobuf.AsyncWrite for GetLoadStateRequest
+pub impl @protobuf.Read for GetLoadStateRequest
+pub impl @protobuf.Sized for GetLoadStateRequest
+pub impl @protobuf.Write for GetLoadStateRequest
+
+pub(all) struct GetLoadStateResponse {
+  mut status : @common.Status?
+  mut state : @common.LoadState
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn GetLoadStateResponse::GetLoadStateResponse(status? : @common.Status, @common.LoadState) -> Self
+pub impl Default for GetLoadStateResponse
+pub impl ToJson for GetLoadStateResponse
+pub impl @json.FromJson for GetLoadStateResponse
+pub impl @protobuf.AsyncRead for GetLoadStateResponse
+pub impl @protobuf.AsyncWrite for GetLoadStateResponse
+pub impl @protobuf.Read for GetLoadStateResponse
+pub impl @protobuf.Sized for GetLoadStateResponse
+pub impl @protobuf.Write for GetLoadStateResponse
+
+pub(all) struct GetLoadingProgressRequest {
+  mut base : @common.MsgBase?
+  mut collection_name : String
+  mut partition_names : Array[String]
+  mut db_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn GetLoadingProgressRequest::GetLoadingProgressRequest(base? : @common.MsgBase, String, Array[String], String) -> Self
+pub impl Default for GetLoadingProgressRequest
+pub impl ToJson for GetLoadingProgressRequest
+pub impl @json.FromJson for GetLoadingProgressRequest
+pub impl @protobuf.AsyncRead for GetLoadingProgressRequest
+pub impl @protobuf.AsyncWrite for GetLoadingProgressRequest
+pub impl @protobuf.Read for GetLoadingProgressRequest
+pub impl @protobuf.Sized for GetLoadingProgressRequest
+pub impl @protobuf.Write for GetLoadingProgressRequest
+
+pub(all) struct GetLoadingProgressResponse {
+  mut status : @common.Status?
+  mut progress : Int64
+  mut refresh_progress : Int64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn GetLoadingProgressResponse::GetLoadingProgressResponse(status? : @common.Status, Int64, Int64) -> Self
+pub impl Default for GetLoadingProgressResponse
+pub impl ToJson for GetLoadingProgressResponse
+pub impl @json.FromJson for GetLoadingProgressResponse
+pub impl @protobuf.AsyncRead for GetLoadingProgressResponse
+pub impl @protobuf.AsyncWrite for GetLoadingProgressResponse
+pub impl @protobuf.Read for GetLoadingProgressResponse
+pub impl @protobuf.Sized for GetLoadingProgressResponse
+pub impl @protobuf.Write for GetLoadingProgressResponse
+
+pub(all) struct HasCollectionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut time_stamp : UInt64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn HasCollectionRequest::HasCollectionRequest(base? : @common.MsgBase, String, String, UInt64) -> Self
+pub impl Default for HasCollectionRequest
+pub impl ToJson for HasCollectionRequest
+pub impl @json.FromJson for HasCollectionRequest
+pub impl @protobuf.AsyncRead for HasCollectionRequest
+pub impl @protobuf.AsyncWrite for HasCollectionRequest
+pub impl @protobuf.Read for HasCollectionRequest
+pub impl @protobuf.Sized for HasCollectionRequest
+pub impl @protobuf.Write for HasCollectionRequest
+
+pub(all) struct HasPartitionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn HasPartitionRequest::HasPartitionRequest(base? : @common.MsgBase, String, String, String) -> Self
+pub impl Default for HasPartitionRequest
+pub impl ToJson for HasPartitionRequest
+pub impl @json.FromJson for HasPartitionRequest
+pub impl @protobuf.AsyncRead for HasPartitionRequest
+pub impl @protobuf.AsyncWrite for HasPartitionRequest
+pub impl @protobuf.Read for HasPartitionRequest
+pub impl @protobuf.Sized for HasPartitionRequest
+pub impl @protobuf.Write for HasPartitionRequest
+
+pub(all) struct Hits {
+  mut ids : Array[Int64]
+  mut row_data : Array[Bytes]
+  mut scores : Array[Float]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn Hits::Hits(Array[Int64], Array[Bytes], Array[Float]) -> Self
+pub impl Default for Hits
+pub impl ToJson for Hits
+pub impl @json.FromJson for Hits
+pub impl @protobuf.AsyncRead for Hits
+pub impl @protobuf.AsyncWrite for Hits
+pub impl @protobuf.Read for Hits
+pub impl @protobuf.Sized for Hits
+pub impl @protobuf.Write for Hits
+
+pub(all) struct IndexDescription {
+  mut index_name : String
+  mut index_id : Int64
+  mut params : Array[@common.KeyValuePair]
+  mut field_name : String
+  mut indexed_rows : Int64
+  mut total_rows : Int64
+  mut state : @common.IndexState
+  mut index_state_fail_reason : String
+  mut pending_index_rows : Int64
+  mut min_index_version : Int
+  mut max_index_version : Int
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn IndexDescription::IndexDescription(String, Int64, Array[@common.KeyValuePair], String, Int64, Int64, @common.IndexState, String, Int64, Int, Int) -> Self
+pub impl Default for IndexDescription
+pub impl ToJson for IndexDescription
+pub impl @json.FromJson for IndexDescription
+pub impl @protobuf.AsyncRead for IndexDescription
+pub impl @protobuf.AsyncWrite for IndexDescription
+pub impl @protobuf.Read for IndexDescription
+pub impl @protobuf.Sized for IndexDescription
+pub impl @protobuf.Write for IndexDescription
+
+pub(all) struct InsertRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_name : String
+  mut fields_data : Array[@schema.FieldData]
+  mut hash_keys : Array[UInt]
+  mut num_rows : UInt
+  mut schema_timestamp : UInt64
+  mut namespace_ : String?
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn InsertRequest::InsertRequest(base? : @common.MsgBase, String, String, String, Array[@schema.FieldData], Array[UInt], UInt, UInt64, namespace_? : String) -> Self
+pub impl Default for InsertRequest
+pub impl ToJson for InsertRequest
+pub impl @json.FromJson for InsertRequest
+pub impl @protobuf.AsyncRead for InsertRequest
+pub impl @protobuf.AsyncWrite for InsertRequest
+pub impl @protobuf.Read for InsertRequest
+pub impl @protobuf.Sized for InsertRequest
+pub impl @protobuf.Write for InsertRequest
+
+pub(all) struct LoadCollectionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut replica_number : Int
+  mut resource_groups : Array[String]
+  mut refresh : Bool
+  mut load_fields : Array[String]
+  mut skip_load_dynamic_field : Bool
+  mut load_params : Map[String, String]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn LoadCollectionRequest::LoadCollectionRequest(base? : @common.MsgBase, String, String, Int, Array[String], Bool, Array[String], Bool, Map[String, String]) -> Self
+pub impl Default for LoadCollectionRequest
+pub impl ToJson for LoadCollectionRequest
+pub impl @json.FromJson for LoadCollectionRequest
+pub impl @protobuf.AsyncRead for LoadCollectionRequest
+pub impl @protobuf.AsyncWrite for LoadCollectionRequest
+pub impl @protobuf.Read for LoadCollectionRequest
+pub impl @protobuf.Sized for LoadCollectionRequest
+pub impl @protobuf.Write for LoadCollectionRequest
+
+pub(all) struct LoadCollectionRequest_LoadParamsEntry {
+  mut key : String
+  mut value : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn LoadCollectionRequest_LoadParamsEntry::LoadCollectionRequest_LoadParamsEntry(String, String) -> Self
+pub impl Default for LoadCollectionRequest_LoadParamsEntry
+pub impl ToJson for LoadCollectionRequest_LoadParamsEntry
+pub impl @json.FromJson for LoadCollectionRequest_LoadParamsEntry
+pub impl @protobuf.AsyncRead for LoadCollectionRequest_LoadParamsEntry
+pub impl @protobuf.AsyncWrite for LoadCollectionRequest_LoadParamsEntry
+pub impl @protobuf.Read for LoadCollectionRequest_LoadParamsEntry
+pub impl @protobuf.Sized for LoadCollectionRequest_LoadParamsEntry
+pub impl @protobuf.Write for LoadCollectionRequest_LoadParamsEntry
+
+pub(all) struct LoadPartitionsRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_names : Array[String]
+  mut replica_number : Int
+  mut resource_groups : Array[String]
+  mut refresh : Bool
+  mut load_fields : Array[String]
+  mut skip_load_dynamic_field : Bool
+  mut load_params : Map[String, String]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn LoadPartitionsRequest::LoadPartitionsRequest(base? : @common.MsgBase, String, String, Array[String], Int, Array[String], Bool, Array[String], Bool, Map[String, String]) -> Self
+pub impl Default for LoadPartitionsRequest
+pub impl ToJson for LoadPartitionsRequest
+pub impl @json.FromJson for LoadPartitionsRequest
+pub impl @protobuf.AsyncRead for LoadPartitionsRequest
+pub impl @protobuf.AsyncWrite for LoadPartitionsRequest
+pub impl @protobuf.Read for LoadPartitionsRequest
+pub impl @protobuf.Sized for LoadPartitionsRequest
+pub impl @protobuf.Write for LoadPartitionsRequest
+
+pub(all) struct LoadPartitionsRequest_LoadParamsEntry {
+  mut key : String
+  mut value : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn LoadPartitionsRequest_LoadParamsEntry::LoadPartitionsRequest_LoadParamsEntry(String, String) -> Self
+pub impl Default for LoadPartitionsRequest_LoadParamsEntry
+pub impl ToJson for LoadPartitionsRequest_LoadParamsEntry
+pub impl @json.FromJson for LoadPartitionsRequest_LoadParamsEntry
+pub impl @protobuf.AsyncRead for LoadPartitionsRequest_LoadParamsEntry
+pub impl @protobuf.AsyncWrite for LoadPartitionsRequest_LoadParamsEntry
+pub impl @protobuf.Read for LoadPartitionsRequest_LoadParamsEntry
+pub impl @protobuf.Sized for LoadPartitionsRequest_LoadParamsEntry
+pub impl @protobuf.Write for LoadPartitionsRequest_LoadParamsEntry
+
+pub(all) struct MutationResult {
+  mut status : @common.Status?
+  mut ids : @schema.IDs?
+  mut succ_index : Array[UInt]
+  mut err_index : Array[UInt]
+  mut acknowledged : Bool
+  mut insert_cnt : Int64
+  mut delete_cnt : Int64
+  mut upsert_cnt : Int64
+  mut timestamp : UInt64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn MutationResult::MutationResult(status? : @common.Status, ids? : @schema.IDs, Array[UInt], Array[UInt], Bool, Int64, Int64, Int64, UInt64) -> Self
+pub impl Default for MutationResult
+pub impl ToJson for MutationResult
+pub impl @json.FromJson for MutationResult
+pub impl @protobuf.AsyncRead for MutationResult
+pub impl @protobuf.AsyncWrite for MutationResult
+pub impl @protobuf.Read for MutationResult
+pub impl @protobuf.Sized for MutationResult
+pub impl @protobuf.Write for MutationResult
+
+pub(all) struct QueryRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut expr : String
+  mut output_fields : Array[String]
+  mut partition_names : Array[String]
+  mut travel_timestamp : UInt64
+  mut guarantee_timestamp : UInt64
+  mut query_params : Array[@common.KeyValuePair]
+  mut not_return_all_meta : Bool
+  mut consistency_level : @common.ConsistencyLevel
+  mut use_default_consistency : Bool
+  mut namespace_ : String?
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn QueryRequest::QueryRequest(base? : @common.MsgBase, String, String, String, Array[String], Array[String], UInt64, UInt64, Array[@common.KeyValuePair], Bool, @common.ConsistencyLevel, Bool, namespace_? : String) -> Self
+pub impl Default for QueryRequest
+pub impl ToJson for QueryRequest
+pub impl @json.FromJson for QueryRequest
+pub impl @protobuf.AsyncRead for QueryRequest
+pub impl @protobuf.AsyncWrite for QueryRequest
+pub impl @protobuf.Read for QueryRequest
+pub impl @protobuf.Sized for QueryRequest
+pub impl @protobuf.Write for QueryRequest
+
+pub(all) struct QueryResults {
+  mut status : @common.Status?
+  mut fields_data : Array[@schema.FieldData]
+  mut collection_name : String
+  mut output_fields : Array[String]
+  mut session_ts : UInt64
+  mut primary_field_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn QueryResults::QueryResults(status? : @common.Status, Array[@schema.FieldData], String, Array[String], UInt64, String) -> Self
+pub impl Default for QueryResults
+pub impl ToJson for QueryResults
+pub impl @json.FromJson for QueryResults
+pub impl @protobuf.AsyncRead for QueryResults
+pub impl @protobuf.AsyncWrite for QueryResults
+pub impl @protobuf.Read for QueryResults
+pub impl @protobuf.Sized for QueryResults
+pub impl @protobuf.Write for QueryResults
+
+pub(all) struct ReleaseCollectionRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ReleaseCollectionRequest::ReleaseCollectionRequest(base? : @common.MsgBase, String, String) -> Self
+pub impl Default for ReleaseCollectionRequest
+pub impl ToJson for ReleaseCollectionRequest
+pub impl @json.FromJson for ReleaseCollectionRequest
+pub impl @protobuf.AsyncRead for ReleaseCollectionRequest
+pub impl @protobuf.AsyncWrite for ReleaseCollectionRequest
+pub impl @protobuf.Read for ReleaseCollectionRequest
+pub impl @protobuf.Sized for ReleaseCollectionRequest
+pub impl @protobuf.Write for ReleaseCollectionRequest
+
+pub(all) struct ReleasePartitionsRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_names : Array[String]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ReleasePartitionsRequest::ReleasePartitionsRequest(base? : @common.MsgBase, String, String, Array[String]) -> Self
+pub impl Default for ReleasePartitionsRequest
+pub impl ToJson for ReleasePartitionsRequest
+pub impl @json.FromJson for ReleasePartitionsRequest
+pub impl @protobuf.AsyncRead for ReleasePartitionsRequest
+pub impl @protobuf.AsyncWrite for ReleasePartitionsRequest
+pub impl @protobuf.Read for ReleasePartitionsRequest
+pub impl @protobuf.Sized for ReleasePartitionsRequest
+pub impl @protobuf.Write for ReleasePartitionsRequest
+
+pub(all) struct SearchRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_names : Array[String]
+  mut dsl : String
+  mut dsl_type : @common.DslType
+  mut output_fields : Array[String]
+  mut search_params : Array[@common.KeyValuePair]
+  mut travel_timestamp : UInt64
+  mut guarantee_timestamp : UInt64
+  mut nq : Int64
+  mut not_return_all_meta : Bool
+  mut consistency_level : @common.ConsistencyLevel
+  mut use_default_consistency : Bool
+  mut namespace_ : String?
+  mut search_input : SearchRequest_SearchInput
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn SearchRequest::SearchRequest(base? : @common.MsgBase, String, String, Array[String], String, @common.DslType, Array[String], Array[@common.KeyValuePair], UInt64, UInt64, Int64, Bool, @common.ConsistencyLevel, Bool, namespace_? : String, search_input? : SearchRequest_SearchInput) -> Self
+pub impl Default for SearchRequest
+pub impl ToJson for SearchRequest
+pub impl @json.FromJson for SearchRequest
+pub impl @protobuf.AsyncRead for SearchRequest
+pub impl @protobuf.AsyncWrite for SearchRequest
+pub impl @protobuf.Read for SearchRequest
+pub impl @protobuf.Sized for SearchRequest
+pub impl @protobuf.Write for SearchRequest
+
+pub(all) enum SearchRequest_SearchInput {
+  PlaceholderGroup(Bytes)
+  Ids(@schema.IDs)
+  NotSet
+} derive(Eq, @debug.Debug)
+pub impl Default for SearchRequest_SearchInput
+pub impl ToJson for SearchRequest_SearchInput
+pub impl @json.FromJson for SearchRequest_SearchInput
+
+pub(all) struct SearchResults {
+  mut status : @common.Status?
+  mut results : @schema.SearchResultData?
+  mut collection_name : String
+  mut session_ts : UInt64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn SearchResults::SearchResults(status? : @common.Status, results? : @schema.SearchResultData, String, UInt64) -> Self
+pub impl Default for SearchResults
+pub impl ToJson for SearchResults
+pub impl @json.FromJson for SearchResults
+pub impl @protobuf.AsyncRead for SearchResults
+pub impl @protobuf.AsyncWrite for SearchResults
+pub impl @protobuf.Read for SearchResults
+pub impl @protobuf.Sized for SearchResults
+pub impl @protobuf.Write for SearchResults
+
+pub(all) struct ShowCollectionsRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut time_stamp : UInt64
+  mut type_ : ShowType
+  mut collection_names : Array[String]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ShowCollectionsRequest::ShowCollectionsRequest(base? : @common.MsgBase, String, UInt64, ShowType, Array[String]) -> Self
+pub impl Default for ShowCollectionsRequest
+pub impl ToJson for ShowCollectionsRequest
+pub impl @json.FromJson for ShowCollectionsRequest
+pub impl @protobuf.AsyncRead for ShowCollectionsRequest
+pub impl @protobuf.AsyncWrite for ShowCollectionsRequest
+pub impl @protobuf.Read for ShowCollectionsRequest
+pub impl @protobuf.Sized for ShowCollectionsRequest
+pub impl @protobuf.Write for ShowCollectionsRequest
+
+pub(all) struct ShowCollectionsResponse {
+  mut status : @common.Status?
+  mut collection_names : Array[String]
+  mut collection_ids : Array[Int64]
+  mut created_timestamps : Array[UInt64]
+  mut created_utc_timestamps : Array[UInt64]
+  mut in_memory_percentages : Array[Int64]
+  mut query_service_available : Array[Bool]
+  mut shards_num : Array[Int]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ShowCollectionsResponse::ShowCollectionsResponse(status? : @common.Status, Array[String], Array[Int64], Array[UInt64], Array[UInt64], Array[Int64], Array[Bool], Array[Int]) -> Self
+pub impl Default for ShowCollectionsResponse
+pub impl ToJson for ShowCollectionsResponse
+pub impl @json.FromJson for ShowCollectionsResponse
+pub impl @protobuf.AsyncRead for ShowCollectionsResponse
+pub impl @protobuf.AsyncWrite for ShowCollectionsResponse
+pub impl @protobuf.Read for ShowCollectionsResponse
+pub impl @protobuf.Sized for ShowCollectionsResponse
+pub impl @protobuf.Write for ShowCollectionsResponse
+
+pub(all) struct ShowPartitionsRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut collection_id : Int64
+  mut partition_names : Array[String]
+  mut type_ : ShowType
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ShowPartitionsRequest::ShowPartitionsRequest(base? : @common.MsgBase, String, String, Int64, Array[String], ShowType) -> Self
+pub impl Default for ShowPartitionsRequest
+pub impl ToJson for ShowPartitionsRequest
+pub impl @json.FromJson for ShowPartitionsRequest
+pub impl @protobuf.AsyncRead for ShowPartitionsRequest
+pub impl @protobuf.AsyncWrite for ShowPartitionsRequest
+pub impl @protobuf.Read for ShowPartitionsRequest
+pub impl @protobuf.Sized for ShowPartitionsRequest
+pub impl @protobuf.Write for ShowPartitionsRequest
+
+pub(all) struct ShowPartitionsResponse {
+  mut status : @common.Status?
+  mut partition_names : Array[String]
+  mut partition_ids : Array[Int64]
+  mut created_timestamps : Array[UInt64]
+  mut created_utc_timestamps : Array[UInt64]
+  mut in_memory_percentages : Array[Int64]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ShowPartitionsResponse::ShowPartitionsResponse(status? : @common.Status, Array[String], Array[Int64], Array[UInt64], Array[UInt64], Array[Int64]) -> Self
+pub impl Default for ShowPartitionsResponse
+pub impl ToJson for ShowPartitionsResponse
+pub impl @json.FromJson for ShowPartitionsResponse
+pub impl @protobuf.AsyncRead for ShowPartitionsResponse
+pub impl @protobuf.AsyncWrite for ShowPartitionsResponse
+pub impl @protobuf.Read for ShowPartitionsResponse
+pub impl @protobuf.Sized for ShowPartitionsResponse
+pub impl @protobuf.Write for ShowPartitionsResponse
+
+pub(all) enum ShowType {
+  All
+  InMemory
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn ShowType::from_enum(@protobuf.Enum) -> Self
+pub fn ShowType::to_enum(Self) -> @protobuf.Enum
+pub impl Default for ShowType
+pub impl ToJson for ShowType
+pub impl @json.FromJson for ShowType
+pub impl @protobuf.Sized for ShowType
+
+pub(all) struct UpsertRequest {
+  mut base : @common.MsgBase?
+  mut db_name : String
+  mut collection_name : String
+  mut partition_name : String
+  mut fields_data : Array[@schema.FieldData]
+  mut hash_keys : Array[UInt]
+  mut num_rows : UInt
+  mut schema_timestamp : UInt64
+  mut partial_update : Bool
+  mut namespace_ : String?
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn UpsertRequest::UpsertRequest(base? : @common.MsgBase, String, String, String, Array[@schema.FieldData], Array[UInt], UInt, UInt64, Bool, namespace_? : String) -> Self
+pub impl Default for UpsertRequest
+pub impl ToJson for UpsertRequest
+pub impl @json.FromJson for UpsertRequest
+pub impl @protobuf.AsyncRead for UpsertRequest
+pub impl @protobuf.AsyncWrite for UpsertRequest
+pub impl @protobuf.Read for UpsertRequest
+pub impl @protobuf.Sized for UpsertRequest
+pub impl @protobuf.Write for UpsertRequest
+
+// Type aliases
+
+// Traits

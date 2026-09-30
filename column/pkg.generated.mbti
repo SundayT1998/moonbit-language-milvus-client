@@ -3,7 +3,7 @@ package "Tangbuting/milvus-client/column"
 
 import {
   "Tangbuting/milvus-client/entity",
-  "Tangbuting/proto/milvus/proto/schema",
+  "Tangbuting/milvus-client/proto/milvus/proto/schema",
   "moonbitlang/core/debug",
 }
 

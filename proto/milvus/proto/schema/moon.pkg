@@ -1,7 +1,5 @@
 import {
+  "moonbitlang/protobuf" @lib,
+  "moonbitlang/core/json",
   "Tangbuting/milvus-client/proto/milvus/proto/common",
 }
-
-options(
-  "is-main": false,
-)

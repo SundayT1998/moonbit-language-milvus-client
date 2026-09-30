@@ -1,0 +1,493 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/proto/milvus/proto/common"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "moonbitlang/protobuf",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) enum ConsistencyLevel {
+  Strong
+  Session
+  Bounded
+  Eventually
+  Customized
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn ConsistencyLevel::from_enum(@protobuf.Enum) -> Self
+pub fn ConsistencyLevel::to_enum(Self) -> @protobuf.Enum
+pub impl Default for ConsistencyLevel
+pub impl ToJson for ConsistencyLevel
+pub impl @json.FromJson for ConsistencyLevel
+pub impl @protobuf.Sized for ConsistencyLevel
+
+pub(all) enum DslType {
+  Dsl
+  BoolExprV1
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn DslType::from_enum(@protobuf.Enum) -> Self
+pub fn DslType::to_enum(Self) -> @protobuf.Enum
+pub impl Default for DslType
+pub impl ToJson for DslType
+pub impl @json.FromJson for DslType
+pub impl @protobuf.Sized for DslType
+
+pub(all) enum ErrorCode {
+  Success
+  UnexpectedError
+  ConnectFailed
+  PermissionDenied
+  CollectionNotExists
+  IllegalArgument
+  IllegalDimension
+  IllegalIndexType
+  IllegalCollectionName
+  IllegalTOPK
+  IllegalRowRecord
+  IllegalVectorID
+  IllegalSearchResult
+  FileNotFound
+  MetaFailed
+  CacheFailed
+  CannotCreateFolder
+  CannotCreateFile
+  CannotDeleteFolder
+  CannotDeleteFile
+  BuildIndexError
+  IllegalNLIST
+  IllegalMetricType
+  OutOfMemory
+  IndexNotExist
+  EmptyCollection
+  UpdateImportTaskFailure
+  CollectionNameNotFound
+  CreateCredentialFailure
+  UpdateCredentialFailure
+  DeleteCredentialFailure
+  GetCredentialFailure
+  ListCredUsersFailure
+  GetUserFailure
+  CreateRoleFailure
+  DropRoleFailure
+  OperateUserRoleFailure
+  SelectRoleFailure
+  SelectUserFailure
+  SelectResourceFailure
+  OperatePrivilegeFailure
+  SelectGrantFailure
+  RefreshPolicyInfoCacheFailure
+  ListPolicyFailure
+  NotShardLeader
+  NoReplicaAvailable
+  SegmentNotFound
+  ForceDeny
+  RateLimit
+  NodeIDNotMatch
+  UpsertAutoIDTrue
+  InsufficientMemoryToLoad
+  MemoryQuotaExhausted
+  DiskQuotaExhausted
+  TimeTickLongDelay
+  NotReadyServe
+  NotReadyCoordActivating
+  CreatePrivilegeGroupFailure
+  DropPrivilegeGroupFailure
+  ListPrivilegeGroupsFailure
+  OperatePrivilegeGroupFailure
+  SchemaMismatch
+  DataCoordNA
+  DDRequestRace
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn ErrorCode::from_enum(@protobuf.Enum) -> Self
+pub fn ErrorCode::to_enum(Self) -> @protobuf.Enum
+pub impl Default for ErrorCode
+pub impl ToJson for ErrorCode
+pub impl @json.FromJson for ErrorCode
+pub impl @protobuf.Sized for ErrorCode
+
+pub(all) enum IndexState {
+  IndexStateNone
+  Unissued
+  InProgress
+  Finished
+  Failed
+  Retry
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn IndexState::from_enum(@protobuf.Enum) -> Self
+pub fn IndexState::to_enum(Self) -> @protobuf.Enum
+pub impl Default for IndexState
+pub impl ToJson for IndexState
+pub impl @json.FromJson for IndexState
+pub impl @protobuf.Sized for IndexState
+
+pub(all) struct KeyDataPair {
+  mut key : String
+  mut data : Bytes
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn KeyDataPair::KeyDataPair(String, Bytes) -> Self
+pub impl Default for KeyDataPair
+pub impl ToJson for KeyDataPair
+pub impl @json.FromJson for KeyDataPair
+pub impl @protobuf.AsyncRead for KeyDataPair
+pub impl @protobuf.AsyncWrite for KeyDataPair
+pub impl @protobuf.Read for KeyDataPair
+pub impl @protobuf.Sized for KeyDataPair
+pub impl @protobuf.Write for KeyDataPair
+
+pub(all) struct KeyValuePair {
+  mut key : String
+  mut value : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn KeyValuePair::KeyValuePair(String, String) -> Self
+pub impl Default for KeyValuePair
+pub impl ToJson for KeyValuePair
+pub impl @json.FromJson for KeyValuePair
+pub impl @protobuf.AsyncRead for KeyValuePair
+pub impl @protobuf.AsyncWrite for KeyValuePair
+pub impl @protobuf.Read for KeyValuePair
+pub impl @protobuf.Sized for KeyValuePair
+pub impl @protobuf.Write for KeyValuePair
+
+pub(all) enum LoadState {
+  LoadStateNotExist
+  LoadStateNotLoad
+  LoadStateLoading
+  LoadStateLoaded
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn LoadState::from_enum(@protobuf.Enum) -> Self
+pub fn LoadState::to_enum(Self) -> @protobuf.Enum
+pub impl Default for LoadState
+pub impl ToJson for LoadState
+pub impl @json.FromJson for LoadState
+pub impl @protobuf.Sized for LoadState
+
+pub(all) struct MsgBase {
+  mut msg_type : MsgType
+  mut msg_id : Int64
+  mut timestamp : UInt64
+  mut source_id : Int64
+  mut target_id : Int64
+  mut properties : Map[String, String]
+  mut replicate_info : ReplicateInfo?
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn MsgBase::MsgBase(MsgType, Int64, UInt64, Int64, Int64, Map[String, String], replicate_info? : ReplicateInfo) -> Self
+pub impl Default for MsgBase
+pub impl ToJson for MsgBase
+pub impl @json.FromJson for MsgBase
+pub impl @protobuf.AsyncRead for MsgBase
+pub impl @protobuf.AsyncWrite for MsgBase
+pub impl @protobuf.Read for MsgBase
+pub impl @protobuf.Sized for MsgBase
+pub impl @protobuf.Write for MsgBase
+
+pub(all) struct MsgBase_PropertiesEntry {
+  mut key : String
+  mut value : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn MsgBase_PropertiesEntry::MsgBase_PropertiesEntry(String, String) -> Self
+pub impl Default for MsgBase_PropertiesEntry
+pub impl ToJson for MsgBase_PropertiesEntry
+pub impl @json.FromJson for MsgBase_PropertiesEntry
+pub impl @protobuf.AsyncRead for MsgBase_PropertiesEntry
+pub impl @protobuf.AsyncWrite for MsgBase_PropertiesEntry
+pub impl @protobuf.Read for MsgBase_PropertiesEntry
+pub impl @protobuf.Sized for MsgBase_PropertiesEntry
+pub impl @protobuf.Write for MsgBase_PropertiesEntry
+
+pub(all) enum MsgType {
+  Undefined
+  CreateCollection
+  DropCollection
+  HasCollection
+  DescribeCollection
+  ShowCollections
+  GetSystemConfigs
+  LoadCollection
+  ReleaseCollection
+  CreateAlias
+  DropAlias
+  AlterAlias
+  AlterCollection
+  RenameCollection
+  DescribeAlias
+  ListAliases
+  AlterCollectionField
+  AddCollectionFunction
+  AlterCollectionFunction
+  DropCollectionFunction
+  TruncateCollection
+  SplitShard
+  CreatePartition
+  DropPartition
+  HasPartition
+  DescribePartition
+  ShowPartitions
+  LoadPartitions
+  ReleasePartitions
+  ShowSegments
+  DescribeSegment
+  LoadSegments
+  ReleaseSegments
+  HandoffSegments
+  LoadBalanceSegments
+  DescribeSegments
+  FederListIndexedSegment
+  FederDescribeSegmentIndexData
+  CreateIndex
+  DescribeIndex
+  DropIndex
+  GetIndexStatistics
+  AlterIndex
+  Insert
+  Delete
+  Flush
+  ResendSegmentStats
+  Upsert
+  ManualFlush
+  FlushSegment
+  CreateSegment
+  Import
+  FlushAll
+  Search
+  SearchResult
+  GetIndexState
+  GetIndexBuildProgress
+  GetCollectionStatistics
+  GetPartitionStatistics
+  Retrieve
+  RetrieveResult
+  WatchDmChannels
+  RemoveDmChannels
+  WatchQueryChannels
+  RemoveQueryChannels
+  SealedSegmentsChangeInfo
+  WatchDeltaChannels
+  GetShardLeaders
+  GetReplicas
+  UnsubDmChannel
+  GetDistribution
+  SyncDistribution
+  RunAnalyzer
+  SegmentInfo
+  SystemInfo
+  GetRecoveryInfo
+  GetSegmentState
+  TimeTick
+  QueryNodeStats
+  LoadIndex
+  RequestID
+  RequestTSO
+  AllocateSegment
+  SegmentStatistics
+  SegmentFlushDone
+  DataNodeTt
+  Connect
+  ListClientInfos
+  AllocTimestamp
+  Replicate
+  CreateCredential
+  GetCredential
+  DeleteCredential
+  UpdateCredential
+  ListCredUsernames
+  CreateRole
+  DropRole
+  OperateUserRole
+  SelectRole
+  SelectUser
+  SelectResource
+  OperatePrivilege
+  SelectGrant
+  RefreshPolicyInfoCache
+  ListPolicy
+  CreatePrivilegeGroup
+  DropPrivilegeGroup
+  ListPrivilegeGroups
+  OperatePrivilegeGroup
+  OperatePrivilegeV2
+  AlterRole
+  CreateResourceGroup
+  DropResourceGroup
+  ListResourceGroups
+  DescribeResourceGroup
+  TransferNode
+  TransferReplica
+  UpdateResourceGroups
+  CreateDatabase
+  DropDatabase
+  ListDatabases
+  AlterDatabase
+  DescribeDatabase
+  AddCollectionField
+  AlterWAL
+  CreateSnapshot
+  DropSnapshot
+  ListSnapshots
+  DescribeSnapshot
+  RestoreSnapshot
+  GetRestoreSnapshotState
+  ListRestoreSnapshotJobs
+  PinSnapshotData
+  UnpinSnapshotData
+  RestoreExternalSnapshot
+  ExportSnapshot
+  AlterCollectionSchema
+  RefreshExternalCollection
+  GetRefreshExternalCollectionProgress
+  ListRefreshExternalCollectionJobs
+  CreateRowPolicy
+  DropRowPolicy
+  ListRowPolicies
+  UpdateRowPolicy
+  SetRLSPrincipalTags
+  GetRLSPrincipalTags
+  ListRLSPrincipals
+  DeleteRLSPrincipalTags
+  GetExportSnapshotState
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn MsgType::from_enum(@protobuf.Enum) -> Self
+pub fn MsgType::to_enum(Self) -> @protobuf.Enum
+pub impl Default for MsgType
+pub impl ToJson for MsgType
+pub impl @json.FromJson for MsgType
+pub impl @protobuf.Sized for MsgType
+
+pub(all) struct PlaceholderGroup {
+  mut placeholders : Array[PlaceholderValue]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn PlaceholderGroup::PlaceholderGroup(Array[PlaceholderValue]) -> Self
+pub impl Default for PlaceholderGroup
+pub impl ToJson for PlaceholderGroup
+pub impl @json.FromJson for PlaceholderGroup
+pub impl @protobuf.AsyncRead for PlaceholderGroup
+pub impl @protobuf.AsyncWrite for PlaceholderGroup
+pub impl @protobuf.Read for PlaceholderGroup
+pub impl @protobuf.Sized for PlaceholderGroup
+pub impl @protobuf.Write for PlaceholderGroup
+
+pub(all) enum PlaceholderType {
+  None
+  BinaryVector
+  FloatVector
+  Float16Vector
+  BFloat16Vector
+  SparseFloatVector
+  Int8Vector
+  Int64
+  VarChar
+  EmbListBinaryVector
+  EmbListFloatVector
+  EmbListFloat16Vector
+  EmbListBFloat16Vector
+  EmbListSparseFloatVector
+  EmbListInt8Vector
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn PlaceholderType::from_enum(@protobuf.Enum) -> Self
+pub fn PlaceholderType::to_enum(Self) -> @protobuf.Enum
+pub impl Default for PlaceholderType
+pub impl ToJson for PlaceholderType
+pub impl @json.FromJson for PlaceholderType
+pub impl @protobuf.Sized for PlaceholderType
+
+pub(all) struct PlaceholderValue {
+  mut tag : String
+  mut type_ : PlaceholderType
+  mut values : Array[Bytes]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn PlaceholderValue::PlaceholderValue(String, PlaceholderType, Array[Bytes]) -> Self
+pub impl Default for PlaceholderValue
+pub impl ToJson for PlaceholderValue
+pub impl @json.FromJson for PlaceholderValue
+pub impl @protobuf.AsyncRead for PlaceholderValue
+pub impl @protobuf.AsyncWrite for PlaceholderValue
+pub impl @protobuf.Read for PlaceholderValue
+pub impl @protobuf.Sized for PlaceholderValue
+pub impl @protobuf.Write for PlaceholderValue
+
+pub(all) struct ReplicateInfo {
+  mut is_replicate : Bool
+  mut msg_timestamp : UInt64
+  mut replicate_id : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ReplicateInfo::ReplicateInfo(Bool, UInt64, String) -> Self
+pub impl Default for ReplicateInfo
+pub impl ToJson for ReplicateInfo
+pub impl @json.FromJson for ReplicateInfo
+pub impl @protobuf.AsyncRead for ReplicateInfo
+pub impl @protobuf.AsyncWrite for ReplicateInfo
+pub impl @protobuf.Read for ReplicateInfo
+pub impl @protobuf.Sized for ReplicateInfo
+pub impl @protobuf.Write for ReplicateInfo
+
+pub(all) struct Status {
+  mut error_code : ErrorCode
+  mut reason : String
+  mut code : Int
+  mut retriable : Bool
+  mut detail : String
+  mut extra_info : Map[String, String]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn Status::Status(ErrorCode, String, Int, Bool, String, Map[String, String]) -> Self
+pub impl Default for Status
+pub impl ToJson for Status
+pub impl @json.FromJson for Status
+pub impl @protobuf.AsyncRead for Status
+pub impl @protobuf.AsyncWrite for Status
+pub impl @protobuf.Read for Status
+pub impl @protobuf.Sized for Status
+pub impl @protobuf.Write for Status
+
+pub(all) struct Status_ExtraInfoEntry {
+  mut key : String
+  mut value : String
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn Status_ExtraInfoEntry::Status_ExtraInfoEntry(String, String) -> Self
+pub impl Default for Status_ExtraInfoEntry
+pub impl ToJson for Status_ExtraInfoEntry
+pub impl @json.FromJson for Status_ExtraInfoEntry
+pub impl @protobuf.AsyncRead for Status_ExtraInfoEntry
+pub impl @protobuf.AsyncWrite for Status_ExtraInfoEntry
+pub impl @protobuf.Read for Status_ExtraInfoEntry
+pub impl @protobuf.Sized for Status_ExtraInfoEntry
+pub impl @protobuf.Write for Status_ExtraInfoEntry
+
+pub(all) enum WALName {
+  Unknown
+  RocksMQ
+  Pulsar
+  Kafka
+  WoodPecker
+  Test
+  Unknown1(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn WALName::from_enum(@protobuf.Enum) -> Self
+pub fn WALName::to_enum(Self) -> @protobuf.Enum
+pub impl Default for WALName
+pub impl ToJson for WALName
+pub impl @json.FromJson for WALName
+pub impl @protobuf.Sized for WALName
+
+// Type aliases
+
+// Traits

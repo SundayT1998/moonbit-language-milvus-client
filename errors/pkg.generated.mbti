@@ -2,7 +2,7 @@
 package "Tangbuting/milvus-client/errors"
 
 import {
-  "Tangbuting/proto/milvus/proto/common",
+  "Tangbuting/milvus-client/proto/milvus/proto/common",
 }
 
 // Values

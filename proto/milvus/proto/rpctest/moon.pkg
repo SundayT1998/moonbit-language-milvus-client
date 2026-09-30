@@ -1,0 +1,7 @@
+import {
+  "Tangbuting/milvus-client/proto/milvus/proto/milvus",
+  "Tangbuting/milvus-client/proto/milvus/proto/common",
+  "Tangbuting/milvus-client/proto/milvus/proto/schema",
+  "moonbitlang/protobuf" @lib,
+  "moonbitlang/core/buffer",
+}
