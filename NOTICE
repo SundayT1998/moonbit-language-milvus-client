@@ -1,0 +1,61 @@
+Tangbuting/milvus-client
+Copyright (c) 2026 Tangbuting/milvus-client contributors
+
+This product is a MoonBit client for Milvus. It is derived from the
+Milvus Go SDK, which is licensed under the Apache License, Version 2.0.
+
+---------------------------------------------------------------------------
+Derived work notice (Apache-2.0 §4)
+---------------------------------------------------------------------------
+
+Source repository : https://github.com/milvus-io/milvus
+Source directory  : client/
+Baseline commit   : 1bcc8cb1
+Source license    : Apache License 2.0
+Copyright holder  : Copyright (c) LF AI & Data Foundation
+
+Protocol definitions (`.proto`) are taken from the separate repository:
+
+Source repository : https://github.com/milvus-io/milvus-proto
+Source directory  : proto/
+Anchored commit   : ae7fea6ab2f4e958f2feef0f0edb9a0d23fa7e0c
+                    (milvus-proto/go-api/v3@v3.0.0-20260914122923-ae7fea6ab2f4)
+Source license    : Apache License 2.0
+Copyright holder  : Copyright (c) LF AI & Data Foundation
+
+A copy of the Apache License 2.0 is provided in the LICENSE file.
+
+---------------------------------------------------------------------------
+Nature of the derived work
+---------------------------------------------------------------------------
+
+The port from Go to MoonBit is a re-implementation, not a line-by-line
+translation, so it is not a byte-for-byte copy of the upstream source.
+However, this is explicitly NOT a clean-room implementation. The following
+are carried over from the upstream Go SDK and are the parts of this work
+that Apache-2.0 actually covers:
+
+  - public API names (e.g. `CreateCollection`, `NewSearchOption`)
+  - struct/field names (e.g. `FieldSchema`, `CollectionSchema`)
+  - protocol constant values (e.g. `FieldType = 101`, `DataType` numbers)
+  - option constructor names and option semantics
+  - default values and metric/index type literals
+
+Per-file provenance for ported source files is recorded in the header
+comment of each file, in the form:
+
+  // 移植自 github.com/milvus-io/milvus client/<path> (Apache-2.0)
+  // Copyright (c) LF AI & Data Foundation
+
+Upstream itself ships no NOTICE file at its repository root, so there is no
+upstream NOTICE to inherit. This NOTICE is created on our own initiative to
+record provenance and the scope of the derived work.
+
+---------------------------------------------------------------------------
+Trademarks
+---------------------------------------------------------------------------
+
+Apache-2.0 §6 does not grant trademark rights. "Milvus" is a trademark of
+LF Projects, LLC. The package name `Tangbuting/milvus-client` is a
+descriptive use that indicates the interoperability target only. This
+project is a community-driven client and is NOT an official Milvus SDK.
