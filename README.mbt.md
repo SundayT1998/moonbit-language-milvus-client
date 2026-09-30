@@ -33,10 +33,12 @@ moon add Tangbuting/milvus-client
 `moon.mod` 里对应的声明是：
 
 ```moonbit nocheck
-import {
-  "Tangbuting/milvus-client@0.1.0",
-}
+// moon.mod 里对应的声明（[deps] 段）
+[deps]
+Tangbuting/milvus-client = "0.1.0"
 ```
+
+发布到 mooncakes.io 之后，`moon add` 会自动写入这一段。
 
 > 本模块**尚未发布到 mooncakes.io**（见 Issue #37 的验收结论）。在发布前，
 > `moon add` 会失败，请按下面「从源码使用」一节把本仓库加进工作区。
