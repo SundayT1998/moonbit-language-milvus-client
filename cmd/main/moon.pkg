@@ -1,0 +1,5 @@
+// import {
+//   "Tangbuting/moonbit-language-milvus-client" @lib,
+// }
+
+pkgtype(kind: "executable")
