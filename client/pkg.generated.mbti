@@ -1,0 +1,296 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/client"
+
+import {
+  "Tangbuting/milvus-client/column",
+  "Tangbuting/milvus-client/entity",
+  "Tangbuting/milvus-client/errors",
+  "Tangbuting/milvus-client/index",
+  "Tangbuting/milvus-client/transport",
+  "Tangbuting/proto/milvus/proto/common",
+  "Tangbuting/proto/milvus/proto/schema",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn column_error_message(@column.ColumnError) -> String
+
+pub fn column_value_type_name(@column.ColumnValue) -> String
+
+pub let create_collection_path : String
+
+pub fn data_type_from_proto(@schema.DataType) -> @entity.DataType?
+
+pub fn data_type_to_proto(@entity.DataType) -> @schema.DataType
+
+pub let default_consistency_level : ConsistencyLevel
+
+pub fn delete_by_int64_ids(String, String, Array[Int64]) -> DeleteOption
+
+pub fn delete_by_string_ids(String, String, Array[String]) -> DeleteOption
+
+pub let delete_path : String
+
+pub let describe_collection_path : String
+
+pub let drop_collection_path : String
+
+pub fn entity_schema_message(@entity.SchemaError) -> String
+
+pub fn field_from_proto(@schema.FieldSchema) -> @entity.Field raise ClientError
+
+pub fn field_to_proto(@entity.Field) -> @schema.FieldSchema
+
+pub let has_collection_path : String
+
+pub let insert_path : String
+
+pub fn new_create_collection_option(String, @entity.CollectionSchema) -> CreateCollectionOption
+
+pub fn new_delete_option(String, String) -> DeleteOption
+
+pub fn new_describe_collection_option(String) -> DescribeCollectionOption
+
+pub fn new_drop_collection_option(String) -> DropCollectionOption
+
+pub fn new_list_collections_option() -> ListCollectionsOption
+
+pub fn new_query_option(String) -> QueryOption
+
+pub fn new_search_option(String, Int, Array[@column.ColumnValue]) -> SearchOption
+
+pub fn new_write_option(String, Array[WriteColumn]) -> WriteOption
+
+pub let query_param_limit : String
+
+pub let query_param_offset : String
+
+pub let query_param_order_by_fields : String
+
+pub let query_path : String
+
+pub fn schema_to_proto(String, @entity.CollectionSchema) -> @schema.CollectionSchema
+
+pub let search_param_anns_field : String
+
+pub let search_param_ignore_growing : String
+
+pub let search_param_metric_type : String
+
+pub let search_param_offset : String
+
+pub let search_param_params : String
+
+pub let search_param_round_decimal : String
+
+pub let search_param_topk : String
+
+pub let search_path : String
+
+pub fn serialize_collection_schema(String, @entity.CollectionSchema) -> Bytes raise ClientError
+
+pub let service_name : String
+
+pub let show_collections_path : String
+
+pub fn simple_create_collection_option(String, Int) -> CreateCollectionOption
+
+pub let upsert_path : String
+
+// Errors
+pub suberror ClientError {
+  Transport(@transport.RpcError)
+  Server(@errors.MerError)
+  Schema(String)
+  Encode(String)
+  Decode(String)
+}
+pub fn ClientError::code(Self) -> Int
+pub fn ClientError::is_deadline_exceeded(Self) -> Bool
+pub fn ClientError::is_retryable(Self) -> Bool
+pub fn ClientError::is_transport(Self) -> Bool
+pub fn ClientError::server_error(Self) -> @errors.MerError?
+pub impl Show for ClientError
+
+// Types and methods
+pub struct Client {
+  config : @transport.Config
+  call : async (String, Bytes) -> Bytes raise @transport.RpcError
+}
+pub fn Client::config(Self) -> @transport.Config
+pub async fn Client::create_collection(Self, CreateCollectionOption) -> Unit raise ClientError
+pub async fn Client::delete(Self, DeleteOption) -> MutationResult raise ClientError
+pub async fn Client::describe_collection(Self, DescribeCollectionOption) -> CollectionDescription raise ClientError
+pub async fn Client::drop_collection(Self, DropCollectionOption) -> Unit raise ClientError
+pub async fn Client::has_collection(Self, DescribeCollectionOption) -> Bool raise ClientError
+pub async fn Client::insert(Self, WriteOption) -> MutationResult raise ClientError
+pub async fn Client::list_collections(Self, ListCollectionsOption) -> Array[String] raise ClientError
+pub fn Client::new(@transport.Config, async (String, Bytes) -> Bytes raise @transport.RpcError) -> Self
+pub async fn Client::query(Self, QueryOption) -> QueryResult raise ClientError
+pub async fn Client::search(Self, SearchOption) -> SearchResult raise ClientError
+pub async fn Client::upsert(Self, WriteOption) -> MutationResult raise ClientError
+
+pub(all) struct CollectionDescription {
+  name : String
+  id : Int64
+  schema : @entity.CollectionSchema
+  physical_channels : Array[String]
+  virtual_channels : Array[String]
+  consistency_level : ConsistencyLevel
+  shard_num : Int
+  properties : Array[(String, String)]
+  update_timestamp : UInt64
+} derive(@debug.Debug)
+
+pub(all) enum ConsistencyLevel {
+  Strong
+  Session
+  Bounded
+  Eventually
+  Customized
+} derive(Eq, @debug.Debug)
+pub fn ConsistencyLevel::from_int(Int) -> Self
+pub fn ConsistencyLevel::from_proto(@common.ConsistencyLevel) -> Self
+pub fn ConsistencyLevel::to_int(Self) -> Int
+pub fn ConsistencyLevel::to_proto(Self) -> @common.ConsistencyLevel
+
+pub(all) struct CreateCollectionOption {
+  name : String
+  shard_num : Int
+  schema : @entity.CollectionSchema?
+  dim : Int
+  auto_id : Bool
+  enable_dynamic_schema : Bool
+  pk_field_name : String
+  vector_field_name : String
+  varchar_pk : Bool
+  varchar_pk_max_length : Int
+  consistency_level : ConsistencyLevel
+  properties : Array[(String, String)]
+  num_partitions : Int64
+}
+pub fn CreateCollectionOption::with_auto_id(Self, Bool) -> Self
+pub fn CreateCollectionOption::with_consistency_level(Self, ConsistencyLevel) -> Self
+pub fn CreateCollectionOption::with_dynamic_schema(Self, enable? : Bool) -> Self
+pub fn CreateCollectionOption::with_num_partitions(Self, Int64) -> Self
+pub fn CreateCollectionOption::with_pk_field_name(Self, String) -> Self
+pub fn CreateCollectionOption::with_property(Self, String, String) -> Self
+pub fn CreateCollectionOption::with_shard_num(Self, Int) -> Self
+pub fn CreateCollectionOption::with_varchar_pk(Self, Bool, Int) -> Self
+pub fn CreateCollectionOption::with_vector_field_name(Self, String) -> Self
+
+pub(all) struct DeleteOption {
+  collection_name : String
+  partition_name : String
+  expr : String
+  consistency_level : ConsistencyLevel?
+}
+pub fn DeleteOption::with_consistency_level(Self, ConsistencyLevel) -> Self
+pub fn DeleteOption::with_partition(Self, String) -> Self
+
+pub(all) struct DescribeCollectionOption {
+  name : String
+}
+
+pub(all) struct DropCollectionOption {
+  name : String
+}
+
+pub(all) struct ListCollectionsOption {
+  show_loaded : Bool
+}
+
+pub(all) struct MutationResult {
+  ids : @column.ColumnValue?
+  insert_count : Int64
+  delete_count : Int64
+  upsert_count : Int64
+  timestamp : UInt64
+} derive(@debug.Debug)
+pub fn MutationResult::has_ids(Self) -> Bool
+
+pub(all) struct QueryOption {
+  collection_name : String
+  partition_names : Array[String]
+  expr : String
+  output_fields : Array[String]
+  query_params : Array[(String, String)]
+  consistency_level : ConsistencyLevel?
+}
+pub fn QueryOption::with_consistency_level(Self, ConsistencyLevel) -> Self
+pub fn QueryOption::with_filter(Self, String) -> Self
+pub fn QueryOption::with_int64_ids(Self, String, Array[Int64]) -> Self
+pub fn QueryOption::with_limit(Self, Int) -> Self
+pub fn QueryOption::with_offset(Self, Int) -> Self
+pub fn QueryOption::with_order_by_fields(Self, Array[String]) -> Self
+pub fn QueryOption::with_output_fields(Self, Array[String]) -> Self
+pub fn QueryOption::with_partitions(Self, Array[String]) -> Self
+pub fn QueryOption::with_string_ids(Self, String, Array[String]) -> Self
+
+pub(all) struct QueryResult {
+  columns : Array[@column.Column]
+  names : Array[String]
+} derive(@debug.Debug)
+pub fn QueryResult::column(Self, String) -> @column.Column?
+pub fn QueryResult::has_column(Self, String) -> Bool
+pub fn QueryResult::len(Self) -> Int
+
+pub(all) struct SearchHit {
+  id : String
+  string_id : Bool
+  score : Float
+  fields : Map[String, @column.ColumnValue]
+} derive(@debug.Debug)
+
+pub(all) struct SearchOption {
+  collection_name : String
+  partition_names : Array[String]
+  anns_field : String
+  limit : Int
+  vectors : Array[@column.ColumnValue]
+  expr : String
+  output_fields : Array[String]
+  metric_type : @index.MetricType?
+  search_params : Array[(String, String)]
+  offset : Int
+  ignore_growing : Bool
+  round_decimal : Int
+  consistency_level : ConsistencyLevel?
+}
+pub fn SearchOption::with_anns_field(Self, String) -> Self
+pub fn SearchOption::with_consistency_level(Self, ConsistencyLevel) -> Self
+pub fn SearchOption::with_filter(Self, String) -> Self
+pub fn SearchOption::with_ignore_growing(Self, ignore_growing? : Bool) -> Self
+pub fn SearchOption::with_metric_type(Self, @index.MetricType) -> Self
+pub fn SearchOption::with_offset(Self, Int) -> Self
+pub fn SearchOption::with_output_fields(Self, Array[String]) -> Self
+pub fn SearchOption::with_partitions(Self, Array[String]) -> Self
+pub fn SearchOption::with_round_decimal(Self, Int) -> Self
+pub fn SearchOption::with_search_param(Self, String, String) -> Self
+
+pub(all) struct SearchResult {
+  hits : Array[SearchHit]
+} derive(@debug.Debug)
+
+pub(all) struct WriteColumn {
+  name : String
+  value : @column.ColumnValue
+}
+pub fn WriteColumn::data_type(Self) -> @entity.DataType
+pub fn WriteColumn::len(Self) -> Int
+pub fn WriteColumn::new(String, @column.ColumnValue) -> Self
+pub fn WriteColumn::to_field_data(Self, is_dynamic? : Bool) -> @schema.FieldData raise ClientError
+
+pub(all) struct WriteOption {
+  collection_name : String
+  partition_name : String
+  columns : Array[WriteColumn]
+  partial_update : Bool
+}
+pub fn WriteOption::with_partial_update(Self, partial_update? : Bool) -> Self
+pub fn WriteOption::with_partition(Self, String) -> Self
+
+// Type aliases
+pub type Unary = async (String, Bytes) -> Bytes raise @transport.RpcError
+
+// Traits

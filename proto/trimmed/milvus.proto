@@ -217,3 +217,194 @@ message DescribeCollectionResponse {
   // exceed it, so the modulus stays under 2^15.
   uint64 routing_modulus = 22;
 }
+// ---- Client 门面所需的核心 RPC 请求/响应（#15）----
+// 逐条照抄 proto/upstream/milvus.proto，字段号一律不动。
+// privilege_ext_obj 之类的注解是 server 侧元数据，客户端用不着，省略不影响 wire。
+
+enum ShowType {
+  option deprecated = true;
+  // Will return all collections
+  All = 0;
+  // Will return loaded collections with their inMemory_percentages
+  InMemory = 1;
+}
+
+message CreateCollectionRequest {
+  // Not useful for now
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The unique collection name in milvus.(Required)
+  string collection_name = 3;
+  // The serialized `schema.CollectionSchema`(Required)
+  bytes schema = 4;
+  // The shard count to create the collection with (Optional). <= 0, the
+  // default in most SDKs, means the server's default.
+  int32 shards_num = 5;
+  // The consistency level that the collection used, modification is not supported now.
+  common.ConsistencyLevel consistency_level = 6;
+  repeated common.KeyValuePair properties = 7;
+  int64 num_partitions = 8;
+}
+
+message DropCollectionRequest {
+  // Not useful for now
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The unique collection name in milvus.(Required)
+  string collection_name = 3;
+}
+
+message HasCollectionRequest {
+  // Not useful for now
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name you want to check.
+  string collection_name = 3;
+  // If time_stamp is not zero, will return true when time_stamp >= created collection timestamp, otherwise will return false.
+  uint64 time_stamp = 4;
+}
+
+message BoolResponse {
+  common.Status status = 1;
+  bool value = 2;
+}
+
+message ShowCollectionsRequest {
+  // Not useful for now
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // Not useful for now
+  uint64 time_stamp = 3;
+  // Decide return Loaded collections or All collections(Optional)
+  ShowType type = 4;
+  // Deprecated in upstream; kept for wire compatibility.
+  repeated string collection_names = 5 [deprecated=true];
+}
+
+message ShowCollectionsResponse {
+  common.Status status = 1;
+  // Collection name array
+  repeated string collection_names = 2;
+  // Collection Id array
+  repeated int64 collection_ids = 3;
+  // Hybrid timestamps in milvus
+  repeated uint64 created_timestamps = 4;
+  // The utc timestamp calculated by created_timestamp
+  repeated uint64 created_utc_timestamps = 5;
+  // Deprecated in upstream; kept for wire compatibility.
+  repeated int64 inMemory_percentages = 6 [deprecated=true];
+  // Indicate whether query service is available
+  repeated bool query_service_available = 7;
+  // Per collection, the number of shards it has now.
+  repeated int32 shards_num = 8;
+}
+
+message InsertRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collection_name = 3;
+  string partition_name = 4;
+  repeated schema.FieldData fields_data = 5;
+  repeated uint32 hash_keys = 6;
+  uint32 num_rows = 7;
+  uint64 schema_timestamp = 8;
+  optional string namespace = 9;
+}
+
+message UpsertRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collection_name = 3;
+  string partition_name = 4;
+  repeated schema.FieldData fields_data = 5;
+  repeated uint32 hash_keys = 6;
+  uint32 num_rows = 7;
+  uint64 schema_timestamp = 8;
+  bool partial_update = 9;
+  optional string namespace = 10;
+}
+
+message MutationResult {
+  common.Status status = 1;
+  schema.IDs IDs = 2;
+  repeated uint32 succ_index = 3;
+  repeated uint32 err_index = 4;
+  bool acknowledged = 5;
+  int64 insert_cnt = 6;
+  int64 delete_cnt = 7;
+  int64 upsert_cnt = 8;
+  uint64 timestamp = 9;
+}
+
+message DeleteRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collection_name = 3;
+  string partition_name = 4;
+  string expr = 5;
+  repeated uint32 hash_keys = 6;
+  common.ConsistencyLevel consistency_level = 7;
+  optional string namespace = 9;
+}
+
+message SearchRequest {
+  common.MsgBase base = 1; // must
+  string db_name = 2;
+  string collection_name = 3; // must
+  repeated string partition_names = 4; // must
+  string dsl = 5; // must
+  oneof search_input {
+    bytes placeholder_group = 6; // serialized `PlaceholderGroup` for vector search
+    schema.IDs ids = 22; // primary keys for search by IDs
+  }
+  common.DslType dsl_type = 7; // must
+  repeated string output_fields = 8;
+  repeated common.KeyValuePair search_params = 9; // must
+  uint64 travel_timestamp = 10;
+  uint64 guarantee_timestamp = 11; // guarantee_timestamp
+  int64 nq = 12;
+  bool not_return_all_meta = 13;
+  common.ConsistencyLevel consistency_level = 14;
+  bool use_default_consistency = 15;
+  optional string namespace = 20;
+}
+
+// Hits 在上游是 HybridSearch 的桶装结果；本移植保留以对齐字段号，
+// 但 Search 走的是 schema.SearchResultData。
+message Hits {
+  repeated int64 IDs = 1;
+  repeated bytes row_data = 2;
+  repeated float scores = 3;
+}
+
+message SearchResults {
+  common.Status status = 1;
+  schema.SearchResultData results = 2;
+  string collection_name = 3;
+  uint64 session_ts = 4;
+}
+
+message QueryRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collection_name = 3;
+  string expr = 4;
+  repeated string output_fields = 5;
+  repeated string partition_names = 6;
+  uint64 travel_timestamp = 7;
+  uint64 guarantee_timestamp = 8; // guarantee_timestamp
+  repeated common.KeyValuePair query_params = 9; // optional
+  bool not_return_all_meta = 10;
+  common.ConsistencyLevel consistency_level = 11;
+  bool use_default_consistency = 12;
+  optional string namespace = 14;
+}
+
+message QueryResults {
+  common.Status status = 1;
+  repeated schema.FieldData fields_data = 2;
+  string collection_name = 3;
+  repeated string output_fields = 4;
+  uint64 session_ts = 5;
+  string primary_field_name = 6;
+}

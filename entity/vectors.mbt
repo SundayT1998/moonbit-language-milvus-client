@@ -214,3 +214,81 @@ pub fn SparseFloatVector::from_bytes(
   row.validate()
   row
 }
+
+///|
+/// The float16 (IEEE-754 binary16) bit pattern of a float32, rounded
+/// half-to-even.
+///
+/// Split by the value of `e = exponent - 127`, the unbiased exponent:
+///
+/// - `e > 15` overflows binary16 and lands on infinity;
+/// - `e < -14` is subnormal territory, where the implicit leading 1 turns
+///   explicit and every step left the value takes costs one bit of the
+///   mantissa. Below `e = -24` the value rounds to a signed zero;
+/// - otherwise it is a normal number and the biased exponent moves from 127
+///   to 15, with the 23-bit mantissa narrowed to 10 by one round-half-even
+///   step.
+///
+/// Rounding to nearest even is done on the integer mantissa rather than on
+/// the value, so no intermediate is ever held in a wider float: this is what
+/// the read side in `@column` inverts, bit for bit.
+pub fn float16_from_float(value : Float) -> UInt {
+  let bits = value.reinterpret_as_uint()
+  let sign = (bits >> 16) & 0x8000U
+  let exponent = (bits >> 23) & 0xFFU
+  let mantissa = bits & 0x7FFFFFU
+  // Infinity or NaN: an all-ones exponent in the source stays all-ones.
+  // A NaN keeps its payload non-zero, so it does not collapse into infinity.
+  if exponent == 0xFFU {
+    if mantissa != 0U {
+      return sign | 0x7E00U
+    }
+    return sign | 0x7C00U
+  }
+  let e = exponent.reinterpret_as_int() - 127
+  if e > 15 {
+    return sign | 0x7C00U
+  }
+  if e < -14 {
+    if e < -24 {
+      return sign
+    }
+    // Subnormal: reinstate the implicit leading 1, then shift right by the
+    // number of binary places the value must lose to reach 2^-24.
+    let full = mantissa | 0x800000U
+    let shift = -e - 1
+    sign | round_half_even(full, shift)
+  } else {
+    let exp16 = (e + 15).reinterpret_as_uint() << 10
+    sign | (exp16 + round_half_even(mantissa, 13))
+  }
+}
+
+///|
+/// `value >> shift` rounded half-to-even on the discarded bits.
+fn round_half_even(value : UInt, shift : Int) -> UInt {
+  if shift <= 0 {
+    return value
+  }
+  let truncated = value >> shift
+  let remainder = value & ((1U << shift) - 1U)
+  let halfway = 1U << (shift - 1)
+  if remainder > halfway || (remainder == halfway && (truncated & 1U) == 1U) {
+    truncated + 1U
+  } else {
+    truncated
+  }
+}
+
+///|
+/// The little-endian, two-bytes-per-value encoding of floats as float16,
+/// which is what `VectorField.float16_vector` carries on the wire.
+pub fn float16_vector_bytes(values : Array[Float]) -> Bytes {
+  let buf = Buffer()
+  for value in values {
+    let bits = float16_from_float(value)
+    buf.write_byte((bits & 0xFFU).reinterpret_as_int().to_byte())
+    buf.write_byte(((bits >> 8) & 0xFFU).reinterpret_as_int().to_byte())
+  }
+  buf.to_bytes()
+}

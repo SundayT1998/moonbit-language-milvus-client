@@ -322,3 +322,42 @@ enum MsgType {
     /* Async Snapshot Export */
     GetExportSnapshotState = 2111;
 }
+// ---- 检索面所需的占位符与表达式类型（#15 Client 门面）----
+// 逐条照抄 proto/upstream/common.proto，字段号一律不动。
+
+enum DslType {
+    Dsl = 0;
+    BoolExprV1 = 1;
+}
+
+enum PlaceholderType {
+    None = 0;
+    BinaryVector = 100;
+    FloatVector = 101;
+    Float16Vector = 102;
+    BFloat16Vector = 103;
+    SparseFloatVector = 104;
+    Int8Vector = 105;
+    Int64 = 5;
+    VarChar = 21;
+
+    EmbListBinaryVector = 300;
+    EmbListFloatVector = 301;
+    EmbListFloat16Vector = 302;
+    EmbListBFloat16Vector = 303;
+    EmbListSparseFloatVector = 304;
+    EmbListInt8Vector = 305;
+}
+
+message PlaceholderValue {
+    string tag = 1;
+    PlaceholderType type = 2;
+    // values is a 2d-array of nq rows, every row contains a query vector.
+    // for dense vector, all rows are of the same length; for sparse vector,
+    // the length of each row may vary depending on their number of non-zeros.
+    repeated bytes values = 3;
+}
+
+message PlaceholderGroup {
+    repeated PlaceholderValue placeholders = 1;
+}
