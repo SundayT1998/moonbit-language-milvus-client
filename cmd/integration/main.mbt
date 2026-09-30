@@ -138,11 +138,21 @@ async fn check_steps(client : @client.Client) -> String {
       "写入计数不符：期望 \{row_count}，实际 \{inserted.insert_count}",
     )
   }
-  let _ = match inserted.ids {
-    Some(_) => ()
+  let ids = match inserted.ids {
+    Some(@column.ColumnValue::Int64(ids)) => ids
+    Some(_) => return step_failed("4", "auto_id 回的主键不是整数列")
     None => return step_failed("4", "auto_id 的写入没有回主键")
   }
-  println("[4] 已写入 \{row_count} 行，计数与主键已确认")
+  if ids.length() != row_count {
+    return step_failed(
+      "4",
+      "auto_id 回的主键个数不符：期望 \{row_count}，实际 \{ids.length()}",
+    )
+  }
+  // 顺手打一行主键：服务端发的是 Snowflake ID，量级与写入顺序都跟本地
+  // 行号无关。后面写过滤表达式时不能拿它当「第几行」用 —— 这条就是踩过
+  // 来的，`id >= 5` 在 18 位的主键上等于全表通过。
+  println("[4] 已写入 \{row_count} 行，首个主键=\{ids[0]}")
 
   // 5. 建索引。必须在加载之前：Milvus 对没有索引的集合拒绝加载，
   //    报 `index not found`。这里用 FLAT 而不是 HNSW/IVF —— 10 行的
@@ -236,15 +246,18 @@ async fn check_steps(client : @client.Client) -> String {
   //    `id >= 5` 对全部 10 行都为真，所以「期望 5，实际 10」。
   //    要过滤就得挑**本测试自己控制值**的列，这里用 title。
   //
-  //    用 `in` 而不是范围：title 是字符串，`>= 'row-5'` 走字典序，
+  //    用 `in` 而不是范围：title 是字符串，`>= "row-5"` 走字典序，
   //    行数一多（row-10）就与数值序分叉；列出要的那几个值没有歧义。
-  //    字符串字面量用单引号，跟上游 Go SDK 测试表达式的写法一致。
+  //    字面量用双引号，不引号裸写：字面量的内容就是列值本身，不带引号等于在按
+  //    `"row-5"`（含引号）匹配，列里存的是 `row-5`，一行都滤不出来。
+  //    `client/query.mbt` 的 `with_string_ids` 与上游 `pks2Expr` 都写作
+  //    `id in ["a","b"]`，token 间不留空格。
   let expected_titles : Array[String] = []
   for i = 5; i < row_count; i = i + 1 {
     expected_titles.push("row-" + i.to_string())
   }
   let filter = "title in [" +
-    expected_titles.map(t => "'" + t + "'").join(", ") +
+    expected_titles.map(t => "\"" + t + "\"").join(",") +
     "]"
   let queried = client.query(
     @client.new_query_option(collection)
@@ -268,8 +281,9 @@ async fn check_steps(client : @client.Client) -> String {
         "结果里没有 title 列；返回的列=\{queried.names}",
       )
   }
-  // 逐行解码，并把结果收成集合：Milvus 的 query 不保证返回顺序，
-  // 断言「集合相等」比断言「第 i 行等于第 i 个期望值」靠谱。
+  // 逐行解码，并把结果收成集合：Milvus 的 query 不保证返回顺序（除非显式
+  // order_by），断言「集合相等」比断言「第 i 行等于第 i 个期望值」靠谱 ——
+  // 后者多绑了一条服务端没承诺的事。
   let seen : Array[String] = []
   for i = 0; i < title_column.len(); i = i + 1 {
     let actual = title_column.get_as_string(i) catch {
@@ -282,13 +296,12 @@ async fn check_steps(client : @client.Client) -> String {
     }
     seen.push(actual)
   }
-  for expected in expected_titles {
-    if !seen.contains(expected) {
-      return step_failed(
-        "8",
-        "查询结果里缺 title=\{expected}：实际 \{seen.join(", ")}",
-      )
-    }
+  seen.sort()
+  if seen != expected_titles {
+    return step_failed(
+      "8",
+      "title 列内容不符：期望 \{expected_titles.join(",")}，实际 \{seen.join(",")}",
+    )
   }
   let id_column = match queried.column("id") {
     Some(c) => c

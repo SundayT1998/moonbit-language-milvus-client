@@ -306,6 +306,9 @@ create_collection → create_index → load_collection →（轮询到 Loaded）
 - 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
 - `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要轮询
   `get_load_state` 到 `Loaded`，直接接着检索会偶发失败。
+- `Query` 的 `limit` 不预置，交给服务端默认；要确定行数就显式
+  `with_limit(n)`。另外别拿主键当行号筛数据：`auto_id` 发的是 Snowflake ID，
+  `id >= 5` 在 18 位的主键上等于全表通过。
 - `Query` 必须逐点名 `output_fields`（如 `["id", "title"]`）。服务端在返回
   **全部字段**时（`["*"]`，或一个 `output_fields` 都不给）不填
   `FieldData.field_name`，只给 `field_id`：列名会全空，按名取列取不到，
