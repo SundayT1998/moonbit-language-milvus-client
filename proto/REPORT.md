@@ -176,5 +176,39 @@ proto/
   trimmed/      # P0 裁剪集（3 个 .proto）
   gen/          # 生成物（不进版本库，见 .gitignore）
   tools/gen.sh  # 一键生成
+  tools/p0test/     # DescribeCollection 的 wire 往返测试（#10）
+  tools/indextest/  # 索引 RPC 的 wire 往返测试（#16）
   REPORT.md     # 本文件
 ```
+
+## 10. 追加：索引 RPC 的 message 纳入裁剪集（#16）
+
+`#16` 需要 `CreateIndex` / `DescribeIndex` / `DropIndex`，裁剪集因此扩大了
+5 个 message：
+
+| 文件 | 新增 |
+|---|---|
+| `trimmed/milvus.proto` | `CreateIndexRequest` / `DescribeIndexRequest` / `IndexDescription` / `DescribeIndexResponse` / `DropIndexRequest` |
+| `trimmed/common.proto` | `IndexState` 枚举 |
+
+顺带删掉了这 5 个 message 上的 `option (common.privilege_ext_obj)`：
+它是服务端读的 RBAC 元数据，且裁剪集里没有 `privilege_ext_obj` 的
+`extend` 声明，留着会报「not defined」。客户端不需要，删掉不影响语义。
+
+**这 5 个 message 不用 `optional`**，因此绕开了第 4 节的 Bug #2；
+也不含 `repeated bytes`，绕开 Bug #1。裁剪后结果：
+
+```
+moon check --target all  ->  0 error
+moon test  --target all  ->  7 passed（3 个 p0test + 4 个 indextest），四目标全绿
+```
+
+`tools/indextest/` 的四个测试：
+
+1. `CreateIndexRequest` 编解码往返，`extra_params` 四条键值对全部还原
+2. `size_of` 与编码字节数一致
+3. `DropIndexRequest` 编解码往返
+4. `DescribeIndexResponse` 编解码往返，嵌套的 `IndexDescription` 与
+   `common.IndexState` 枚举值正确
+
+即：索引 RPC 的入参/出参 wire codec 已验证可用，接 `moonrpc` 只剩传输层。

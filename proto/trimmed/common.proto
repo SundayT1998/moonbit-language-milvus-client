@@ -42,6 +42,15 @@ message Status {
     map<string, string> extra_info = 6;
 }
 
+enum IndexState {
+    IndexStateNone = 0;
+    Unissued = 1;
+    InProgress = 2;
+    Finished = 3;
+    Failed = 4;
+    Retry = 5;
+}
+
 enum ConsistencyLevel {
     Strong = 0;
     Session = 1; // default in PyMilvus

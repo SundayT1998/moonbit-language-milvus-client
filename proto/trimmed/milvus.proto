@@ -3,6 +3,67 @@ package milvus.proto.milvus;
 option go_package="x";
 import "common.proto";
 import "schema.proto";
+message CreateIndexRequest {
+  // Not useful for now
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The particular collection name you want to create index.
+  string collection_name = 3;
+  // The vector field name in this particular collection
+  string field_name = 4;
+  // Support keys: index_type,metric_type, params. Different index_type may has different params.
+  repeated common.KeyValuePair extra_params = 5;
+  // Version before 2.0.2 doesn't contain index_name, we use default index name.
+  string index_name = 6;
+}
+message DescribeIndexRequest {
+  // Not useful for now
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The particular collection name in Milvus
+  string collection_name = 3;
+  // The vector field name in this particular collection
+  string field_name = 4;
+  // No need to set up for now @2021.06.30
+  string index_name = 5;
+  uint64 timestamp = 6;
+}
+message IndexDescription {
+  // Index name
+  string index_name = 1;
+  // Index id
+  int64 indexID = 2;
+  // Will return index_type, metric_type, params(like nlist).
+  repeated common.KeyValuePair params = 3;
+  // The vector field name
+  string field_name = 4;
+  // index build progress
+  int64 indexed_rows = 5;
+  int64 total_rows = 6;
+  // index state
+  common.IndexState state = 7;
+  string index_state_fail_reason = 8;
+  int64 pending_index_rows = 9;
+  // minimal index version for current index 
+  int32 min_index_version = 10;
+  // maximum index version for current index 
+  int32 max_index_version = 11;
+}
+message DescribeIndexResponse {
+  // Response status
+  common.Status status = 1;
+  // All index informations, for now only return tha latest index you created for the collection.
+  repeated IndexDescription index_descriptions = 2;
+}
+message DropIndexRequest {
+  common.MsgBase base = 1; // must
+  string db_name = 2;
+  string collection_name = 3; // must
+  // Deprecated: not be used in the milvus
+  string field_name = 4;
+  string index_name = 5;
+}
+
 message DescribeCollectionRequest {
   // Not useful for now
   common.MsgBase base = 1;
