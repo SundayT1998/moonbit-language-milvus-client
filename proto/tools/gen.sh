@@ -50,12 +50,18 @@ case "${1:-trimmed}" in
     ;;
 esac
 
-# P0 探针测试作为源码叠加，避免被重新生成抹掉
-if [ -d "$ROOT/proto/tools/p0test" ] && [ -d "$OUT/proto/src/milvus/proto" ]; then
-  DEST="$OUT/proto/src/milvus/proto/p0test"
-  mkdir -p "$DEST"
-  for f in "$ROOT"/proto/tools/p0test/*.template; do
-    cp "$f" "$DEST/$(basename "$f" .template)"
+# 探针测试作为源码叠加，避免被重新生成抹掉。
+# p0test  : DescribeCollection 的 wire 往返（#10）
+# indextest: 索引 RPC 的 wire 往返（#16）
+if [ -d "$OUT/proto/src/milvus/proto" ]; then
+  for suite in p0test indextest; do
+    src="$ROOT/proto/tools/$suite"
+    [ -d "$src" ] || continue
+    dest="$OUT/proto/src/milvus/proto/$suite"
+    mkdir -p "$dest"
+    for f in "$src"/*.template; do
+      cp "$f" "$dest/$(basename "$f" .template)"
+    done
   done
 fi
 
