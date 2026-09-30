@@ -50,6 +50,24 @@ case "${1:-trimmed}" in
     ;;
 esac
 
+# 生成的模块里，protoc-gen-mbt 产出的 moon.mod.json 会触发 200+ 条
+# implicit_impl_as_method 弃用告警（生成器风格，非本仓库可修）。统一静音，
+# 让 `moon check` 的输出只反映手写代码的问题。
+cat > "$OUT/proto/moon.mod" <<'MOD'
+name = "Tangbuting/proto"
+
+version = "0.1.0"
+
+source = "src"
+
+warnings = "-implicit_impl_as_method"
+
+import {
+  "moonbitlang/protobuf@0.1.3",
+}
+MOD
+rm -f "$OUT/proto/moon.mod.json"
+
 # P0 探针测试作为源码叠加，避免被重新生成抹掉
 if [ -d "$ROOT/proto/tools/p0test" ] && [ -d "$OUT/proto/src/milvus/proto" ]; then
   DEST="$OUT/proto/src/milvus/proto/p0test"

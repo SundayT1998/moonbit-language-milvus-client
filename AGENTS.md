@@ -90,3 +90,38 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 - `proto/REPORT.md` —— 生成器支持度探针报告（含已知缺陷与退路）。
 
 要改生成结果，改 `.proto` 或 `gen.sh` 的参数，然后重新生成。
+
+### 生成物与工作区接线
+
+`proto/gen/` 不进版本库，所以签出后必须先跑一次生成，否则 `errors` 包
+找不到 `Tangbuting/proto/milvus/proto/common`：
+
+```sh
+proto/tools/gen.sh trimmed                 # 生成 P0 裁剪集
+moon work init . proto/gen/trimmed/proto   # 把生成模块注册进工作区
+```
+
+`moon.work` 是 `moon work init` 的产物，**需要进版本库**。`moon.mod` 里对
+`Tangbuting/proto@0.1.0` 的依赖靠工作区解析到本地路径，不走 registry。
+
+> 注意：`moon.mod` 不支持路径依赖，只有旧的 `moon.mod.json` 支持。因此这里
+> 用「工作区成员 + 版本号依赖」的写法，别改成 `{ path = ... }`。
+
+## `errors/` 包
+
+Milvus `common.Status` → MoonBit 错误模型。对应上游 `client/internal/merr/`
+（`milvus-io/milvus` commit `1bcc8cb1`，Apache-2.0）。
+
+- `rpc_error.mbt` —— `MerError` suberror，code / legacy_code / detail / retriable / input 五元组
+- `code_mapping.mbt` —— 双轨错误码映射表，逐条照搬上游 `modernCodeFromLegacy` / `legacyCodeFromModern`
+- `sentinels.mbt` —— 预定义错误值，对应上游 `ErrCollectionNotFound` 等命名变量
+- `wrap.mbt` —— `WrapErr*` 包装族，保留 code 身份、只改写文本
+- `status.mbt` —— `Status` ↔ `MerError` 双向转换
+- `redact.mbt` —— 敏感信息脱敏（上游没有，本项目新增的验收要求）
+
+约定：
+- `is_retryable_err` 只看服务端下发的 `Status.retriable`，不做本地猜测，
+  与上游 `IsRetryableErr` 一致。retry 归属在 transport 层（#11）。
+- `same_code` 是 Go 版 `errors.Is` 的等价物：**比对 code，不比对文本**。
+- `MerError?` 上的方法在包外用 UFCS 调用（`@errors.error_code(err)`），
+  点调用只对非 Option 的 `MerError` 有效。
