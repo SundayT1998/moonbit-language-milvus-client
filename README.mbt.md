@@ -12,18 +12,18 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 
 | 包 | 内容 |
 |---|---|
-| `entity` | Schema / Field / Vector 抽象，含 BF16 手写转换（#12） |
-| `index` | 索引参数 builder、`MetricType` / `IndexType` 枚举、索引 RPC 入参与响应解析（#16） |
-| `column` | 响应 `FieldData` → 列容器反序列化，查询/检索回读的落点（#14） |
+| `entity` | Schema / Field / Vector 抽象，含 BF16 手写转换 |
+| `index` | 索引参数 builder、`MetricType` / `IndexType` 枚举、索引 RPC 入参与响应解析 |
+| `column` | 响应 `FieldData` → 列容器反序列化，查询/检索回读的落点 |
 | `proto/milvus/proto/*` | 生成的协议包（`common` / `milvus` / `msg` / `schema`）与四个 wire 往返测试包 |
-| `proto/`（源码侧） | 上游 `.proto` 快照、裁剪集、代码生成与可行性结论，见 `proto/REPORT.md`（#5 / #10） |
-| `errors` | Milvus `common.Status` → MoonBit 错误模型（#13） |
-| `transport` | 配置、metadata 组装、gRPC status —— 跨 target（#11） |
-| `transport/native` | 真连 socket 的 Channel 实现 —— native 专属（#11） |
-| `client` | Client 门面与核心 RPC 编排：collection / partition / load / flush / insert / upsert / delete / search / query / 迭代器（#15 / #17 / #18） |
-| `client/native` | 把 `client` 的 unary 调用接到真实连接上 —— native 专属（#15） |
+| `proto/`（源码侧） | 上游 `.proto` 快照、裁剪集、代码生成与可行性结论，见 `proto/REPORT.md` |
+| `errors` | Milvus `common.Status` → MoonBit 错误模型 |
+| `transport` | 配置、metadata 组装、gRPC status —— 跨 target |
+| `transport/native` | 真连 socket 的 Channel 实现 —— native 专属 |
+| `client` | Client 门面与核心 RPC 编排：collection / partition / load / flush / insert / upsert / delete / search / query / 迭代器 |
+| `client/native` | 把 `client` 的 unary 调用接到真实连接上 —— native 专属 |
 
-迭代器（#18）在 `client/iterator.mbt`，与 `client` 同包。
+迭代器在 `client/iterator.mbt`，与 `client` 同包。
 
 ## 安装
 
@@ -33,18 +33,8 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 moon add Tangbuting/milvus-client
 ```
 
-`moon.mod` 里对应的声明是：
-
-```moonbit nocheck
-// moon.mod 里对应的声明（[deps] 段）
-[deps]
-Tangbuting/milvus-client = "0.1.0"
-```
-
-发布到 mooncakes.io 之后，`moon add` 会自动写入这一段。
-
-> 本模块**尚未发布到 mooncakes.io**（见 Issue #37 的验收结论）。在发布前，
-> `moon add` 会失败，请按下面「从源码使用」一节直接把本仓库当源码用。
+包名是 `Tangbuting/milvus-client`，版本随 `moon.mod` 走；`moon add` 会把当前
+版本写进依赖清单。
 
 本模块没有别的非 registry 依赖：协议代码就是本模块自己的包目录，
 不存在「装上了但依赖没上 registry」的情况。
@@ -91,21 +81,22 @@ Tangbuting/milvus-client/proto/milvus/proto/{common,milvus,msg,schema}
 后端下都编得过；真连 socket 的 `client/native` + `transport/native` 是
 native 专属，用它们要 `--target native`。
 
-## 当前状态
+## 能力边界
 
-客户端门面（Issue #15）已交付：集合生命周期（创建 / 描述 / 是否存在 / 列出 / 删除）、
-数据面（insert / upsert / delete）、检索面（search / query）都走通了，
-Option 构造函数名与默认值对齐上游。
+覆盖的是一条完整读写链路，按依赖方向排：
 
-分区与数据生命周期（Issue #17）也已交付：分区（创建 / 删除 / 是否存在 / 列出）、
-加载与卸载（`LoadCollection` / `ReleaseCollection` / `LoadPartitions` /
-`ReleasePartitions` / `GetLoadState`）、刷盘（`Flush` / `GetFlushState`）。
-加载与刷盘返回可等待的任务，轮询语义与上游一致（默认 200ms 间隔）。
+- **集合生命周期** —— 创建 / 描述 / 是否存在 / 列出 / 删除，Option 构造函数名
+  与默认值对齐上游。
+- **数据面** —— insert / upsert / delete。
+- **检索面** —— search / query。
+- **分区与数据生命周期** —— 分区（创建 / 删除 / 是否存在 / 列出）、加载与卸载
+  （`LoadCollection` / `ReleaseCollection` / `LoadPartitions` /
+  `ReleasePartitions` / `GetLoadState`）、刷盘（`Flush` / `GetFlushState`）。
+  加载与刷盘返回可等待的任务，轮询语义与上游一致（默认 200ms 间隔）。
+- **大结果集翻页** —— `QueryIterator`（客户端侧主键游标）与 `SearchIterator`
+  （服务端侧 v2 游标），见「迭代器」一节。
 
-大结果集翻页（Issue #18）也已交付：`QueryIterator`（客户端侧主键游标）与
-`SearchIterator`（服务端侧 v2 游标）。
-
-**只保留 column-based 一路**，row-based API 不移植（风险 R2）。
+**只保留 column-based 一路**，row-based API 不移植。
 `CreateCollection` 不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路是
 「一步到位」的便利，本移植把它拆成显式调用 —— 建索引见「索引」一节，
 加载与等待就绪见「分区与数据生命周期」一节，集成测试里的完整顺序见「开发」。
@@ -466,7 +457,7 @@ async fn demo_search(client : @client.Client) -> Unit {
 - 不缓存集合 schema，所以 insert / upsert 不带 `schema_timestamp`，
   也没有上游那套 schema-mismatch 自动重试。schema 变更后由调用方重新描述集合。
 - `WriteColumn` 不支持 `Array` 列：元素的 `DataType` 没法从值本身推出来，
-  要写数组字段得等后续 Issue 补一个带元素类型的列类型。
+  要写数组字段得先补一个带元素类型的列类型。
 - Binary / Int8 向量列在 `@column.ColumnValue` 里是「逐行一块字节」，
   行内字节数按 `dim`（binary 按 `dim / 8`）校验。
 - 迭代器不做跨批截断（见「迭代器」一节）：`with_limit(10)` 配
@@ -480,6 +471,10 @@ async fn demo_search(client : @client.Client) -> Unit {
 ```sh
 moon check --target all && moon test --target all
 ```
+
+开发流程、交付范围、验收标准与「当初为什么这么选」的归档见
+[`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)；协作约定与各包的实现约束见
+[`AGENTS.md`](./AGENTS.md)。
 
 ### 连真实 Milvus 跑集成测试
 
