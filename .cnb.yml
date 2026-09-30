@@ -1,10 +1,14 @@
 # CNB 流水线：https://docs.cnb.cool
-# 构建镜像由 `.cnb/Dockerfile` 提供（预装 MoonBit 工具链），无需外部制品库
-# 云端开发环境见 `.cnb/web_trigger.yml`
+# 云原生构建（CI）与云原生开发（dev env）共用同一基础镜像 `.cnb/Dockerfile`
+# MoonBit 工具链在 CNB 侧统一走中国站 https://cli.moonbitlang.cn
+# 触发方式：push / pull_request 跑检查，vscode 事件进入开发环境
 
-.ci: &ci
-  docker:
-    build: .cnb/Dockerfile
+# 共用镜像：CI 与开发环境都从这里构建，保证环境一致
+.docker: &docker
+  build: .cnb/Dockerfile
+
+# 共用检查步骤
+.check: &check
   stages:
     - name: fmt-and-info
       script: |
@@ -22,31 +26,24 @@
 main:
   push:
     - name: check-and-test
-      <<: *ci
+      docker:
+        <<: *docker
+      <<: *check
   pull_request:
     - name: check-and-test
-      <<: *ci
+      docker:
+        <<: *docker
+      <<: *check
 
 "$":
-  tag_push:
-    - name: publish
+  # 云原生开发环境：复用 CI 的同一份镜像
+  vscode:
+    - name: dev
       docker:
-        build: .cnb/Dockerfile
+        <<: *docker
+      services:
+        - vscode
+        - docker
       stages:
-        - name: prepublish-check
-          script: |
-            moon version --all
-            moon update
-            moon fmt
-            git diff --exit-code
-            moon check --target all
-            moon test --target all
-        - name: publish-to-mooncakes
-          script: |
-            if [ -z "$MOONCAKES_TOKEN" ]; then
-              echo "MOONCAKES_TOKEN 未配置，跳过发布"
-              exit 1
-            fi
-            echo "$MOONCAKES_TOKEN" > ~/.moon/credentials.json
-            moon publish
-            rm -f ~/.moon/credentials.json
+        - name: ready
+          script: moon version --all

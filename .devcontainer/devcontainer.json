@@ -1,0 +1,10 @@
+{
+  "name": "milvus-client (MoonBit)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:HOME}/.moon/bin:${containerEnv:PATH}"
+  }
+}

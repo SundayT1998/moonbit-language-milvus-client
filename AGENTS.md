@@ -17,14 +17,17 @@ You can browse and install extra skills here:
 
 ## Development Environment
 
-- CNB 云原生开发：见 `.cnb/web_trigger.yml`，镜像由 `.cnb/Dockerfile` 预装 MoonBit 工具链。
+- CNB 云原生开发：在 `.cnb.yml` 的 `vscode` 事件中声明，与 CI 共用同一基础镜像
+  `.cnb/Dockerfile`（MoonBit 工具链走中国站 `cli.moonbitlang.cn`）。
+- GitHub Codespaces：见 `.devcontainer/`，使用 `.com` 国际站安装工具链。
 
 ## CI
 
 - CNB 流水线：`.cnb.yml`，`push` / `pull_request` 跑 `moon fmt`、`moon info`、
-  `moon check --target all`、`moon test --target all`；`tag_push` 走发布。
+  `moon check --target all`、`moon test --target all`。
 - GitHub Actions：`.github/workflows/check.yml`（三平台检查），
   `.github/workflows/publish.yml`（手动触发发布到 mooncakes.io）。
+- 工具链下载源：CNB 侧统一 `cli.moonbitlang.cn`，GitHub 侧统一 `cli.moonbitlang.com`。
 - 本地等价命令：`moon check --target all && moon test --target all`。
 
 ## Coding convention
