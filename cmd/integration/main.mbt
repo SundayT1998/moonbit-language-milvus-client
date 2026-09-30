@@ -219,27 +219,45 @@ async fn check_steps(client : @client.Client) -> String {
     first.score.to_string(),
   )
 
-  // 8. 查询：按表达式取两列，验回读的解码路径。
+  // 8. 查询：按 title 精确过滤后取两列，验回读的解码路径。
+  //
+  //    为什么不用 `id >= 5`：主键是 auto_id，服务端发的是时间戳量级的大整数
+  //    （`pkg/common.AllocAutoID`：分配器给的序号再或上 clusterID 的位），
+  //    `id >= 5` 对全部 10 行都为真，所以「期望 5，实际 10」。
+  //    要过滤就得挑**本测试自己控制值**的列，这里用 title。
+  //
+  //    用 `in` 而不是范围：title 是字符串，`>= 'row-5'` 走字典序，
+  //    行数一多（row-10）就与数值序分叉；列出要的那几个值没有歧义。
+  //    字符串字面量用单引号，跟上游 Go SDK 测试表达式的写法一致。
+  let expected_titles : Array[String] = []
+  for i = 5; i < row_count; i = i + 1 {
+    expected_titles.push("row-" + i.to_string())
+  }
+  let filter = "title in [" +
+    expected_titles.map(t => "'" + t + "'").join(", ") +
+    "]"
   let queried = client.query(
     @client.new_query_option(collection)
-    .with_filter("id >= 5")
+    .with_filter(filter)
     .with_output_fields(["id", "title"]),
   ) catch {
     err => return step_failed("8", "查询失败：" + err.to_string())
   }
-  if queried.len() != 5 {
+  if queried.len() != expected_titles.length() {
     return step_failed(
       "8",
-      "查询行数不符：期望 5，实际 \{queried.len()}",
+      "查询行数不符：期望 \{expected_titles.length()}，实际 \{queried.len()}",
     )
   }
   let title_column = match queried.column("title") {
     Some(c) => c
     None => return step_failed("8", "结果里没有 title 列")
   }
+  // 逐行解码，并把结果收成集合：Milvus 的 query 不保证返回顺序，
+  // 断言「集合相等」比断言「第 i 行等于第 i 个期望值」靠谱。
+  let seen : Array[String] = []
   for i = 0; i < title_column.len(); i = i + 1 {
-    let expected = "row-" + (i + 5).to_string()
-    let cell = title_column.get(i) catch {
+    let actual = title_column.get_as_string(i) catch {
       err =>
         return step_failed(
           "8",
@@ -247,20 +265,26 @@ async fn check_steps(client : @client.Client) -> String {
           @client.column_error_message(err),
         )
     }
-    let actual = match cell {
-      @column.Cell::VarChar(s)
-      | @column.Cell::String(s)
-      | @column.Cell::Text(s) => s
-      _ => ""
-    }
-    if actual != expected {
+    seen.push(actual)
+  }
+  for expected in expected_titles {
+    if !seen.contains(expected) {
       return step_failed(
         "8",
-        "title 第 \{i} 行不符：期望 \{expected}，实际 \{actual}",
+        "查询结果里缺 title=\{expected}：实际 \{seen.join(", ")}",
       )
     }
   }
-  println("[8] 查询按表达式返回 5 行，列内容正确")
+  let id_column = match queried.column("id") {
+    Some(c) => c
+    None => return step_failed("8", "结果里没有 id 列")
+  }
+  if id_column.len() != expected_titles.length() {
+    return step_failed("8", "id 列行数与 title 列不一致")
+  }
+  println(
+    "[8] 查询按表达式返回 \{queried.len()} 行，title 集合正确（id 列已回读）",
+  )
 
   // 9. 收尾：把自检集合删掉，下次跑还是干净的。
   client.drop_collection(@client.new_drop_collection_option(collection)) catch {
