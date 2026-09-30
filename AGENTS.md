@@ -30,6 +30,15 @@ You can browse and install extra skills here:
 - 工具链下载源：CNB 侧统一 `cli.moonbitlang.cn`，GitHub 侧统一 `cli.moonbitlang.com`。
 - 本地等价命令：`moon check --target all && moon test --target all`。
 
+## entity 包
+
+`entity/` 放协议无关的领域类型（`DataType` / `Field` / `CollectionSchema` / 各向量类型），
+不 import `proto/gen/`，也不碰 wire 编解码。数值常量（`DataType::to_int`）与
+`milvus.proto.schema` 逐条对齐，改动等于改协议，必须同步改 `entity/datatype_test.mbt`。
+
+BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上游 `ml_dtypes.bfloat16`
+逐位一致；不要为了省事换成有损的近似算法。改这个函数要跑 `entity/bfloat16_test.mbt`。
+
 ## Coding convention
 
 - MoonBit code is organized in block style, each block is separated by `///|`,
