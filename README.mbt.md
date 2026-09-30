@@ -4,7 +4,7 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 
 > 本项目是社区驱动的 Milvus 客户端，**不是** Milvus 官方 SDK。"Milvus" 是 LF Projects, LLC
 > 的商标；Apache-2.0 不授予商标权，包名中的 "milvus" 仅为指明兼容对象的描述性使用。
-> 详见 [`NOTICE`](./NOTICE)。
+> 来源、改写定性与同步策略见下节「来源与许可」。
 
 ## 包结构
 
@@ -29,12 +29,11 @@ Apache-2.0，Copyright (c) LF AI & Data Foundation）向 MoonBit 的移植/改�
 | 上游许可 | Apache-2.0 |
 | 上游版权 | Copyright (c) LF AI & Data Foundation |
 | 本项目许可 | Apache-2.0（见 [`LICENSE`](./LICENSE)） |
-| 来源与改写声明 | [`NOTICE`](./NOTICE) |
 
 关于「改写」的定性：Go → MoonBit 是重新实现而非逐行翻译，但**不是 clean-room**。
 API 名称、字段名、协议常量值（如 `FieldType = 101`）、Option 构造函数名与默认值
-均沿用上游，这些正是 Apache-2.0 覆盖的贡献物。每个移植文件的来源声明头、
-`NOTICE` 与本节共同构成完整的归属说明。
+均沿用上游，这些正是 Apache-2.0 覆盖的贡献物。归属说明就是本节，加上每个移植文件
+顶部的来源声明头。
 
 ### 同步策略
 
@@ -47,7 +46,7 @@ API 名称、字段名、协议常量值（如 `FieldType = 101`）、Option 构
 4. 不跟随上游做「机械等价」的目录级同步——MoonBit 侧的分包与上游并非一一对应。
 
 流程细节见 [`AGENTS.md`](./AGENTS.md)。基线 commit 变更时，需同步更新本节、
-`NOTICE`、`proto/upstream/PROVENANCE.md` 与 `AGENTS.md`。
+`proto/upstream/PROVENANCE.md` 与 `AGENTS.md`。
 
 ## entity
 

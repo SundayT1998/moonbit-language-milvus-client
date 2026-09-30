@@ -45,8 +45,8 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 
 - 基线：`milvus-io/milvus` commit `1bcc8cb1`（2026-09-30），`client/`。
   `.proto` 来自 `milvus-io/milvus-proto`，锚定 commit 见 `proto/upstream/PROVENANCE.md`。
-- 归属声明：仓库根 `NOTICE` 写清来源仓库 + commit + 改写定性；README「来源与许可」
-  一节是面向用户的版本。改动归属相关事实时，两处要一起改。
+- 归属声明：来源仓库 + commit + 改写定性写明在 README「来源与许可」一节。
+  归属相关事实变更时，同时更新这一节与 `proto/upstream/PROVENANCE.md`。
 - 移植文件保留来源声明头：
   ```
   // 移植自 github.com/milvus-io/milvus client/<path> (Apache-2.0)
@@ -64,7 +64,7 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 2. 判断每处改动是否落在已移植的包里——**按语义判断，不按目录名机械对照**，
    MoonBit 侧分包与上游并非一一对应；
 3. 受影响则在对应包内手动回移，PR 里注明对齐的上游 commit；
-4. 需要推进基线时，同步更新 `NOTICE`、README「来源与许可」、
+4. 需要推进基线时，同步更新 README「来源与许可」、
    `proto/upstream/PROVENANCE.md` 与本文件。
 
 ## Coding convention
