@@ -1,0 +1,7 @@
+import {
+  "Tangbuting/proto/milvus/proto/common",
+}
+
+options(
+  "is-main": false,
+)

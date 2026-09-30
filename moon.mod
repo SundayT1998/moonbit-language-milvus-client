@@ -19,8 +19,12 @@ repository = "https://github.com/Tangbuting/milvus-client"
 
 license = "Apache-2.0"
 
-keywords = [ ]
+warnings = "-implicit_impl_as_method"
 
 preferred_target = "wasm"
 
 description = "Milvus vector database client for MoonBit"
+
+import {
+  "Tangbuting/proto@0.1.0",
+}
