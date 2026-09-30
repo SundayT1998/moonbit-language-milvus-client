@@ -18,7 +18,6 @@ You can browse and install extra skills here:
 ## Development Environment
 
 - CNB 云原生开发：见 `.cnb/web_trigger.yml`，镜像由 `.cnb/Dockerfile` 预装 MoonBit 工具链。
-- GitHub Codespaces / devcontainer：见 `.cnb/devcontainer.json`。
 
 ## CI
 

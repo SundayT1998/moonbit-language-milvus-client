@@ -1,6 +1,6 @@
 # CNB 流水线：https://docs.cnb.cool
 # 构建镜像由 `.cnb/Dockerfile` 提供（预装 MoonBit 工具链），无需外部制品库
-# 云端开发环境见 `.cnb/web_trigger.yml` 与 `.cnb/devcontainer.json`
+# 云端开发环境见 `.cnb/web_trigger.yml`
 
 .ci: &ci
   docker:
