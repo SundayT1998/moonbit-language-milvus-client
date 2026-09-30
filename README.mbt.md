@@ -203,7 +203,7 @@ match ... {
 自检程序（连上后发一次 Health/Check）：
 
 ```sh
-moon run cmd/main -- 127.0.0.1:19530 root:Milvus default
+moon run --target native cmd/main -- 127.0.0.1:19530 root:Milvus default
 ```
 
 ## 客户端
@@ -278,6 +278,45 @@ channel.close()
 ```sh
 moon check --target all && moon test --target all
 ```
+
+### 连真实 Milvus 跑集成测试
+
+单测用假传输跑，不碰网络；要验「协议编排在真服务端上成立」，用容器起一个
+官方 Milvus，再跑 `cmd/integration`：
+
+```sh
+scripts/milvus-start.sh          # 起 milvusdb/milvus:v3.0.2 的 standalone 容器
+moon run --target native cmd/integration -- 127.0.0.1:19530
+scripts/milvus-stop.sh           # 停掉并删除容器
+```
+
+`cmd/integration` 走完整门面：建集合 → 写入 10 行 → 建索引 → 加载集合 →
+检索（最近邻应当是自己）→ 按表达式查询 → 删集合，任一步不符就非 0 退出。
+CI 里同样三步一循环，收尾放在「成功失败都执行」的位置，容器不会漏在 runner 上。
+参数（镜像 / 容器名 / 端口 / 等待秒数）都能用环境变量覆盖，
+`scripts/milvus-start.sh` 头部有清单。
+
+这里的前三步顺序是 Milvus 的硬要求，写检索流程时照抄：
+
+```text
+create_collection → create_index → load_collection →（轮询到 Loaded）→ search / query
+```
+
+- 不建索引就 `load_collection`：服务端回 `index not found`。
+- 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
+- `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要轮询
+  `get_load_state` 到 `Loaded`，直接接着检索会偶发失败。
+- `Query` 必须逐点名 `output_fields`（如 `["id", "title"]`）。服务端在返回
+  **全部字段**时（`["*"]`，或一个 `output_fields` 都不给）不填
+  `FieldData.field_name`，只给 `field_id`：列名会全空，按名取列取不到，
+  行数也会读成 0，症状看起来像「过滤条件没生效、全量返回」。
+
+自检用 `new_flat_index(L2)`：10 行的集合上暴力检索就是最优解，也不用等索引构建。
+
+embedded etcd 的配置文件用 `docker cp` 送进容器（`create` → `cp` → `start`），
+不挂单文件卷：CI 的 docker daemon 跑在 dind 容器里，看不到本任务 `/tmp` 下的文件，
+挂载源不可达时 docker 会把目标路径建成空目录，Milvus 读到目录会直接 segfault。
+写新脚本时按同样方式处理配置文件。
 
 生成 proto 代码（需 `protoc`）：
 

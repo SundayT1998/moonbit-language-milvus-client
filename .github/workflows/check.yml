@@ -61,3 +61,46 @@ jobs:
         run: |
           moon fmt && git diff --exit-code
           moon info && git diff --exit-code
+
+  # 真连 Milvus 的集成测试：起官方 standalone 容器 → 跑 cmd/integration → 停容器。
+  # 只在 ubuntu 上跑：macOS/Windows 的 runner 上 docker 与 bash 脚本行为不一致，
+  # 而这条链路的目的是验证「协议编排在真服务端上成立」，平台无关，
+  # 挑一个平台跑够用；跨平台编译由上面的 build job 覆盖。
+  integration:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: install-ubuntu
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: post install
+        run: |
+          moon version --all
+          moon update
+
+      - name: install-protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: gen-proto
+        run: |
+          bash proto/tools/gen.sh trimmed
+          moon work init . proto/gen/trimmed/proto
+
+      - name: start milvus
+        run: scripts/milvus-start.sh --force
+
+      - name: integration test
+        # native-only 的包，模块默认 preferred_target 是 wasm，必须显式指 --target。
+        run: moon run --target native cmd/integration -- 127.0.0.1:19530
+
+      - name: stop milvus
+        # 与 CNB 侧同理：成功失败都要收容器。GitHub Actions 里用 always()。
+        if: always()
+        run: scripts/milvus-stop.sh

@@ -35,12 +35,54 @@ You can browse and install extra skills here:
 
 ## CI
 
-- CNB 流水线：`.cnb.yml`，`push` / `pull_request` 跑 `moon fmt`、`moon info`、
-  `moon check --target all`、`moon test --target all`。
-- GitHub Actions：`.github/workflows/check.yml`（三平台检查），
-  `.github/workflows/publish.yml`（手动触发发布到 mooncakes.io）。
+- CNB 流水线：`.cnb.yml`，`push` / `pull_request` 跑两条 pipeline：
+  - `check-and-test` —— `moon fmt`、`moon info`、`moon check --target all`、
+    `moon test --target all`；
+  - `integration` —— 起 Milvus 容器、跑 `cmd/integration`、收尾停容器。
+- GitHub Actions：`.github/workflows/check.yml`（三平台 `build` + ubuntu 上的
+  `integration`），`.github/workflows/publish.yml`（手动触发发布到 mooncakes.io）。
 - 工具链下载源：CNB 侧统一 `cli.moonbitlang.cn`，GitHub 侧统一 `cli.moonbitlang.com`。
 - 本地等价命令：`moon check --target all && moon test --target all`。
+
+## 集成测试与 Milvus 容器（`scripts/`）
+
+连真实服务端的那条链路：`scripts/milvus-start.sh` 起容器 →
+`moon run --target native cmd/integration -- 127.0.0.1:19530` → `scripts/milvus-stop.sh` 收容器。
+
+- 镜像锚定 **`docker.io/milvusdb/milvus:v3.0.2`**，容器参数照搬上游
+  `milvus-io/milvus` 的 `scripts/standalone_embed.sh`：embedded etcd +
+  `COMMON_STORAGETYPE=local`，一个容器自足。**不用 `latest`**，CI 要可复现。
+  换版本时同步改 `.cnb.yml` 的 `MILVUS_IMAGE` 与本节。
+- 就绪判据是容器内 `9091/healthz` 返回 200，而不是自己拨 19530 ——
+  端口在数据面起来之前就监听了。
+  **但判据要从宿主探，别读 docker 的 health 状态**：Moby 的重试一旦耗尽，
+  `unhealthy` 是终态，后面服务真起来了也不会翻回 `healthy`。Milvus 冷启动
+  在 CI 上耗时不定，固定 `start-period`/`retries` 迟早被穿破，一破就永久卡死
+  （#33 的 CI 就是这么红了一整轮）。
+- embedded etcd 的两份配置（`embedEtcd.yaml` / `user.yaml`）用 **`docker cp` 送进容器**，
+  不要用 `-v` 挂单文件。CNB 的 `services: - docker` 是 dind，daemon 在另一个容器里，
+  看不到本任务 `/tmp` 下的文件；挂载源在 daemon 侧不存在时，Docker 会在**目标路径建同名
+  空目录**，于是 `/milvus/configs/embedEtcd.yaml` 变成目录。Milvus `v3.0.2` 的
+  `InitEtcdServer` 在 `embed.ConfigFromFile` 失败时只记 `initError` 不返回，紧接着
+  `cfg.Dir = dataDir` 解引用 nil 直接 SIGSEGV（`pkg/util/etcd/etcd_server.go:49`）——
+  #33 的 CI 第一轮就是这么炸的。`docker cp` 走 daemon API 传 tar，跟 daemon 在不在
+  同一文件系统无关。同理，别指望 `mktemp -d` 出的路径能被 daemon 挂进去。
+- 容器配置顺序是 `create` → `cp` → `start`：Milvus 启动即读配置文件，先 `start`
+  再 `cp` 会读到不存在的路径。落位后脚本会把文件 cp 回来比一次大小，配错时给明确原因，
+  而不是甩一段 panic。
+- CNB 侧收尾放 `endStages`（`stages` 成功失败都跑），GitHub 侧用 `if: always()`。
+  stop 是幂等的，容器没起来时也只打个跳过。
+- `cmd/integration` 是 native-only 的自检程序，与 `cmd/main`（只管传输层）分工：
+  它走完整门面，验「建集合 → 写入 → 检索 → 查询 → 清理」在真服务端上成立，
+  失败以非 0 退出码结束。
+- **顺序是硬要求**：`create_collection` → `create_index` → `load_collection`
+  （轮询到 `Loaded`）→ `search` / `query`。少一步的报错不同：没索引就 load
+  是 `index not found`（`IndexNotExist`），建了不 load 就检索是
+  `collection not loaded`（`CollectionNotLoaded`）。#33 的 CI 两种都踩过。
+- 集成测试用 `new_flat_index(L2)`：10 行的集合上暴力检索就是最优解，
+  也不用等索引构建。
+- `Client::load_collection` 返回只表示请求被受理，数据面就绪是异步的，
+  所以集成测试接着轮询 `Client::get_load_state` 到 `Loaded` 才检索。
 
 ## entity 包
 
@@ -194,7 +236,10 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - `types.mbt` —— `Unary` 函数值、`Client`、`ClientError`、`call_service`、`check_status`
 - `consistency.mbt` / `schema_convert.mbt` —— 一致性等级与 schema ↔ proto 的桥
 - `collection.mbt` —— CreateCollection / DropCollection / HasCollection /
-  DescribeCollection / ListCollections 及其 Option
+  DescribeCollection / ListCollections / LoadCollection / ReleaseCollection /
+  GetLoadState 及其 Option
+- `index.mbt` —— CreateIndex / DescribeIndex / DropIndex 及其 Option，
+  把 `@index` 装配好的参数塞进请求、响应翻回 `@index.IndexDescription`
 - `write_column.mbt` / `write.mbt` —— `WriteColumn` → `FieldData`，insert / upsert / delete
 - `search.mbt` / `query.mbt` —— 占位符编码、search_params、结果反序列化
 - `paths.mbt` —— gRPC 方法路径常量
@@ -216,6 +261,19 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   能改个名字写回去。它推导不出 `Array` 列的元素类型，所以那一支直接报 `Encode`。
 - `search_params` 的键集合与顺序照搬上游 `AnnRequest.searchRequest`：
   固定七个键写全，调用方的 `with_search_param` 最后覆盖。
+- **建索引 → 加载 → 检索的顺序不能倒**：Milvus 拒绝加载没有索引的集合
+  （`index not found`），也拒绝对未加载的集合检索（`collection not loaded`）。
+  加载是异步的，`load_collection` 返回不代表就绪，调用方要用 `get_load_state`
+  轮询到 `Loaded`。
+- 两个状态枚举都保留生成物的 `Unknown` 岔路：`CollectionLoadState::Unknown` /
+  `@index.IndexState::Unknown`。别把它们并进 `NotLoad` / `None`，那会把
+  「没见过的状态」当成「什么都没发生」，然后无限等下去。
+- `query` 的列名来自 `FieldData.field_name`。服务端在返回**全部字段**时
+  （`with_output_fields(["*"])`，或调用方一个 `output_fields` 都没给）不填
+  `field_name`，只有 `field_id`。这时客户端的 `output_fields` 会被逐个切掉、
+  列名全空：`QueryResult::len` 读 `columns[0]` = 0，`column(name)` 也取不到，
+  症状酷似「过滤条件被忽略、全量返回」——集成自检踩过。
+  契约是：要看列名就必须在 `output_fields` 里逐点名，别用 `*`，也别留空。
 
 `entity/` 的 float16 写侧（`float16_from_float` / `float16_vector_bytes`）与
 `column/float16.mbt` 的读侧是一对，逐位对齐 IEEE-754 binary16。

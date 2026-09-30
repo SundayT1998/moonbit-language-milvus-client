@@ -40,6 +40,24 @@ pub let has_collection_path : String = method_path("HasCollection")
 pub let describe_collection_path : String = method_path("DescribeCollection")
 
 ///|
+pub let load_collection_path : String = method_path("LoadCollection")
+
+///|
+pub let release_collection_path : String = method_path("ReleaseCollection")
+
+///|
+pub let get_load_state_path : String = method_path("GetLoadState")
+
+///|
+pub let create_index_path : String = method_path("CreateIndex")
+
+///|
+pub let describe_index_path : String = method_path("DescribeIndex")
+
+///|
+pub let drop_index_path : String = method_path("DropIndex")
+
+///|
 pub let show_collections_path : String = method_path("ShowCollections")
 
 ///|

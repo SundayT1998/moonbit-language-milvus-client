@@ -687,6 +687,352 @@ async test "query 解出列" {
 }
 
 ///|
+async test "query 不预置 limit，没给就不发" {
+  // 默认 limit 属于上游适配层（`CheckAndSetLimit`），本移植的编排里没有
+  // 这一层；`new_query_option` 不该偷偷塞一个值进去。
+  let response = @milvus.QueryResults::{
+    status: Some(ok_status()),
+    fields_data: [],
+    collection_name: "demo",
+    output_fields: [],
+    session_ts: 0UL,
+    primary_field_name: "id",
+  }
+  let (client, recorded) = test_client([(@client.query_path, encode(response))])
+  let _ = client.query(@client.new_query_option("demo").with_filter("id > 0")) catch {
+    _ => fail("query should succeed")
+  }
+  let request : @milvus.QueryRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(recorded.val[0].body),
+    ),
+  )
+  let limits : Array[String] = []
+  for pair in request.query_params {
+    if pair.key == @client.query_param_limit {
+      limits.push(pair.value)
+    }
+  }
+  assert_eq(limits, [])
+}
+
+///|
+async test "with_limit 写进 query_params，且只写一条" {
+  let response = @milvus.QueryResults::{
+    status: Some(ok_status()),
+    fields_data: [],
+    collection_name: "demo",
+    output_fields: [],
+    session_ts: 0UL,
+    primary_field_name: "id",
+  }
+  let (client, recorded) = test_client([(@client.query_path, encode(response))])
+  let _ = client.query(@client.new_query_option("demo").with_limit(7)) catch {
+    _ => fail("query should succeed")
+  }
+  let request : @milvus.QueryRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(recorded.val[0].body),
+    ),
+  )
+  let limits : Array[String] = []
+  for pair in request.query_params {
+    if pair.key == @client.query_param_limit {
+      limits.push(pair.value)
+    }
+  }
+  assert_eq(limits, ["7"])
+}
+
+///|
+async test "load_collection 编出请求并认 OK" {
+  let (client, recorded) = test_client([
+    (@client.load_collection_path, encode(ok_status())),
+  ])
+  let mut raised = false
+  ignore(client.load_collection(@client.new_load_collection_option("demo"))) catch {
+    _ => raised = true
+  }
+  assert_false(raised)
+  let calls = recorded.val
+  assert_eq(calls.length(), 1)
+  assert_eq(calls[0].path, @client.load_collection_path)
+  let request : @milvus.LoadCollectionRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+  // 不显式设副本数时留 0，由服务端取默认值
+  assert_eq(request.replica_number, 0)
+  assert_false(request.refresh)
+  assert_false(request.skip_load_dynamic_field)
+  assert_eq(request.resource_groups.length(), 0)
+  assert_eq(request.load_fields.length(), 0)
+  assert_eq(request.load_params.length(), 0)
+}
+
+///|
+async test "load_collection 把 load_params 与部分加载字段带上去" {
+  let (client, recorded) = test_client([
+    (@client.load_collection_path, encode(ok_status())),
+  ])
+  let option = @client.new_load_collection_option("demo").with_replica_number(2)
+  let option = { ..option, resource_groups: ["rg1"], load_fields: ["vector"], }
+  let option = {
+    ..option,
+    skip_load_dynamic_field: true,
+    load_params: [("mmap.enabled", "true")],
+  }
+  let _ = client.load_collection(option) catch { _ => () }
+  let calls = recorded.val
+  let request : @milvus.LoadCollectionRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.replica_number, 2)
+  assert_eq(request.resource_groups, ["rg1"])
+  assert_eq(request.load_fields, ["vector"])
+  assert_true(request.skip_load_dynamic_field)
+  assert_eq(request.load_params.get("mmap.enabled"), Some("true"))
+}
+
+///|
+async test "release_collection 打的是 ReleaseCollection 路径" {
+  let (client, recorded) = test_client([
+    (@client.release_collection_path, encode(ok_status())),
+  ])
+  let _ = client.release_collection(@client.new_drop_collection_option("demo")) catch {
+    _ => ()
+  }
+  let calls = recorded.val
+  assert_eq(calls.length(), 1)
+  assert_eq(calls[0].path, @client.release_collection_path)
+  let request : @milvus.ReleaseCollectionRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+}
+
+///|
+async test "load_collection 被服务端拒绝时抛 Server" {
+  let failure = @common.Status::{
+    error_code: @common.ErrorCode::UnexpectedError,
+    reason: "collection not found",
+    code: 100,
+    retriable: false,
+    detail: "",
+    extra_info: {},
+  }
+  let (client, _) = test_client([
+    (@client.load_collection_path, encode(failure)),
+  ])
+  let outcome : Result[Unit, @client.ClientError] = try {
+    ignore(client.load_collection(@client.new_load_collection_option("x")))
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected a server error")
+    Err(Server(err)) => assert_eq(@errors.error_code(Some(err)), 100)
+    Err(_) => fail("expected Server")
+  }
+}
+
+///|
+async test "get_load_state 解出四种状态" {
+  let cases : Array[(@common.LoadState, @client.CollectionLoadState)] = [
+    (
+      @common.LoadState::LoadStateNotExist,
+      @client.CollectionLoadState::NotExist,
+    ),
+    (@common.LoadState::LoadStateNotLoad, @client.CollectionLoadState::NotLoad),
+    (@common.LoadState::LoadStateLoading, @client.CollectionLoadState::Loading),
+    (@common.LoadState::LoadStateLoaded, @client.CollectionLoadState::Loaded),
+  ]
+  for pair in cases {
+    let response = @milvus.GetLoadStateResponse::{
+      status: Some(ok_status()),
+      state: pair.0,
+    }
+    let (client, recorded) = test_client([
+      (@client.get_load_state_path, encode(response)),
+    ])
+    let state = client.get_load_state(
+      @client.new_describe_collection_option("demo"),
+    ) catch {
+      _ => fail("expected a load state")
+    }
+    assert_eq(state, pair.1)
+    let request : @milvus.GetLoadStateRequest = @lib.Read::read_with_limit(
+      @lib.LimitedReader::LimitedReader(
+        @lib.BytesReader::from_bytes(recorded.val[0].body),
+      ),
+    )
+    assert_eq(request.collection_name, "demo")
+  }
+}
+
+///|
+async test "get_load_state 的未知枚举值单列出来" {
+  // 99 不在 LoadState 的定义里，生成物会落到 Unknown 岔路。
+  // 上层靠它区分「没见过的状态」和「那就是没加载」。
+  let response = @milvus.GetLoadStateResponse::{
+    status: Some(ok_status()),
+    state: @common.LoadState::Unknown(@lib.Enum(99)),
+  }
+  let (client, _) = test_client([
+    (@client.get_load_state_path, encode(response)),
+  ])
+  let state = client.get_load_state(
+    @client.new_describe_collection_option("demo"),
+  ) catch {
+    _ => fail("expected a load state")
+  }
+  assert_eq(state, @client.CollectionLoadState::Unknown(99))
+}
+
+///|
+async test "create_index 把 Index 装配成 extra_params" {
+  let (client, recorded) = test_client([
+    (@client.create_index_path, encode(ok_status())),
+  ])
+  let index = @index.new_hnsw_index(@index.MetricType::COSINE)
+    .with_name("vec_idx")
+    .with_extra_params(@index.IndexParams::from_pairs([("M", "16")]))
+  let mut raised = false
+  ignore(
+    client.create_index(
+      @client.new_create_index_option("demo", "vector", index),
+    ),
+  ) catch {
+    _ => raised = true
+  }
+  assert_false(raised)
+  let calls = recorded.val
+  assert_eq(calls[0].path, @client.create_index_path)
+  let request : @milvus.CreateIndexRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+  assert_eq(request.field_name, "vector")
+  assert_eq(request.index_name, "vec_idx")
+  // index_type / metric_type 由 Index 装配，M 由调用方经 extra params 带进来
+  let params = Map::from_array(request.extra_params.map(p => (p.key, p.value)))
+  assert_eq(params.get("metric_type"), Some("COSINE"))
+  assert_eq(params.get("index_type"), Some("HNSW"))
+  assert_eq(params.get("M"), Some("16"))
+}
+
+///|
+async test "describe_index 解出索引描述与状态" {
+  let response = @milvus.DescribeIndexResponse::{
+    status: Some(ok_status()),
+    index_descriptions: [
+      @milvus.IndexDescription::{
+        index_name: "vec_idx",
+        index_id: 7L,
+        params: [
+          @common.KeyValuePair::KeyValuePair("index_type", "HNSW"),
+          @common.KeyValuePair::KeyValuePair("metric_type", "L2"),
+        ],
+        field_name: "vector",
+        indexed_rows: 10L,
+        total_rows: 10L,
+        state: @common.IndexState::Finished,
+        index_state_fail_reason: "",
+        pending_index_rows: 0L,
+        min_index_version: 0,
+        max_index_version: 0,
+      },
+    ],
+  }
+  let (client, recorded) = test_client([
+    (@client.describe_index_path, encode(response)),
+  ])
+  let descriptions = client.describe_index(
+    @client.new_describe_index_option("demo"),
+  ) catch {
+    _ => fail("expected index descriptions")
+  }
+  assert_eq(descriptions.length(), 1)
+  let d = descriptions[0]
+  assert_eq(d.index_name, "vec_idx")
+  assert_eq(d.index_id, 7L)
+  assert_eq(d.field_name, "vector")
+  assert_eq(d.state, @index.IndexState::Finished)
+  assert_true(d.state.is_terminal())
+  assert_eq(d.index_type(), Some(@index.IndexType::HNSW))
+  assert_eq(d.metric_type(), Some(@index.MetricType::L2))
+  let request : @milvus.DescribeIndexRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(recorded.val[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+  // 默认不按字段/名字过滤，即「列全部」
+  assert_eq(request.field_name, "")
+  assert_eq(request.index_name, "")
+}
+
+///|
+async test "describe_index 把未知的构建状态单列出来" {
+  let response = @milvus.DescribeIndexResponse::{
+    status: Some(ok_status()),
+    index_descriptions: [
+      @milvus.IndexDescription::{
+        index_name: "i",
+        index_id: 1L,
+        params: [],
+        field_name: "vector",
+        indexed_rows: 0L,
+        total_rows: 0L,
+        state: @common.IndexState::Unknown(@lib.Enum(42)),
+        index_state_fail_reason: "",
+        pending_index_rows: 0L,
+        min_index_version: 0,
+        max_index_version: 0,
+      },
+    ],
+  }
+  let (client, _) = test_client([
+    (@client.describe_index_path, encode(response)),
+  ])
+  let descriptions = client.describe_index(
+    @client.new_describe_index_option("demo"),
+  ) catch {
+    _ => fail("expected index descriptions")
+  }
+  assert_eq(descriptions[0].state, @index.IndexState::Unknown(42))
+  assert_false(descriptions[0].state.is_terminal())
+}
+
+///|
+async test "drop_index 打的是 DropIndex 路径并带上索引名" {
+  let (client, recorded) = test_client([
+    (@client.drop_index_path, encode(ok_status())),
+  ])
+  let _ = client.drop_index(@client.new_drop_index_option("demo", "vec_idx")) catch {
+    _ => ()
+  }
+  let calls = recorded.val
+  assert_eq(calls[0].path, @client.drop_index_path)
+  let request : @milvus.DropIndexRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+  assert_eq(request.index_name, "vec_idx")
+}
+
+///|
 async test "服务端拒绝变成 Server 错误" {
   let failure = @common.Status::{
     error_code: @common.ErrorCode::UnexpectedError,

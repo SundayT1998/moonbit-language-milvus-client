@@ -28,17 +28,61 @@
     - name: test
       script: moon test --target all
 
+# 真连 Milvus 的集成测试：起官方镜像的 standalone 容器 → 跑 cmd/integration → 停容器。
+# 与上面的 .check 分开成两个 job，理由有三：
+#   1. 建容器要几十秒，而单测是毫秒级的，混在一起会拖慢每次 push 的反馈；
+#   2. 这条链路依赖 docker daemon，环境要求比纯单测高，分开才好单独排查；
+#   3. 容器要起停成对，单独一个 job 收尾更干净，不容易漏容器。
+.integration: &integration
+  services:
+    # docker in docker：CNB 里由宿主提供 daemon，
+    # 脚本走 `docker` 命令，不需要再装客户端。
+    - docker
+  env:
+    MILVUS_IMAGE: docker.io/milvusdb/milvus:v3.0.2
+    MILVUS_CONTAINER: milvus-integration
+    MILVUS_PORT: "19530"
+    MILVUS_WAIT_SECS: "600"
+  stages:
+    - name: gen-proto
+      script: |
+        moon version --all
+        moon update
+        proto/tools/gen.sh trimmed
+        moon work init . proto/gen/trimmed/proto || true
+    - name: start-milvus
+      script: scripts/milvus-start.sh --force
+    - name: integration-test
+      # 拿固定地址连本地容器；失败即非 0 退出码，job 直接挂。
+      # 这个包 supported_targets 是 native，而模块 preferred_target 是 wasm，
+      # 不显式指 --target 会按 wasm 找产物，直接报 “does not support target backend 'wasm'”。
+      script: moon run --target native cmd/integration -- 127.0.0.1:19530
+  endStages:
+    # 收尾链：`stages` 成功失败都会跑（见 CNB 的 stages/failStages/endStages 三态语义），
+    # 所以容器一定能被收掉。stop 是幂等的，容器没起来时它也只打个跳过。
+    # 放 endStages 而不是 failStages：这样成功路径也走同一条收尾，不用写两遍。
+    - name: stop-milvus
+      script: scripts/milvus-stop.sh
+
 main:
   push:
     - name: check-and-test
       docker:
         <<: *docker
       <<: *check
+    - name: integration
+      docker:
+        <<: *docker
+      <<: *integration
   pull_request:
     - name: check-and-test
       docker:
         <<: *docker
       <<: *check
+    - name: integration
+      docker:
+        <<: *docker
+      <<: *integration
 
 "$":
   # 云原生开发环境：复用 CI 的同一份镜像

@@ -1,0 +1,17 @@
+import {
+  "Tangbuting/milvus-client/client",
+  "Tangbuting/milvus-client/client/native",
+  "Tangbuting/milvus-client/column",
+  "Tangbuting/milvus-client/entity",
+  "Tangbuting/milvus-client/errors",
+  "Tangbuting/milvus-client/index",
+  "Tangbuting/milvus-client/transport",
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  supported_targets: "native",
+)
