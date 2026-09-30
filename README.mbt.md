@@ -217,6 +217,10 @@ match ... {
 moon run --target native cmd/main -- 127.0.0.1:19530 root:Milvus default
 ```
 
+`cmd/main` 失败时以非 0 退出码结束（与 `cmd/integration` 同样的 `abort` 写法），
+CI 直接看退出码。建连失败、Health/Check 报了非超时的错误都算失败；
+「调用超时」反过来算通过 —— 那正是它第 3 条要验的东西。
+
 ## 客户端
 
 `client` 是薄客户端：Option → protobuf 请求 → 发 RPC → 响应反序列化，
