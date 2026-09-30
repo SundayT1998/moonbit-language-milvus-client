@@ -1,0 +1,82 @@
+# CNB 流水线：https://docs.cnb.cool
+# 云端开发环境见 `.cnb/web_trigger.yml` 与 `.cnb/Dockerfile`
+
+main:
+  push:
+    - name: check-and-test
+      docker:
+        image: docker.cnb.cool/tangbuting/moonbit:latest
+      stages:
+        - name: install-moonbit
+          script: |
+            if [ ! -x "$HOME/.moon/bin/moon" ]; then
+              curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+            fi
+        - name: fmt-and-info
+          script: |
+            export PATH="$HOME/.moon/bin:$PATH"
+            moon version --all
+            moon update
+            moon fmt
+            git diff --exit-code
+            moon info
+            git diff --exit-code
+        - name: check
+          script: PATH="$HOME/.moon/bin:$PATH" moon check --target all
+        - name: test
+          script: PATH="$HOME/.moon/bin:$PATH" moon test --target all
+
+  pull_request:
+    - name: check-and-test
+      docker:
+        image: docker.cnb.cool/tangbuting/moonbit:latest
+      stages:
+        - name: install-moonbit
+          script: |
+            if [ ! -x "$HOME/.moon/bin/moon" ]; then
+              curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+            fi
+        - name: fmt-and-info
+          script: |
+            export PATH="$HOME/.moon/bin:$PATH"
+            moon version --all
+            moon update
+            moon fmt
+            git diff --exit-code
+            moon info
+            git diff --exit-code
+        - name: check
+          script: PATH="$HOME/.moon/bin:$PATH" moon check --target all
+        - name: test
+          script: PATH="$HOME/.moon/bin:$PATH" moon test --target all
+
+"$":
+  tag_push:
+    - name: publish
+      docker:
+        image: docker.cnb.cool/tangbuting/moonbit:latest
+      stages:
+        - name: install-moonbit
+          script: |
+            if [ ! -x "$HOME/.moon/bin/moon" ]; then
+              curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+            fi
+        - name: prepublish-check
+          script: |
+            export PATH="$HOME/.moon/bin:$PATH"
+            moon version --all
+            moon update
+            moon fmt
+            git diff --exit-code
+            moon check --target all
+            moon test --target all
+        - name: publish-to-mooncakes
+          script: |
+            export PATH="$HOME/.moon/bin:$PATH"
+            if [ -z "$MOONCAKES_TOKEN" ]; then
+              echo "MOONCAKES_TOKEN 未配置，跳过发布"
+              exit 1
+            fi
+            echo "$MOONCAKES_TOKEN" > ~/.moon/credentials.json
+            moon publish
+            rm -f ~/.moon/credentials.json

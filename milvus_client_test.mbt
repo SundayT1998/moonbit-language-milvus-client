@@ -1,3 +1,3 @@
-// Blackbox tests run against the package's public API. Use `@moonbit-language-milvus-client` to import.
+// Blackbox tests run against the package's public API. Use `@milvus_client` to import.
 // Prefer high-level behaviors over implementation details.
 // Run `moon test` to execute and `moon test --update` to refresh snapshots.
