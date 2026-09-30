@@ -22,6 +22,58 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 
 迭代器（#18）在 `client/iterator.mbt`，与 `client` 同包。
 
+## 安装
+
+要求 MoonBit 工具链 **0.10.14 或更高**（`moon version --all` 查看）：
+
+```sh
+moon add Tangbuting/milvus-client
+```
+
+`moon.mod` 里对应的声明是：
+
+```moonbit nocheck
+// moon.mod 里对应的声明（[deps] 段）
+[deps]
+Tangbuting/milvus-client = "0.1.0"
+```
+
+发布到 mooncakes.io 之后，`moon add` 会自动写入这一段。
+
+> 本模块**尚未发布到 mooncakes.io**（见 Issue #37 的验收结论）。在发布前，
+> `moon add` 会失败，请按下面「从源码使用」一节把本仓库加进工作区。
+
+### 从源码使用
+
+签出本仓库后，`proto/gen/` 不在版本库里（见 `.gitignore`），第一次构建前要生成一次：
+
+```sh
+proto/tools/gen.sh trimmed                 # 需要 protoc
+moon work init . proto/gen/trimmed/proto   # 把生成模块注册进工作区
+moon check --target all && moon test --target all
+```
+
+`moon.work` 会进版本库，所以后续 clone / CI 只需重复这两条生成命令。
+把本模块当依赖用时，在自己的工作区里加成员指到本仓库路径即可。
+
+### 模块布局
+
+本仓库是一个工作区，含两个模块：
+
+| 模块 | 位置 | 是否发布 |
+|---|---|---|
+| `Tangbuting/milvus-client` | `.` | 是 |
+| `Tangbuting/proto` | `proto/gen/trimmed/proto`（生成物，不入版本库） | 否 |
+
+主模块用版本号依赖 `Tangbuting/proto@0.1.0`，靠工作区解析到本地路径：
+`moon.mod` 不支持路径依赖（只有旧的 `moon.mod.json` 支持），所以这里是
+「工作区成员 + 版本号依赖」的写法，别改成 `{ path = ... }`。
+
+目标平台：模块 `preferred_target = "wasm"`，`client` / `entity` / `index` /
+`column` / `errors` / `transport` 在 `wasm` / `wasm-gc` / `js` / `native` 四个
+后端下都编得过；真连 socket 的 `client/native` + `transport/native` 是
+native 专属，用它们要 `--target native`。
+
 ## 当前状态
 
 客户端门面（Issue #15）已交付：集合生命周期（创建 / 描述 / 是否存在 / 列出 / 删除）、
@@ -38,7 +90,8 @@ Option 构造函数名与默认值对齐上游。
 
 **只保留 column-based 一路**，row-based API 不移植（风险 R2）。
 `CreateCollection` 不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路是
-「一步到位」的便利，本移植把它拆成显式调用，见「索引与加载」一节。
+「一步到位」的便利，本移植把它拆成显式调用 —— 建索引见「索引」一节，
+加载与等待就绪见「分区与数据生命周期」一节，集成测试里的完整顺序见「开发」。
 
 上层调用只要给一个 `Unary` 函数值就能跑，所以测试与 wasm 下不需要真连接：
 
