@@ -306,8 +306,10 @@ create_collection → create_index → load_collection →（轮询到 Loaded）
 - 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
 - `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要轮询
   `get_load_state` 到 `Loaded`，直接接着检索会偶发失败。
-- `Query` 没显式给 `limit` 时，客户端会补上默认的 16384。别指望「不发 limit
-  就是不限量」—— Milvus 对没带 `limit` 的 Query 反而会全量返回。
+- `Query` 必须逐点名 `output_fields`（如 `["id", "title"]`）。服务端在返回
+  **全部字段**时（`["*"]`，或一个 `output_fields` 都不给）不填
+  `FieldData.field_name`，只给 `field_id`：列名会全空，按名取列取不到，
+  行数也会读成 0，症状看起来像「过滤条件没生效、全量返回」。
 
 自检用 `new_flat_index(L2)`：10 行的集合上暴力检索就是最优解，也不用等索引构建。
 

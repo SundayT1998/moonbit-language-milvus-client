@@ -22,16 +22,6 @@
 pub let query_param_limit : String = "limit"
 
 ///|
-/// `limit` 的默认值，照搬上游 `client/milvusclient/read.go` 的
-/// `queryLimit`。
-///
-/// 默认值不是可有可无的：Milvus 对**没带 `limit`** 的 Query 不走 limit
-/// 语义，会把匹配到的行全量返回，跟「默认 16384」是两回事。上游每次都把
-/// `limit` 显式写进 query_params，本移植必须照做，否则调用方看到的行数
-/// 会和服务端上限有关、且随数据量变化。
-pub let default_query_limit : Int = 16384
-
-///|
 pub let query_param_offset : String = "offset"
 
 ///|
@@ -91,15 +81,20 @@ pub(all) struct QueryOption {
 }
 
 ///|
-/// 上游 `NewQueryOption`：默认一致性 `Bounded`，`limit` 预置成
-/// `default_query_limit`，其余空。
+/// 上游 `NewQueryOption`：默认一致性 `Bounded`，其余空。
+///
+/// `query_params` 不预置任何键——尤其不预置 `limit`。默认 limit 是**适配层
+/// 的概念**，上游由 `CheckAndSetLimit` 在发请求前补齐，本移植的编排里没有
+/// 这一层，所以「没给 limit」就是真的不发；要限制行数就显式 `with_limit`。
+/// 别在这里悄悄塞一个 16384 假装对齐上游，那只是把「没实现适配层」这件事
+/// 藏起来，顺手给出一个错的因果。
 pub fn new_query_option(collection_name : String) -> QueryOption {
   {
     collection_name,
     partition_names: [],
     expr: "",
     output_fields: [],
-    query_params: [(query_param_limit, default_query_limit.to_string())],
+    query_params: [],
     consistency_level: None,
   }
 }

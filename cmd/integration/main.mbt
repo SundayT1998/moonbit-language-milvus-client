@@ -17,6 +17,11 @@
 // 少一步的报错各不相同：不建索引就 load 会得到 `index not found`
 // （`IndexNotExist`），建了不 load 就检索会得到 `collection not loaded`
 // （`CollectionNotLoaded`）—— 两种都在 #33 的 CI 上真踩过。
+//
+// 另一条踩过的坑：Query 的 `output_fields` 必须逐点列名，不能用 `*`、也不能
+// 留空。服务端在返回全部字段时不填 `FieldData.field_name`（只给 `field_id`），
+// 列名会全空 —— 按名取列取不到、`QueryResult::len` 读成 0，症状酷似
+// 「过滤条件没生效、全量返回」。第 8 步的报错就长这样。
 
 ///|
 /// 自检用的集合名与向量维度。固定值，便于失败时人工复现。
@@ -221,6 +226,11 @@ async fn check_steps(client : @client.Client) -> String {
 
   // 8. 查询：按 title 精确过滤后取两列，验回读的解码路径。
   //
+  //    `output_fields` 逐点写 `id, title`，不用 `["*"]`、也不留空：服务端在
+  //    返回**全部字段**时不填 `FieldData.field_name`，只有 `field_id`，列名
+  //    会全空（见文件头）。失败时把 `queried.names` 打出来，好一眼分清是
+  //    「服务端多回了行」还是「列名丢了」。
+  //
   //    为什么不用 `id >= 5`：主键是 auto_id，服务端发的是时间戳量级的大整数
   //    （`pkg/common.AllocAutoID`：分配器给的序号再或上 clusterID 的位），
   //    `id >= 5` 对全部 10 行都为真，所以「期望 5，实际 10」。
@@ -246,12 +256,17 @@ async fn check_steps(client : @client.Client) -> String {
   if queried.len() != expected_titles.length() {
     return step_failed(
       "8",
-      "查询行数不符：期望 \{expected_titles.length()}，实际 \{queried.len()}",
+      "查询行数不符：期望 \{expected_titles.length()}，实际 \{queried.len()}；" +
+      "返回的列=\{queried.names}",
     )
   }
   let title_column = match queried.column("title") {
     Some(c) => c
-    None => return step_failed("8", "结果里没有 title 列")
+    None =>
+      return step_failed(
+        "8",
+        "结果里没有 title 列；返回的列=\{queried.names}",
+      )
   }
   // 逐行解码，并把结果收成集合：Milvus 的 query 不保证返回顺序，
   // 断言「集合相等」比断言「第 i 行等于第 i 个期望值」靠谱。

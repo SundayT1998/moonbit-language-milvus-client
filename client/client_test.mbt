@@ -687,9 +687,9 @@ async test "query 解出列" {
 }
 
 ///|
-async test "query 不带 limit 时也发默认 limit" {
-  // Milvus 对没带 limit 的 Query 会全量返回，而不是「默认 16384」。
-  // 上游每次都把 limit 显式写进 query_params，这里必须照做。
+async test "query 不预置 limit，没给就不发" {
+  // 默认 limit 属于上游适配层（`CheckAndSetLimit`），本移植的编排里没有
+  // 这一层；`new_query_option` 不该偷偷塞一个值进去。
   let response = @milvus.QueryResults::{
     status: Some(ok_status()),
     fields_data: [],
@@ -707,18 +707,17 @@ async test "query 不带 limit 时也发默认 limit" {
       @lib.BytesReader::from_bytes(recorded.val[0].body),
     ),
   )
-  let params : Map[String, String] = Map([])
+  let limits : Array[String] = []
   for pair in request.query_params {
-    params[pair.key] = pair.value
+    if pair.key == @client.query_param_limit {
+      limits.push(pair.value)
+    }
   }
-  assert_eq(
-    params[@client.query_param_limit],
-    @client.default_query_limit.to_string(),
-  )
+  assert_eq(limits, [])
 }
 
 ///|
-async test "with_limit 覆盖默认值而不是追加一条" {
+async test "with_limit 写进 query_params，且只写一条" {
   let response = @milvus.QueryResults::{
     status: Some(ok_status()),
     fields_data: [],
