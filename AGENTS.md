@@ -121,6 +121,20 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 4. 需要推进基线时，同步更新 README「来源与许可」、
    `proto/upstream/PROVENANCE.md` 与本文件。
 
+## 文档归属
+
+- **README（`README.mbt.md`）面向使用者**，只写：项目定位、包结构、安装、
+  怎么用、为什么这么设计、已知限制。
+  不写进度、不写「尚未发布」、不写「某任务已交付」这类状态信息 —— 状态会过期，
+  README 不该跟着烂。
+- **`docs/DEVELOPMENT.md` 放过程**：交付范围、验收标准、发布流程、被推翻的方案
+  与理由。任务分解与讨论现场在 Issue / PR 里，结论沉淀到这份文档或本文件。
+- **Issue / PR 是对话现场，不是档案室**：讨论完把结论写进文档，不要往 Issue 里
+  回贴长总结。单个 Issue 只留「问题是什么、怎么解」的短结论，够下一个接手的人
+  看懂就行。
+- 对外文档统一措辞是 "community-driven MoonBit client for Milvus"，
+  别写成 official Milvus SDK（见「许可与上游同步」）。
+
 ## Coding convention
 
 - MoonBit code is organized in block style, each block is separated by `///|`,
