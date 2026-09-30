@@ -465,6 +465,9 @@ proto/tools/gen.sh trimmed   # P0 + 索引 RPC 的裁剪集
 `Tangbuting/proto/milvus/proto/common`：
 
 ```sh
-proto/tools/gen.sh trimmed                 # 生成 P0 裁剪集
-moon work init . proto/gen/trimmed/proto   # 把生成模块注册进工作区
+proto/tools/gen.sh trimmed                # 生成 P0 裁剪集
+moon work use . proto/gen/trimmed/proto   # 把生成模块注册进工作区（幂等）
 ```
+
+`moon.work` 已进版本库，所以用 `moon work use`：`moon work init` 在文件已存在时
+会直接报错退出。

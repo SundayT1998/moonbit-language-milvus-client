@@ -180,11 +180,16 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 
 ```sh
 proto/tools/gen.sh trimmed                 # 生成 P0 裁剪集
-moon work init . proto/gen/trimmed/proto   # 把生成模块注册进工作区
+moon work use . proto/gen/trimmed/proto    # 把生成模块注册进工作区
 ```
 
-`moon.work` 是 `moon work init` 的产物，**需要进版本库**。`moon.mod` 里对
-`Tangbuting/proto@0.1.0` 的依赖靠工作区解析到本地路径，不走 registry。
+`moon.work` **进了版本库**，所以要用 `moon work use` 而不是 `moon work init`：
+`init` 在文件已存在时直接报错退出（`workspace file ... already exists`），
+CI 里就是一条硬失败；`use` 幂等，文件在就只做补齐，成员齐了就打印
+`already up to date`，本地和 CI 都能重复跑。
+
+`moon.mod` 里对 `Tangbuting/proto@0.1.0` 的依赖靠工作区解析到本地路径，
+不走 registry。
 
 > 注意：`moon.mod` 不支持路径依赖，只有旧的 `moon.mod.json` 支持。因此这里
 > 用「工作区成员 + 版本号依赖」的写法，别改成 `{ path = ... }`。
