@@ -203,7 +203,7 @@ match ... {
 自检程序（连上后发一次 Health/Check）：
 
 ```sh
-moon run cmd/main -- 127.0.0.1:19530 root:Milvus default
+moon run --target native cmd/main -- 127.0.0.1:19530 root:Milvus default
 ```
 
 ## 客户端
@@ -286,7 +286,7 @@ moon check --target all && moon test --target all
 
 ```sh
 scripts/milvus-start.sh          # 起 milvusdb/milvus:v3.0.2 的 standalone 容器
-moon run cmd/integration -- 127.0.0.1:19530
+moon run --target native cmd/integration -- 127.0.0.1:19530
 scripts/milvus-stop.sh           # 停掉并删除容器
 ```
 

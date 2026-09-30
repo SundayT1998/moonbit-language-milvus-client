@@ -47,7 +47,7 @@ You can browse and install extra skills here:
 ## 集成测试与 Milvus 容器（`scripts/`）
 
 连真实服务端的那条链路：`scripts/milvus-start.sh` 起容器 →
-`moon run cmd/integration -- 127.0.0.1:19530` → `scripts/milvus-stop.sh` 收容器。
+`moon run --target native cmd/integration -- 127.0.0.1:19530` → `scripts/milvus-stop.sh` 收容器。
 
 - 镜像锚定 **`docker.io/milvusdb/milvus:v3.0.2`**，容器参数照搬上游
   `milvus-io/milvus` 的 `scripts/standalone_embed.sh`：embedded etcd +

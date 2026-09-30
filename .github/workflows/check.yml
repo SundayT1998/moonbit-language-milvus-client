@@ -97,7 +97,8 @@ jobs:
         run: scripts/milvus-start.sh --force
 
       - name: integration test
-        run: moon run cmd/integration -- 127.0.0.1:19530
+        # native-only 的包，模块默认 preferred_target 是 wasm，必须显式指 --target。
+        run: moon run --target native cmd/integration -- 127.0.0.1:19530
 
       - name: stop milvus
         # 与 CNB 侧同理：成功失败都要收容器。GitHub Actions 里用 always()。
