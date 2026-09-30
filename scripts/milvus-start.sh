@@ -7,20 +7,21 @@
 # 固定版本号而不是 `latest`：CI 结果要可复现，镜像换底是显式动作。
 #
 # 用法：
-#   scripts/milvus-start.sh            # 起容器并等到 healthy
+#   scripts/milvus-start.sh            # 起容器并等到就绪
 #   scripts/milvus-start.sh --force    # 先删掉同名残留容器再起
 #
 # 环境变量：
 #   MILVUS_IMAGE      镜像名（默认 docker.io/milvusdb/milvus:v3.0.2）
 #   MILVUS_CONTAINER  容器名（默认 milvus-integration）
 #   MILVUS_PORT       宿主 gRPC 端口（默认 19530）
-#   MILVUS_WAIT_SECS  等 healthy 的最长秒数（默认 300）
+#   MILVUS_WAIT_SECS  等就绪的最长秒数（默认 600）
+#   MILVUS_LOG_TAIL   超时时打印的容器日志行数（默认 200）
 set -euo pipefail
 
 IMAGE="${MILVUS_IMAGE:-docker.io/milvusdb/milvus:v3.0.2}"
 CONTAINER="${MILVUS_CONTAINER:-milvus-integration}"
 PORT="${MILVUS_PORT:-19530}"
-WAIT_SECS="${MILVUS_WAIT_SECS:-300}"
+WAIT_SECS="${MILVUS_WAIT_SECS:-600}"
 FORCE=0
 [ "${1:-}" = "--force" ] && FORCE=1
 
@@ -75,9 +76,9 @@ if [ -z "$(docker ps -q -f "name=^${CONTAINER}$")" ]; then
     -p "127.0.0.1:${PORT}:19530" \
     --health-cmd="curl -f http://localhost:9091/healthz" \
     --health-interval=5s \
-    --health-start-period=30s \
+    --health-start-period=60s \
     --health-timeout=10s \
-    --health-retries=30 \
+    --health-retries=60 \
     "$IMAGE" \
     milvus run standalone >/dev/null
   echo "[milvus-start] 容器已启动，等待 healthy"
@@ -85,26 +86,44 @@ else
   echo "[milvus-start] 容器已在运行，等待 healthy"
 fi
 
-# 就绪判据用容器自带的 healthcheck（容器内打 9091/healthz），
-# 与上游 `wait_for_milvus_running` 等价。健康检查是 daemon 侧做的，
-# 所以这里读状态而不是自己拨端口 —— 端口在数据面起来之前就监听了。
-for _ in $(seq "$WAIT_SECS"); do
-  status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CONTAINER" 2>/dev/null || echo gone)"
-  case "$status" in
-    healthy)
-      echo "[milvus-start] Milvus 就绪：127.0.0.1:${PORT}"
-      echo "$WORKDIR" > "${MILVUS_WORKDIR_FILE:-/tmp/milvus-workdir}"
-      exit 0
-      ;;
-    gone|exited)
-      echo "[milvus-start] 容器已退出，日志如下：" >&2
+# 就绪判据是容器内 9091/healthz 返回 200，与上游 `wait_for_milvus_running`
+# 等价。但这里不读 docker 的 health 状态：
+#   - Moby 的健康状态机一旦因重试耗尽被打成 `unhealthy`，就是终态，后面即使
+#     服务真的起来了也不会再翻回 `healthy`。Milvus 冷启动在 CI 上耗时不定，
+#     任何固定的 start-period/retries 都可能被穿破，一破就永久卡死。
+#   - 反过来，直接从宿主探活就没有这个终态问题：探到 200 就算就绪。
+# 9091 只在健康检查里用得到，不用映射到宿主，所以用 docker exec 在容器里打。
+# 探 19530 不够 —— 端口在数据面就绪之前就监听了，上次就是这么踩的坑。
+probe_ready() {
+  docker exec "$CONTAINER" curl -fsS -o /dev/null http://localhost:9091/healthz >/dev/null 2>&1
+}
+
+for i in $(seq "$WAIT_SECS"); do
+  if probe_ready; then
+    echo "[milvus-start] Milvus 就绪：127.0.0.1:${PORT}"
+    echo "$WORKDIR" > "${MILVUS_WORKDIR_FILE:-/tmp/milvus-workdir}"
+    exit 0
+  fi
+
+  # 容器死了就别再等了，直接把日志甩出来。
+  state="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || echo gone)"
+  case "$state" in
+    gone|exited|dead)
+      echo "[milvus-start] 容器已${state}，日志如下：" >&2
       docker logs "$CONTAINER" >&2 || true
       exit 1
       ;;
   esac
+
+  # 每 15 秒报一次进度，免得长等待期间日志一片空白、看不出在等什么。
+  if [ $((i % 15)) -eq 0 ]; then
+    echo "[milvus-start] 已等待 ${i}s，仍未就绪"
+  fi
   sleep 1
 done
 
-echo "[milvus-start] ${WAIT_SECS}s 内没等到 healthy（最后状态：${status}），日志尾部：" >&2
-docker logs --tail 50 "$CONTAINER" >&2 || true
+echo "[milvus-start] ${WAIT_SECS}s 内 9091/healthz 没返回 200，日志尾部：" >&2
+# 默认只给 200 行：Milvus 启动失败时往往先喷一大段 goroutine dump，
+# 真正的原因（比如配置读不到、端口占用）夹在中间，tail 太短会把它截掉。
+docker logs --tail "${MILVUS_LOG_TAIL:-200}" "$CONTAINER" >&2 || true
 exit 1

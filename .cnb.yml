@@ -42,7 +42,7 @@
     MILVUS_IMAGE: docker.io/milvusdb/milvus:v3.0.2
     MILVUS_CONTAINER: milvus-integration
     MILVUS_PORT: "19530"
-    MILVUS_WAIT_SECS: "300"
+    MILVUS_WAIT_SECS: "600"
   stages:
     - name: gen-proto
       script: |

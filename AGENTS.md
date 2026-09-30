@@ -53,8 +53,12 @@ You can browse and install extra skills here:
   `milvus-io/milvus` 的 `scripts/standalone_embed.sh`：embedded etcd +
   `COMMON_STORAGETYPE=local`，一个容器自足。**不用 `latest`**，CI 要可复现。
   换版本时同步改 `.cnb.yml` 的 `MILVUS_IMAGE` 与本节。
-- 就绪判据用容器自带的 healthcheck（容器内打 `9091/healthz`），
-  而不是自己拨 19530 —— 端口在数据面起来之前就监听了。
+- 就绪判据是容器内 `9091/healthz` 返回 200，而不是自己拨 19530 ——
+  端口在数据面起来之前就监听了。
+  **但判据要从宿主探，别读 docker 的 health 状态**：Moby 的重试一旦耗尽，
+  `unhealthy` 是终态，后面服务真起来了也不会翻回 `healthy`。Milvus 冷启动
+  在 CI 上耗时不定，固定 `start-period`/`retries` 迟早被穿破，一破就永久卡死
+  （#33 的 CI 就是这么红了一整轮）。
 - CNB 侧收尾放 `endStages`（`stages` 成功失败都跑），GitHub 侧用 `if: always()`。
   stop 是幂等的，容器没起来时也只打个跳过。
 - `cmd/integration` 是 native-only 的自检程序，与 `cmd/main`（只管传输层）分工：
