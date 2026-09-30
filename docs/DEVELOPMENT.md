@@ -6,7 +6,7 @@
 
 任务与讨论的原始记录在仓库的 Issue / PR 里。**写完就地归档，不要往 Issue 里
 回贴总结** —— Issue 是对话现场，不是档案室。结论沉淀到本文件或 `AGENTS.md`；
-**还没做、打算做的事在 [`ROADMAP.mbt.md`](../ROADMAP.mbt.md)**，那份文件是
+**还没做、打算做的事在 [`ROADMAP.md`](./ROADMAP.md)**，那份文件是
 唯一的排期入口，不在这里维护第二份。
 
 `docs/项目申报书.md` 是参赛用的申报材料，不属于上面这套文档分工 ——
@@ -34,7 +34,7 @@ proto/tools/gen.sh trimmed
 值得在 PR 里说明。
 
 改代码走 PR，别直接推 `main`。文档分工见 `AGENTS.md` 的「文档归属」：
-README 面向使用者；本文件放过程与归档；`ROADMAP.mbt.md` 放已规划未实现的能力；
+README 面向使用者；本文件放过程与归档；`docs/ROADMAP.md` 放已规划未实现的能力；
 Issue / PR 是对话现场，不是档案室。
 
 ### 连真实 Milvus 跑集成测试

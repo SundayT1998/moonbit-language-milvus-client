@@ -27,7 +27,7 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
   `ml_dtypes.bfloat16`。
 
 暂时没做、但已列进规划的（row-based API、schema 缓存等）见
-[`ROADMAP.mbt.md`](./ROADMAP.mbt.md)。
+[`docs/ROADMAP.md`](./docs/ROADMAP.md)。
 
 ## 能力边界
 
@@ -49,7 +49,7 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 
 **只交付 column-based 一路**：写入用 `WriteColumn` 承接 `@column.ColumnValue`，
 回读用 `@column.Column`。row-based API 在
-[`ROADMAP.mbt.md`](./ROADMAP.mbt.md) 里排期，不是「不打算做」。
+[`docs/ROADMAP.md`](./docs/ROADMAP.md) 里排期，不是「不打算做」。
 
 `CreateCollection` 不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路是
 「一步到位」的便利，本移植把它拆成显式调用。**顺序不能倒**：
@@ -335,7 +335,7 @@ Milvus 服务端对单次返回有上限，超过就得翻页。两条路，选�
   （只看服务端下发的 `retriable`，不做本地猜测）。
 - 不缓存集合 schema，所以 insert / upsert 不带 `schema_timestamp`，
   也没有上游那套 schema-mismatch 自动重试。schema 变更后由调用方重新描述集合。
-  补缓存已列进 [`ROADMAP.mbt.md`](./ROADMAP.mbt.md)。
+  补缓存已列进 [`docs/ROADMAP.md`](./docs/ROADMAP.md)。
 - `WriteColumn` 不支持 `Array` 列：元素的 `DataType` 没法从值本身推出来，
   要写数组字段得先补一个带元素类型的列类型。
 - `Query` 的列名来自 `FieldData.field_name`。服务端在返回**全部字段**时
@@ -355,11 +355,19 @@ Milvus 服务端对单次返回有上限，超过就得翻页。两条路，选�
 
 ## 文档导航
 
+除了参赛用的 `docs/项目申报书.md`（有成文格式要求，不属于这套分工），
+仓库里的文档都在下面。
+
 | 文档 | 内容 |
 |---|---|
-| [`ROADMAP.mbt.md`](./ROADMAP.mbt.md) | 已规划未实现的能力（row-based API、schema 缓存等） |
+| [`README.mbt.md`](./README.mbt.md) | 本文件 —— 面向使用者：定位、安装、快速上手、能力边界、已知限制 |
+| [`docs/ROADMAP.md`](./docs/ROADMAP.md) | 已规划未实现的能力（row-based API、schema 缓存等） |
 | [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) | 开发流程、集成测试、交付范围、验收标准、发布流程、被推翻的方案与理由 |
 | [`AGENTS.md`](./AGENTS.md) | 协作约定与各包的实现约束（给 AI / 贡献者） |
+| [`proto/REPORT.md`](./proto/REPORT.md) | `protoc-gen-mbt` 对 Milvus proto 的支持度探针报告（含已知缺陷与退路） |
+| [`proto/upstream/PROVENANCE.md`](./proto/upstream/PROVENANCE.md) | `.proto` 快照的上游来源与锚定 commit |
+| [`LICENSE`](./LICENSE) | Apache-2.0 许可证全文 |
+| [`.githooks/README.md`](./.githooks/README.md) | pre-commit 钩子的启用方式 |
 
 ## 贡献
 

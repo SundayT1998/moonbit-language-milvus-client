@@ -1,8 +1,8 @@
-# Roadmap
+# 路线图
 
 本文件记**还没做、且打算做**的事。已完成的能力清单在
-[`README.mbt.md`](./README.mbt.md) 的「能力边界」，过程与归档在
-[`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)。
+[`README.mbt.md`](../README.mbt.md) 的「能力边界」，过程与归档在
+[`DEVELOPMENT.md`](./DEVELOPMENT.md)。
 
 「暂时没做」和「不打算做」是两回事 —— 前者在这里有位置，后者写进下面
 「不做」一节。排期不是承诺，顺序按「解锁别人的能力」排：越靠前越是后面几项的前置。
@@ -81,7 +81,7 @@ row-based 的键是运行时字符串，落到 schema 上就是动态字段（`$
 ## 不做
 
 - **自动跟随上游合并**。上游 `client/` 是活跃代码，本移植是快照，
-  同步走「手动评估」流程（见 [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)）。
+  同步走「手动评估」流程（见 [`DEVELOPMENT.md`](./DEVELOPMENT.md)）。
 - **把本项目表述成官方 Milvus SDK**。归属措辞是
   "community-driven MoonBit client for Milvus"，见 README「来源与许可」。
 
