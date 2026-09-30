@@ -17,8 +17,10 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 | `errors` | Milvus `common.Status` → MoonBit 错误模型（#13） |
 | `transport` | 配置、metadata 组装、gRPC status —— 跨 target（#11） |
 | `transport/native` | 真连 socket 的 Channel 实现 —— native 专属（#11） |
-| `client` | Client 门面与核心 RPC 编排：collection / partition / load / flush / insert / upsert / delete / search / query（#15 / #17） |
+| `client` | Client 门面与核心 RPC 编排：collection / partition / load / flush / insert / upsert / delete / search / query / 迭代器（#15 / #17 / #18） |
 | `client/native` | 把 `client` 的 unary 调用接到真实连接上 —— native 专属（#15） |
+
+迭代器（#18）在 `client/iterator.mbt`，与 `client` 同包。
 
 ## 当前状态
 
@@ -31,8 +33,12 @@ Option 构造函数名与默认值对齐上游。
 `ReleasePartitions` / `GetLoadState`）、刷盘（`Flush` / `GetFlushState`）。
 加载与刷盘返回可等待的任务，轮询语义与上游一致（默认 200ms 间隔）。
 
+大结果集翻页（Issue #18）也已交付：`QueryIterator`（客户端侧主键游标）与
+`SearchIterator`（服务端侧 v2 游标）。
+
 **只保留 column-based 一路**，row-based API 不移植（风险 R2）。
-`CreateCollection` 也不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路属于后续 Issue。
+`CreateCollection` 不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路是
+「一步到位」的便利，本移植把它拆成显式调用，见「索引与加载」一节。
 
 上层调用只要给一个 `Unary` 函数值就能跑，所以测试与 wasm 下不需要真连接：
 
@@ -318,6 +324,66 @@ async fn lifecycle(client : @client.Client) -> Unit raise @client.ClientError {
 - `FlushTask` 里的 `segment_ids` / `flush_timestamp` 就是 `GetFlushState` 的入参，
   单独查时用 `get_flush_state`。
 
+## 迭代器
+
+Milvus 服务端对单次返回有上限，超过就得翻页。两条路，选一条：
+
+```moonbit nocheck
+///|
+async fn demo(client : @client.Client) -> Unit {
+  // 查询迭代器：客户端侧主键游标，不依赖服务端版本
+  let iterator = client.query_iterator(
+    @client.new_query_iterator_option("demo")
+    .with_filter("age > 18")
+    .with_output_fields(["name"])
+    .with_batch_size(500),
+  ) catch {
+    _ => return
+  }
+  while true {
+    let page = iterator.next() catch {
+      err => if err.is_end_of_iterator() { break } else { return }
+    }
+    // page : @client.QueryResult，与 Client::query 的返回同形
+    ignore(page.len())
+  }
+  iterator.close()
+}
+
+///|
+async fn demo_search(client : @client.Client) -> Unit {
+  // 检索迭代器：服务端侧 v2 游标，nq 恒为 1
+  let iterator = client.search_iterator(
+    @client.new_search_iterator_option("demo", 1000, [
+      @column.ColumnValue::FloatVector(768, [[0.1, 0.2]]),
+    ])
+    .with_anns_field("vector")
+    .with_batch_size(500),
+  ) catch {
+    _ => return
+  }
+  let hits = iterator.next() catch { _ => return }
+  ignore(hits.hits.length())
+  let _ = iterator.close()
+}
+```
+
+要点：
+
+- 走到末尾报 `IteratorError::EndOfIterator`，不是故障。`is_end_of_iterator`
+  用来把它从 `while` 里放出来；`IteratorError::Closed` 才是「迭代器已经关了」。
+- `close` 之后、或翻完之后再问，一律报 `EndOfIterator` / `Closed`，
+  不会又发一发请求。
+- `SearchIterator::close` 会**真的**发一次空检索把服务端会话收掉
+  （服务端侧游标不会自己过期）；翻到末尾时也自动收一次。返回值告诉你
+  服务端侧关成没关成，失败不往上抛 —— 调用方多半是在 `defer` 里关的。
+- `QueryIterator` 在服务端没有会话，`close` 只是个本地标记。
+- `with_limit` 是整体上限：只决定「还发不发下一次请求」，**不跨批截断**。
+  上游的 `SearchIterator` 会切短超出上限的那一批，本移植统一不切。
+- `QueryIterator` 要求主键是 `Int64` 或 `VarChar`（表达式得能排序），
+  否则在建立迭代器时就报 `Setup`，而不是翻出一个错序的结果。
+- `SearchIterator` 的 `nq` 必须为 1，多给会报 `Setup`。
+
 ## 已知限制
 
 - 传输失败与「服务端拒绝」是两个不同的 `ClientError` 分支：
@@ -329,6 +395,11 @@ async fn lifecycle(client : @client.Client) -> Unit raise @client.ClientError {
   要写数组字段得等后续 Issue 补一个带元素类型的列类型。
 - Binary / Int8 向量列在 `@column.ColumnValue` 里是「逐行一块字节」，
   行内字节数按 `dim`（binary 按 `dim / 8`）校验。
+- 迭代器不做跨批截断（见「迭代器」一节）：`with_limit(10)` 配
+  `with_batch_size(100)` 时你一次拿到 100 行，而不是 10 行。
+- `SearchIterator` 依赖服务端实现 SearchIterator V2。老服务端不给
+  `search_iterator_v2_results`，`next` 会报 `Setup`（上游这里是
+  `ErrServerVersionIncompatible`）。
 
 ## 开发
 
@@ -364,6 +435,9 @@ create_collection → create_index → load_collection →（轮询到 Loaded）
 - `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要么
   `LoadTask::wait` 等进度到 100%，要么轮询 `get_load_state` 到 `Loaded`；
   直接接着检索会偶发失败。
+- `Query` 的 `limit` 不预置，交给服务端默认；要确定行数就显式
+  `with_limit(n)`。另外别拿主键当行号筛数据：`auto_id` 发的是 Snowflake ID，
+  `id >= 5` 在 18 位的主键上等于全表通过。
 - `Query` 必须逐点名 `output_fields`（如 `["id", "title"]`）。服务端在返回
   **全部字段**时（`["*"]`，或一个 `output_fields` 都不给）不填
   `FieldData.field_name`，只给 `field_id`：列名会全空，按名取列取不到，

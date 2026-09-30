@@ -377,9 +377,25 @@ pub async fn Client::search(
   self : Client,
   option : SearchOption,
 ) -> SearchResult raise ClientError {
+  decode_search_results(self.search_call(option).results.unwrap())
+}
+
+///|
+/// 编排一次 `Search`：校验、编占位符、拼 `search_params`、发出去、查 status。
+///
+/// 返回值留着整个 `SearchResults`，因为 `results` 上有迭代器要的续页凭据。
+/// 搜索本身与迭代器共用这一份，免得两处对「七个键的顺序」「use_default_consistency
+/// 什么时候为真」各说各话。
+async fn Client::search_call(
+  self : Client,
+  option : SearchOption,
+) -> @milvus.SearchResults raise ClientError {
   if option.vectors.length() == 0 {
     raise ClientError::Encode("search requires at least one query vector")
   }
+  // `nq` 是 `vectors` 的长度，服务端不接受「nq = 0」。迭代器收尾要发的
+  // 那个空检索走下面的 `cancel_search` —— 它另开一个入口，因为它的
+  // `search_input` 不是占位符。
   let placeholder = placeholder_group_bytes(option.vectors)
   let search_params = search_params_of(option).map(pair => {
     @common.KeyValuePair::KeyValuePair(pair.0, pair.1)
@@ -411,8 +427,79 @@ pub async fn Client::search(
   let response : @milvus.SearchResults = self.call_service(search_path, request)
   match check_status(response.status) {
     Some(err) => raise err
-    None => decode_search_results(response.results.unwrap())
+    None => response
   }
+}
+
+///|
+/// 迭代器收尾用的空检索：`nq = 0`，`search_input` 显式留空（`NotSet`）。
+///
+/// 服务端据 `search_iter_id` 找到那个游标会话，`nq = 0` 就表示「这批不要
+/// 结果，把会话收掉」。走不了 `Client::search`：那条路要求至少一个查询向量，
+/// 会用占位符填 `search_input`。
+///
+/// `search_params` 由调用方拼好传进来 —— 迭代器比这一层更清楚要带哪些凭据。
+///
+/// 包内可见：`SearchIterator` 的收尾用它，不属于门面 API。
+async fn Client::cancel_search(
+  self : Client,
+  option : SearchOption,
+) -> Unit raise ClientError {
+  let search_params = option.search_params.map(pair => {
+    @common.KeyValuePair::KeyValuePair(pair.0, pair.1)
+  })
+  let consistency = match option.consistency_level {
+    Some(level) => level.to_proto()
+    None => @common.ConsistencyLevel::Bounded
+  }
+  let request = @milvus.SearchRequest::{
+    base: None,
+    db_name: "",
+    collection_name: option.collection_name,
+    partition_names: option.partition_names,
+    dsl: option.expr,
+    search_input: @milvus.SearchRequest_SearchInput::NotSet,
+    dsl_type: @common.DslType::BoolExprV1,
+    output_fields: [],
+    search_params,
+    travel_timestamp: 0UL,
+    guarantee_timestamp: 0UL,
+    nq: 0L,
+    not_return_all_meta: false,
+    consistency_level: consistency,
+    use_default_consistency: option.consistency_level is None,
+    namespace_: None,
+  }
+  let response : @milvus.SearchResults = self.call_service(search_path, request)
+  match check_status(response.status) {
+    Some(err) => raise err
+    None => ()
+  }
+}
+
+///|
+/// 一次检索的原始响应 + 解好的命中。
+///
+/// 迭代器两条都要：命中给调用方，`SearchResultData` 上的
+/// `search_iterator_v2_results` 是翻下一页的凭据，`SearchResult` 装不下它。
+///
+/// 包内可见，不对外 —— 外面拿到的是 `SearchResult`，需要续页凭据的是
+/// 迭代器，而它在同一个包里。
+struct RawSearchResult {
+  data : @schema.SearchResultData
+  result : SearchResult
+} derive(Debug)
+
+///|
+/// 与 `Client::search` 同一条路径，只是把原始 `SearchResultData` 一并带回来。
+/// 编排逻辑只有一份，见 `search_call`。包内可见，调用方是 `SearchIterator`。
+async fn Client::search_raw(
+  self : Client,
+  option : SearchOption,
+) -> RawSearchResult raise ClientError {
+  let response = self.search_call(option)
+  let data = response.results.unwrap()
+  { data, result: decode_search_results(data), }
 }
 
 ///|

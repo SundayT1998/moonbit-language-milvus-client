@@ -420,6 +420,8 @@ message SearchResults {
   common.Status status = 1;
   schema.SearchResultData results = 2;
   string collection_name = 3;
+  // 迭代器会话的混合时间戳；服务端用它把翻页钉在同一个快照上。
+  // 上游注释：`for session-like operation like iterator`。
   uint64 session_ts = 4;
 }
 

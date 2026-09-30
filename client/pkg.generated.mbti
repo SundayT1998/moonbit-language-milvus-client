@@ -69,6 +69,20 @@ pub let has_partition_path : String
 
 pub let insert_path : String
 
+pub let iterator_batch_size_key : String
+
+pub let iterator_collection_id_key : String
+
+pub let iterator_key : String
+
+pub let iterator_search_id_key : String
+
+pub let iterator_search_last_bound_key : String
+
+pub let iterator_search_v2_key : String
+
+pub let iterator_unlimited : Int64
+
 pub let load_collection_path : String
 
 pub let load_partitions_path : String
@@ -107,11 +121,15 @@ pub fn new_load_collection_option(String) -> LoadCollectionOption
 
 pub fn new_load_partitions_option(String, Array[String]) -> LoadPartitionsOption
 
+pub fn new_query_iterator_option(String) -> QueryIteratorOption
+
 pub fn new_query_option(String) -> QueryOption
 
 pub fn new_release_collection_option(String) -> ReleaseCollectionOption
 
 pub fn new_release_partitions_option(String, Array[String]) -> ReleasePartitionsOption
+
+pub fn new_search_iterator_option(String, Int, Array[@column.ColumnValue]) -> SearchIteratorOption
 
 pub fn new_search_option(String, Int, Array[@column.ColumnValue]) -> SearchOption
 
@@ -174,6 +192,18 @@ pub fn ClientError::is_transport(Self) -> Bool
 pub fn ClientError::server_error(Self) -> @errors.MerError?
 pub impl Show for ClientError
 
+pub(all) suberror IteratorError {
+  EndOfIterator
+  Closed
+  Setup(String)
+  Rpc(Bool, Bool, String)
+} derive(@debug.Debug)
+pub fn IteratorError::is_closed(Self) -> Bool
+pub fn IteratorError::is_end_of_iterator(Self) -> Bool
+pub fn IteratorError::is_retryable(Self) -> Bool
+pub fn IteratorError::is_transport_failure(Self) -> Bool
+pub impl Show for IteratorError
+
 // Types and methods
 pub struct Client {
   config : @transport.Config
@@ -201,9 +231,11 @@ pub async fn Client::load_collection(Self, LoadCollectionOption) -> LoadTask rai
 pub async fn Client::load_partitions(Self, LoadPartitionsOption) -> LoadTask raise ClientError
 pub fn Client::new(@transport.Config, async (String, Bytes) -> Bytes raise @transport.RpcError) -> Self
 pub async fn Client::query(Self, QueryOption) -> QueryResult raise ClientError
+pub async fn Client::query_iterator(Self, QueryIteratorOption) -> QueryIterator raise IteratorError
 pub async fn Client::release_collection(Self, ReleaseCollectionOption) -> Unit raise ClientError
 pub async fn Client::release_partitions(Self, ReleasePartitionsOption) -> Unit raise ClientError
 pub async fn Client::search(Self, SearchOption) -> SearchResult raise ClientError
+pub async fn Client::search_iterator(Self, SearchIteratorOption) -> SearchIterator raise IteratorError
 pub async fn Client::upsert(Self, WriteOption) -> MutationResult raise ClientError
 
 pub(all) struct CollectionDescription {
@@ -350,6 +382,8 @@ pub(all) struct HasPartitionOption {
   partition_name : String
 }
 
+type IteratorKey derive(@debug.Debug)
+
 pub(all) struct ListCollectionsOption {
   show_loaded : Bool
 }
@@ -424,6 +458,33 @@ pub(all) struct MutationResult {
 } derive(@debug.Debug)
 pub fn MutationResult::has_ids(Self) -> Bool
 
+type QueryCursor derive(@debug.Debug)
+
+type QueryCursorKind derive(Eq, @debug.Debug)
+
+pub struct QueryIterator {
+  // private fields
+}
+pub fn QueryIterator::close(Self) -> Unit
+pub fn QueryIterator::is_closed(Self) -> Bool
+pub async fn QueryIterator::next(Self) -> QueryResult raise IteratorError
+
+pub(all) struct QueryIteratorOption {
+  collection_name : String
+  partition_names : Array[String]
+  expr : String
+  output_fields : Array[String]
+  batch_size : Int
+  limit : Int64
+  consistency_level : ConsistencyLevel?
+} derive(@debug.Debug)
+pub fn QueryIteratorOption::with_batch_size(Self, Int) -> Self
+pub fn QueryIteratorOption::with_consistency_level(Self, ConsistencyLevel) -> Self
+pub fn QueryIteratorOption::with_filter(Self, String) -> Self
+pub fn QueryIteratorOption::with_limit(Self, Int64) -> Self
+pub fn QueryIteratorOption::with_output_fields(Self, Array[String]) -> Self
+pub fn QueryIteratorOption::with_partitions(Self, Array[String]) -> Self
+
 pub(all) struct QueryOption {
   collection_name : String
   partition_names : Array[String]
@@ -450,6 +511,8 @@ pub fn QueryResult::column(Self, String) -> @column.Column?
 pub fn QueryResult::has_column(Self, String) -> Bool
 pub fn QueryResult::len(Self) -> Int
 
+type RawSearchResult derive(@debug.Debug)
+
 pub(all) struct ReleaseCollectionOption {
   collection_name : String
 }
@@ -459,12 +522,37 @@ pub(all) struct ReleasePartitionsOption {
   partition_names : Array[String]
 }
 
+type SearchCursor derive(@debug.Debug)
+
 pub(all) struct SearchHit {
   id : String
   string_id : Bool
   score : Float
   fields : Map[String, @column.ColumnValue]
 } derive(@debug.Debug)
+
+pub struct SearchIterator {
+  // private fields
+}
+pub async fn SearchIterator::close(Self) -> Bool
+pub fn SearchIterator::is_closed(Self) -> Bool
+pub async fn SearchIterator::next(Self) -> SearchResult raise IteratorError
+
+pub(all) struct SearchIteratorOption {
+  base : SearchOption
+  batch_size : Int
+  limit : Int64
+}
+pub fn SearchIteratorOption::with_anns_field(Self, String) -> Self
+pub fn SearchIteratorOption::with_batch_size(Self, Int) -> Self
+pub fn SearchIteratorOption::with_consistency_level(Self, ConsistencyLevel) -> Self
+pub fn SearchIteratorOption::with_filter(Self, String) -> Self
+pub fn SearchIteratorOption::with_ignore_growing(Self, ignore_growing? : Bool) -> Self
+pub fn SearchIteratorOption::with_limit(Self, Int64) -> Self
+pub fn SearchIteratorOption::with_metric_type(Self, @index.MetricType) -> Self
+pub fn SearchIteratorOption::with_output_fields(Self, Array[String]) -> Self
+pub fn SearchIteratorOption::with_partitions(Self, Array[String]) -> Self
+pub fn SearchIteratorOption::with_search_param(Self, String, String) -> Self
 
 pub(all) struct SearchOption {
   collection_name : String

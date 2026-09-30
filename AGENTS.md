@@ -270,6 +270,10 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - 状态枚举都保留生成物的 `Unknown` 岔路：`CollectionLoadState::Unknown` /
   `@index.IndexState::Unknown`。别把它们并进 `NotLoad` / `None`，那会把
   「没见过的状态」当成「什么都没发生」，然后无限等下去。
+- `limit` 不预置，与上游 `NewQueryOption` 一致：不传就是服务端默认上限。
+  想断言确定行数必须显式 `with_limit`。
+- 写集成断言时别拿主键当行号：`auto_id` 发的是 Snowflake ID（18 位量级），
+  `id >= 5` 这类条件等于全表通过。要按内容筛就用自己写的字段。
 - `query` 的列名来自 `FieldData.field_name`。服务端在返回**全部字段**时
   （`with_output_fields(["*"])`，或调用方一个 `output_fields` 都没给）不填
   `field_name`，只有 `field_id`。这时客户端的 `output_fields` 会被逐个切掉、
@@ -281,6 +285,28 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   不只是测试依赖），取消翻成 `Code::Cancelled` 的 `Transport` 错误。
 - `has_partition` 用真 `HasPartition` RPC（`BoolResponse`），
   `has_collection` 用 `DescribeCollection`——两处不同是上游的选择，别顺手统一。
+
+### 迭代器（`client/iterator.mbt`，对应上游 `iterator.go` / `iterator_option.go`）
+
+- `QueryIterator` 是**客户端侧**游标：`DescribeCollection` 拿主键，之后每批
+  把 `pk > last` 拼进 `expr` 往后挪。要求主键是 `Int64` / `VarChar`，
+  否则建立时就报 `IteratorError::Setup`。
+- `SearchIterator` 是**服务端侧** v2 游标：翻页凭据（`search_iter_id` /
+  `search_iter_last_bound`）在响应 `SearchResultData.search_iterator_v2_results`
+  上，跟命中一起回来。所以取数与挪游标在 `SearchIterator::fetch` 里一趟做完
+  —— 分开做中间会有凭据是旧的窗口。
+- 搜索迭代器的响应要拿整个 `SearchResultData`，`SearchResult` 装不下凭据，
+  所以 `Client::search_call` 是共用的编排（校验 / 占位符 / 七个键 / status），
+  `search` 与 `search_raw` 都从它过。改 `search_params` 的键集合只改这一处。
+- 收尾走 `Client::cancel_search`：`nq = 0` + `search_input = NotSet`。
+  走不了 `Client::search`，那条路要求至少一个查询向量、会用占位符填
+  `search_input`。
+- `SearchIterator` 走到末尾会自己发一次收尾请求。服务端侧游标不会自己过期，
+  「不泄漏服务端资源」是 #18 的验收标准之一。
+- 两处与上游刻意的差异，写在 `iterator.mbt` 文件头：nq 恒为 1（多给报错）、
+  `limit` 不跨批截断（上游 `SearchIterator` 会切短）。改之前先读那段注释。
+- 游标状态（`last` / `cursor` / `remaining`）在 `pub struct` 里标了 `priv`，
+  外部只能通过 `next` / `close` / `is_closed` 操作。
 
 `entity/` 的 float16 写侧（`float16_from_float` / `float16_vector_bytes`）与
 `column/float16.mbt` 的读侧是一对，逐位对齐 IEEE-754 binary16。
