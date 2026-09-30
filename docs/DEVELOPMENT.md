@@ -5,9 +5,108 @@
 谁在哪个任务里做的、当初评估了哪几条路，属于项目内部记忆，落在这里。
 
 任务与讨论的原始记录在仓库的 Issue / PR 里。**写完就地归档，不要往 Issue 里
-回贴总结** —— Issue 是对话现场，不是档案室。结论沉淀到本文件或 `AGENTS.md`。
+回贴总结** —— Issue 是对话现场，不是档案室。结论沉淀到本文件或 `AGENTS.md`；
+**还没做、打算做的事在 [`ROADMAP.mbt.md`](../ROADMAP.mbt.md)**，那份文件是
+唯一的排期入口，不在这里维护第二份。
+
+`docs/项目申报书.md` 是参赛用的申报材料，不属于上面这套文档分工 ——
+它有成文的格式要求，只在申报节点更新。
+
+## 开发流程
+
+日常就一条命令：
+
+```sh
+moon check --target all && moon test --target all
+```
+
+改了 `proto/trimmed/*.proto` 才需要重新生成，需 `protoc`：
+
+```sh
+proto/tools/gen.sh trimmed
+```
+
+生成物在 `proto/milvus/proto/`，**已入版本库**；也不要手改，改动请在 `.proto`
+或 `gen.sh` 里做，然后重新生成、把生成的 diff 一起提交。CI 每次都会重跑一遍
+生成并 `git diff --exit-code`：生成物与 `.proto` 对不上时会直接红，不会悄悄漂走。
+
+`moon fmt` 与 `moon info` 不应留下额外 diff：`.mbti` 变了说明对外接口变了，
+值得在 PR 里说明。
+
+改代码走 PR，别直接推 `main`。文档分工见 `AGENTS.md` 的「文档归属」：
+README 面向使用者；本文件放过程与归档；`ROADMAP.mbt.md` 放已规划未实现的能力；
+Issue / PR 是对话现场，不是档案室。
+
+### 连真实 Milvus 跑集成测试
+
+单测用假传输跑，不碰网络；要验「协议编排在真服务端上成立」，用容器起一个
+官方 Milvus，再跑 `cmd/integration`：
+
+```sh
+scripts/milvus-start.sh          # 起 milvusdb/milvus:v3.0.2 的 standalone 容器
+moon run --target native cmd/integration -- 127.0.0.1:19530
+scripts/milvus-stop.sh           # 停掉并删除容器
+```
+
+`cmd/integration` 走完整门面：建集合 → 写入 10 行 → 建索引 → 加载集合 →
+检索（最近邻应当是自己）→ 按表达式查询 → 删集合，任一步不符就非 0 退出。
+CI 里同样三步一循环，收尾放在「成功失败都执行」的位置，容器不会漏在 runner 上。
+参数（镜像 / 容器名 / 端口 / 等待秒数）都能用环境变量覆盖，
+`scripts/milvus-start.sh` 头部有清单。
+
+这里的前三步顺序是 Milvus 的硬要求，写检索流程时照抄：
+
+```text
+create_collection → create_index → load_collection →（轮询到 Loaded）→ search / query
+```
+
+- 不建索引就 `load_collection`：服务端回 `index not found`。
+- 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
+- `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要么
+  `LoadTask::wait` 等进度到 100%，要么轮询 `get_load_state` 到 `Loaded`；
+  直接接着检索会偶发失败。
+- `Query` 的 `limit` 不预置，交给服务端默认；要确定行数就显式
+  `with_limit(n)`。另外别拿主键当行号筛数据：`auto_id` 发的是 Snowflake ID，
+  `id >= 5` 在 18 位的主键上等于全表通过。
+- `Query` 必须逐点名 `output_fields`（如 `["id", "title"]`）。服务端在返回
+  **全部字段**时（`["*"]`，或一个 `output_fields` 都不给）不填
+  `FieldData.field_name`，只给 `field_id`：列名会全空，按名取列取不到，
+  行数也会读成 0，症状看起来像「过滤条件没生效、全量返回」。
+
+自检用 `new_flat_index(L2)`：10 行的集合上暴力检索就是最优解，也不用等索引构建。
+
+embedded etcd 的配置文件用 `docker cp` 送进容器（`create` → `cp` → `start`），
+不挂单文件卷：CI 的 docker daemon 跑在 dind 容器里，看不到本任务 `/tmp` 下的文件，
+挂载源不可达时 docker 会把目标路径建成空目录，Milvus 读到目录会直接 segfault。
+写新脚本时按同样方式处理配置文件。
+
+### 上游同步策略
+
+上游 `client/` 是持续演进的活跃代码，本移植是它在一个时间点上的快照。
+同步策略是**手动评估、不自动合并**：
+
+1. 定期（或按需）比对上游 `client/` 自基线 commit 以来的改动；
+2. 对每处改动判断是否影响已移植的包（`entity` / `index` / `errors` / …）；
+   **按语义判断，不按目录名机械对照**——MoonBit 侧的分包与上游并非一一对应；
+3. 受影响则在对应包内手动回移，并在 PR 中注明对齐的上游 commit；
+4. 需要推进基线时，同步更新 `README.mbt.md` 的「来源与许可」、
+   `proto/upstream/PROVENANCE.md` 与 `AGENTS.md`。
+
+不做自动同步的理由：上游一次目录级的机械同步会带来大量无法 review 的 diff，
+而 MoonBit 侧的包边界本来就是重新划的，「同名目录改了就跟着改」会把上游的
+重构噪音灌进来。宁可少跟几次，也不要把不可 review 的 diff 混进历史。
+
+### 生成 proto 代码
+
+```sh
+proto/tools/gen.sh trimmed   # P0 + 索引 RPC 的裁剪集
+proto/tools/gen.sh upstream  # 全量上游 proto（预期失败，见 proto/REPORT.md）
+```
+
+生成器的支持度探针结论在 `proto/REPORT.md`。
 
 ## 交付范围（P0）
+
 
 一条完整的读写链路，拆成下面几块。
 
@@ -48,65 +147,6 @@
 
 改 `moon.mod` 的 `version` 之后再触发；版本号不动，registry 会拒绝重复发布。
 
-## 开发流程
-
-本地等价命令：
-
-```sh
-moon check --target all && moon test --target all
-```
-
-约定（README「贡献」一节只留摘要，这里是完整版）：
-
-- 改代码走 PR，别直接推 `main`。
-- 提交前跑上面的命令；`moon fmt` 与 `moon info` 不应留下额外 diff。
-  `.mbti` 变了说明对外接口变了，值得在 PR 里说明。
-- `proto/milvus/proto/` 是生成物，不手改。改 `.proto` 或 `proto/tools/gen.sh`
-  后重新生成，把生成的 diff 一起提交。CI 每次重跑生成并
-  `git diff --exit-code -- proto/milvus/proto`，有 diff 就红。
-- 从上游移植的文件保留来源声明头（Apache-2.0 §4(a)(b) 的要求）。
-
-文档分工见 `AGENTS.md` 的「文档归属」：README 面向使用者；本文件放过程与归档；
-`ROADMAP.mbt.md` 放已规划未实现的能力；Issue / PR 是对话现场，不是档案室。
-
-## 集成测试（连真实 Milvus）
-
-单测用假传输跑，不碰网络；要验「协议编排在真服务端上成立」，用容器起一个
-官方 Milvus，再跑 `cmd/integration`：
-
-```sh
-scripts/milvus-start.sh          # 起 milvusdb/milvus:v3.0.2 的 standalone 容器
-moon run --target native cmd/integration -- 127.0.0.1:19530
-scripts/milvus-stop.sh           # 停掉并删除容器
-```
-
-`cmd/integration` 走完整门面：建集合 → 写入 10 行 → 建索引 → 加载集合 →
-检索（最近邻应当是自己）→ 按表达式查询 → 删集合，任一步不符就非 0 退出。
-CI 里同样三步一循环，收尾放在「成功失败都执行」的位置，容器不会漏在 runner 上。
-参数（镜像 / 容器名 / 端口 / 等待秒数）都能用环境变量覆盖，
-`scripts/milvus-start.sh` 头部有清单。
-
-这里的前三步顺序是 Milvus 的硬要求，写检索流程时照抄：
-
-```text
-create_collection → create_index → load_collection →（轮询到 Loaded）→ search / query
-```
-
-- 不建索引就 `load_collection`：服务端回 `index not found`。
-- 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
-- `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要么
-  `LoadTask::wait` 等进度到 100%，要么轮询 `get_load_state` 到 `Loaded`；
-  直接接着检索会偶发失败。
-- `Query` 的 `limit` 不预置，交给服务端默认；要确定行数就显式 `with_limit(n)`。
-  另外别拿主键当行号筛数据：`auto_id` 发的是 Snowflake ID，`id >= 5` 在 18 位
-  的主键上等于全表通过。
-- `Query` 必须逐点名 `output_fields`（如 `["id", "title"]`）。服务端在返回
-  **全部字段**时（`["*"]`，或一个 `output_fields` 都不给）不填
-  `FieldData.field_name`，只给 `field_id`：列名会全空，按名取列取不到，
-  行数也会读成 0，症状看起来像「过滤条件没生效、全量返回」。
-
-自检用 `new_flat_index(L2)`：10 行的集合上暴力检索就是最优解，也不用等索引构建。
-
 ## 归档：几处被推翻或需要特别注意的选择
 
 ### 生成物为什么入库
@@ -140,20 +180,6 @@ embedded etcd 的两份配置用 `docker cp` 送进容器，不挂单文件卷�
 `services: - docker` 是 dind，daemon 在另一个容器里，看不到本任务 `/tmp` 下的文件，
 挂载源不可达时 docker 会把目标路径建成空目录，Milvus 读到目录直接 SIGSEGV。
 详见 `AGENTS.md`。
-
-### 上游同步策略为什么没有自动化
-
-上游 `milvus-io/milvus` 的 `client/` 是活跃代码，本移植是快照。不做自动同步，
-只做**手动评估**：比对上游自基线 commit 以来的改动 → 按语义判断是否落在已移植的
-包里（MoonBit 侧分包与上游并非一一对应，不能按目录名机械对照）→ 受影响则手动
-回移，PR 注明对齐的上游 commit。
-
-不做「机械等价」的目录级同步，是因为两边分包不同：上游一个文件里的东西在
-MoonBit 侧可能散在 `entity` / `column` / `client` 好几个包里，目录对不上号。
-自动合并只会制造看起来对齐、实际错位的 diff。
-
-需要推进基线时，同步更新 README「来源与许可」、`proto/upstream/PROVENANCE.md`
-与 `AGENTS.md` 三处。
 
 ### README 的章节结构为什么照通用流程排
 

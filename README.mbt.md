@@ -29,6 +29,34 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 暂时没做、但已列进规划的（row-based API、schema 缓存等）见
 [`ROADMAP.mbt.md`](./ROADMAP.mbt.md)。
 
+## 能力边界
+
+覆盖的是一条完整读写链路，按依赖方向排。更细的覆盖范围（各包支持哪些列类型、
+哪些枚举、哪些边界）在下面的小节里。
+
+- **集合生命周期** —— 创建 / 描述 / 是否存在 / 列出 / 删除，Option 构造函数名
+  与默认值对齐上游。
+- **数据面** —— insert / upsert / delete。
+- **检索面** —— search / query。
+- **索引与分区** —— 索引的创建 / 描述 / 删除（`@index` 提供参数 builder）；
+  分区（创建 / 删除 / 是否存在 / 列出）。
+- **加载与数据生命周期** —— `LoadCollection` / `ReleaseCollection` /
+  `LoadPartitions` / `ReleasePartitions` / `GetLoadState`）；刷盘（`Flush` /
+  `GetFlushState`）。加载与刷盘返回**可等待**的任务，轮询语义与上游一致
+  （默认 200ms 间隔）。
+- **大结果集翻页** —— `QueryIterator`（客户端侧主键游标）与 `SearchIterator`
+  （服务端侧 v2 游标）。
+
+**只交付 column-based 一路**：写入用 `WriteColumn` 承接 `@column.ColumnValue`，
+回读用 `@column.Column`。row-based API 在
+[`ROADMAP.mbt.md`](./ROADMAP.mbt.md) 里排期，不是「不打算做」。
+
+`CreateCollection` 不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路是
+「一步到位」的便利，本移植把它拆成显式调用。**顺序不能倒**：
+`create_collection` → `create_index` → `load_collection`（轮询到 `Loaded`）
+→ `search` / `query`，完整链路见下面「快速上手」。Milvus 拒绝加载没有索引的
+集合，也拒绝对未加载的集合检索；加载是异步的，`load_collection` 返回不代表就绪。
+
 ## 安装
 
 要求 MoonBit 工具链 **0.10.14 或更高**（`moon version --all` 查看）：
@@ -72,6 +100,8 @@ proto/tools/gen.sh trimmed
 | `transport/native` | 真连 socket 的 Channel 实现 —— native 专属 |
 | `client` | Client 门面与核心 RPC 编排：collection / partition / load / flush / insert / upsert / delete / search / query / 迭代器 |
 | `client/native` | 把 `client` 的 unary 调用接到真实连接上 —— native 专属 |
+
+迭代器在 `client/iterator.mbt`，与 `client` 同包。
 
 目标平台：`client` / `entity` / `index` / `column` / `errors` / `transport`
 在四个后端下都编得过；真连 socket 的 `client/native` + `transport/native`
@@ -199,29 +229,6 @@ match ... {
 ///|
 let client = @milvus_client.new_client(cfg, my_unary)
 ```
-
-## 能力边界
-
-覆盖的是一条完整读写链路，按依赖方向排：
-
-- **集合生命周期** —— 创建 / 描述 / 是否存在 / 列出 / 删除，Option 构造函数名
-  与默认值对齐上游。
-- **数据面** —— insert / upsert / delete。
-- **检索面** —— search / query。
-- **索引与分区** —— 索引的创建 / 描述 / 删除（`@index` 提供参数 builder）；
-  分区（创建 / 删除 / 是否存在 / 列出）。
-- **加载与数据生命周期** —— `LoadCollection` / `ReleaseCollection` /
-  `LoadPartitions` / `ReleasePartitions` / `GetLoadState`）；刷盘（`Flush` /
-  `GetFlushState`）。加载与刷盘返回**可等待**的任务，轮询语义与上游一致
-  （默认 200ms 间隔）。
-- **大结果集翻页** —— `QueryIterator`（客户端侧主键游标）与 `SearchIterator`
-  （服务端侧 v2 游标）。
-
-目前只覆盖 column-based 一路；row-based API 在
-[`ROADMAP.mbt.md`](./ROADMAP.mbt.md) 里，不是「不打算做」。
-
-`CreateCollection` 不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路是
-「一步到位」的便利，本移植把它拆成显式调用，顺序见上节快速上手。
 
 ### entity：schema 与数值转换
 
