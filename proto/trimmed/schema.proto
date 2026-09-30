@@ -309,6 +309,16 @@ enum ShardState {
 // 逐条照抄 proto/upstream/schema.proto 的对应字段，只保留本移植需要的部分。
 // 字段号一律不动；裁剪掉的字段号原样保留空档。
 
+// ---- 检索迭代器（SearchIterator）所需的 SearchResultData（#18）----
+// 上游 `schema.SearchResultData.search_iterator_v2_results = 11`，
+// 是 SearchIterator V2 的翻页凭据：上一批的 token 与最后一条命中的
+// 距离下界。带着它去问下一批，服务端才知道从哪继续。
+
+message SearchIteratorV2Results {
+  string token = 1;
+  float last_bound = 2;
+}
+
 message SearchResultData {
   int64 num_queries = 1;
   int64 top_k = 2;
@@ -320,6 +330,7 @@ message SearchResultData {
   FieldData group_by_field_value = 8;
   int64 all_search_count = 9;
   repeated float distances = 10;
+  SearchIteratorV2Results search_iterator_v2_results = 11;
   repeated float recalls = 12;
   string primary_field_name = 13;
   LongArray element_indices = 15;

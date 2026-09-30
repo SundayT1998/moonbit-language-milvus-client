@@ -262,3 +262,35 @@ null 行（紧凑与行满两种布局）、行区间切片、`valid_data` 双�
 `FloatVector` / `BinaryVector` / `Float16Vector` / `BFloat16Vector` /
 `Int8Vector` / `SparseFloatVector`、向量 payload 类型不符、动态字段 JSON
 字符串与 UTF-8 校验、`Array` 列、读错类型、不支持的字段类型。
+
+## 12. 追加：迭代器的续页凭据纳入裁剪集（#18）
+
+`#18` 要 `SearchIterator`，它靠 `schema.SearchResultData` 上的
+`search_iterator_v2_results`（token + last_bound）翻下一页，裁剪集因此扩
+2 个 message：
+
+| 文件 | 新增 |
+|---|---|
+| `trimmed/schema.proto` | `SearchIteratorV2Results`，并补回 `SearchResultData.search_iterator_v2_results = 11` |
+| `trimmed/milvus.proto` | 注释补全 `SearchResults.session_ts = 4` |
+
+两条都不带 `optional`、也不含 `repeated bytes`，绕开第 4 节的 Bug #1 与
+Bug #2。`SearchRequest` / `QueryRequest` 本身不用动：迭代器的开关与凭据
+全在 `search_params` / `query_params` 这两个 `repeated KeyValuePair` 里。
+
+### 结果
+
+```
+moon check --target all  ->  0 error
+moon test  --target all  ->  193 passed（wasm / js），四目标全绿
+```
+
+新增 20 条迭代器测试，覆盖：连翻三批与收尾、`expr` 与主键游标的拼接
+（Int64 / VarChar 两种）、上限到了不再发请求、上限不跨批截断、批大小非正、
+主键不可排序、服务端没回主键列、`Close` 之后报 `Closed`、传输失败抬成 `Rpc`、
+服务端不支持 V2、收尾请求的内容（`nq = 0` / `NotSet` / 带 token）、
+收尾请求失败返回 `false`、空结果第一批即收尾。
+
+注：`trimmed/schema.proto` 的字段号一律照抄 `proto/upstream/schema.proto`；
+上一节里「裁剪掉的字段号原样保留空档」这条对 `SearchResultData` 依然成立 ——
+`search_iterator_v2_results = 11` 是补**回来**，不是新编号。
