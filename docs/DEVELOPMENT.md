@@ -1,7 +1,7 @@
 # 开发记录
 
-这份文档放**不该进 README 的东西**：任务分解、验收标准、以及过程中被推翻的
-方案与理由。README 面向使用者，只讲「怎么用」和「为什么这么设计」；
+这份文档放**不该进 README 的东西**：任务分解、验收标准、调用方会踩到的实现
+约定，以及过程中被推翻的方案与理由。README 面向使用者，只讲「怎么用」；
 谁在哪个任务里做的、当初评估了哪几条路，属于项目内部记忆，落在这里。
 
 任务与讨论的原始记录在仓库的 Issue / PR 里。**写完就地归档，不要往 Issue 里
@@ -147,6 +147,93 @@ proto/tools/gen.sh upstream  # 全量上游 proto（预期失败，见 proto/REP
 
 改 `moon.mod` 的 `version` 之后再触发；版本号不动，registry 会拒绝重复发布。
 
+
+## 调用方需要知道的约定
+
+这些原先写在 README 里，属于「用起来会踩到」的层面，但按文档分工不该待在
+README。写代码和查问题时从这里找。
+
+### `query` 的列名
+
+`Query` 结果的列名来自 `FieldData.field_name`。服务端在返回**全部字段**时
+（`with_output_fields(["*"])`，或一个 `output_fields` 都不给）不填
+`field_name`，只给 `field_id`。这时客户端的 `output_fields` 会被逐个切掉、
+列名全空：`QueryResult::len` 读 `columns[0]` 得 0，`column(name)` 也取不到，
+症状看着像「过滤条件被忽略、全量返回」。
+
+契约是：要看列名就必须在 `output_fields` 里逐点名，别用 `*`，也别留空。
+
+`limit` 不预置，不传就是服务端默认上限，要断言确定行数得显式 `with_limit`。
+写集成断言时别拿主键当行号：`auto_id` 发的是 Snowflake ID（18 位量级），
+`id >= 5` 这类条件等于全表通过。
+
+### 错误分流
+
+传输失败与服务端拒绝是两个不同的 `ClientError` 分支：`Transport` 可以原样
+重试，`Server` 要看 `@errors.is_retryable_err`（只看服务端下发的 `retriable`，
+不做本地猜测）。判断某次失败是不是超时用 `is_deadline_exceeded`。
+
+### 读取与写入的类型约定
+
+- `column` 读错类型报 `ColumnError::DataTypeNotMatch`，null 行报 `NullValue`，
+  不做隐式转换。窄整数按位宽有符号收窄：服务端把 `Int8` 放在 `int32` 数组里，
+  `0xFF` 读成 -1。
+- 可空列两种布局都认：`valid_data` 与数据等长（行满）或等于有效数（紧凑）。
+  两处有效性位图不一致时报错，不挑一边。
+- 动态字段（JSON）以 JSON 字符串取回，不做路径查询。
+- Binary / Int8 向量列在 `@column.ColumnValue` 里是「逐行一块字节」，
+  行内字节数按 `dim`（binary 按 `dim / 8`）校验。
+- `WriteColumn` 不支持 `Array` 列：元素的 `DataType` 没法从值本身推出来，
+  要写数组字段得先补一个带元素类型的列类型。
+
+### 索引参数
+
+`index` 包的参数 builder 与上游 Go SDK 的 `client/index` 对齐：键名、默认值、
+枚举字面量逐条一致，非法组合在构造期报错（如
+`IndexParamError::OutOfRange(key="M", value=1, expected=">= 2")`），
+而不是等一次 RPC 往返。构建器没建模的参数走 `IndexParams::set` 兜底。
+
+### 迭代器的几个点
+
+- 走到末尾报 `IteratorError::EndOfIterator`，不是故障；`is_end_of_iterator`
+  用来把它从 `while` 里放出来。`IteratorError::Closed` 才是「迭代器已经关了」。
+- `SearchIterator::close` 会真的发一次空检索收掉服务端会话（服务端侧游标不会
+  自己过期），翻到末尾时也自动收一次。失败不往上抛。
+- `QueryIterator` 在服务端没有会话，`close` 只是本地标记。
+- `with_limit` 是整体上限，只决定「还发不发下一次请求」，**不跨批截断**：
+  `with_limit(10)` 配 `with_batch_size(100)` 时一次拿到 100 行。上游的
+  `SearchIterator` 会切短超出上限的那一批，本移植统一不切。
+- `SearchIterator` 依赖服务端实现 SearchIterator V2。老服务端不给
+  `search_iterator_v2_results`，`next` 会报 `Setup`（上游这里是
+  `ErrServerVersionIncompatible`）。
+
+### 请求编排
+
+- `search_params` 固定写全 `anns_field` / `topk` / `offset` / `metric_type` /
+  `round_decimal` / `ignore_growing` / `params` 七个键，调用方的
+  `with_search_param` 最后覆盖，与上游的键集合和顺序一致。
+- `has_collection` 走 `DescribeCollection`，把 `CollectionNotExists` 当 `false`
+  而不是失败；`has_partition` 走真 `HasPartition` RPC。两处不同是上游的选择。
+- 未显式设一致性等级时，请求里 `use_default_consistency` 为真、等级填
+  `Bounded`，由服务端决定最终档位。
+- `LoadTask::wait` / `FlushTask::wait` 与上游 `Await` 一致，先等一个间隔再查
+  第一次，间隔默认 200ms。取消会翻成 `Code::Cancelled` 的 `Transport` 错误。
+- 状态枚举都保留 `Unknown` 岔路（`CollectionLoadState::Unknown` /
+  `IndexState::Unknown`）。别把它们并进 `NotLoad` / `None` —— 那会把「没见过的
+  状态」当成「什么都没发生」，然后无限等下去。
+
+### 只在 native 下做的事
+
+- 自检程序连上后发一次 Health/Check，失败以非 0 退出码结束。建连失败、
+  Health/Check 报非超时错误都算失败，调用超时反而算通过 —— 那正是它要验的东西：
+
+  ```sh
+  moon run --target native cmd/main -- 127.0.0.1:19530 root:Milvus default
+  ```
+
+- 上层调用只要给一个 `Unary` 函数值就能跑，所以测试与 wasm 下不需要真连接：
+  `@milvus_client.new_client(cfg, my_unary)`。
+
 ## 归档：几处被推翻或需要特别注意的选择
 
 ### 生成物为什么入库
@@ -183,20 +270,33 @@ embedded etcd 的两份配置用 `docker cp` 送进容器，不挂单文件卷�
 
 ### README 的章节结构为什么照通用流程排
 
-按「标题 → 描述 → 安装 → 使用示例 → 贡献 → 许可证」这条通用顺序组织，
-理由不是形式统一，而是**读者的阅读路径是单向的**：先知道这是什么、能不能解决
-我的问题（标题 / 描述 / 特性），再决定要不要装（安装），装完要一个能跑起来的
-东西（快速上手），跑通了才关心边界和坑（能力边界 / 已知限制），最后才是怎么
-参与和许可证。
+按「标题 → 描述 → 特性与能力边界 → 安装 → 快速上手 → 文档导航 → 贡献 →
+许可证」这条通用顺序组织，理由不是形式统一，而是读者的阅读路径是单向的：
+先知道这是什么、能不能解决我的问题，再决定要不要装，装完要一个能跑起来的东西，
+跑通了才关心边界，最后才是怎么参与和许可证。
 
-踩过的坑：早先 README 是**按包组织**的 —— 每个包一节、每节带完整 API 清单，
-读者要自己把「建集合」「建索引」「加载」从三个小节里拼回来才能跑出第一个例子。
-改成一条打通的快速上手之后，包级细节降级成「能力边界」下的子小节，只留该包
-特有的取舍，不再复述 API 清单。
+踩过的坑有两轮。
 
-配套的两条边界：
+第一轮是**按包组织**：每个包一节、每节带完整 API 清单，读者要自己把「建集合」
+「建索引」「加载」从三个小节里拼回来才能跑出第一个例子。改成一条打通的快速
+上手之后，包级细节降级成「能力边界」下的子小节。
 
-1. **API 清单不进 README。** 快速上手只体现主要 API，写一个能跑的链路即可；
-   逐个函数的签名看 `.mbti` 与包内文档，README 里列全只会烂得更快。
-2. **状态信息不进 README。** 「某任务已交付」这类话会过期；「能力边界」跟着
-   API 走，不跟着任务走，只有 API 真增删才动它。
+第二轮是**子小节又长回去了**：那些「传输层配置与自检 / entity / column /
+index / 迭代器 / request 编排」小节，写的全是实现约定 —— 键集合、默认值、
+构造期校验、状态枚举的岔路。这些是看代码或用出问题时才需要的东西，
+不该占 README 的位置。这一轮把它们整段移出，落点在本文件的「调用方需要知道
+的约定」与 `AGENTS.md` 的各包小节。
+
+配套的几条边界：
+
+1. **特性与能力边界合成一节。** 分两节写就是把同一件事说两遍。
+2. **实现细节不进 README。** 只说「有这个能力」和「用起来有什么不同」，
+   不说它是怎么实现的。
+3. **API 清单不进 README。** 快速上手只体现主要 API，写一个能跑的链路即可；
+   逐个函数的签名看 `.mbti` 与包内文档。
+4. **状态信息不进 README。** 「某任务已交付」这类话会过期；能力清单跟着 API
+   走，不跟着任务走，只有 API 真增删才动它。
+5. **删内容之前先找落点。** 从 README 移走的东西，先确认在 `DEVELOPMENT.md`
+   或 `AGENTS.md` 里有位置，别直接丢。
+
+这些也写进了 `AGENTS.md` 的「文档归属」，免得下次再长回来。

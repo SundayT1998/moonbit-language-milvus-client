@@ -1,7 +1,7 @@
 # 路线图
 
 本文件记**还没做、且打算做**的事。已完成的能力清单在
-[`README.mbt.md`](../README.mbt.md) 的「能力边界」，过程与归档在
+[`README.mbt.md`](../README.mbt.md) 的「特性与能力边界」，过程与归档在
 [`DEVELOPMENT.md`](./DEVELOPMENT.md)。
 
 「暂时没做」和「不打算做」是两回事 —— 前者在这里有位置，后者写进下面
@@ -47,7 +47,7 @@ row-based 的键是运行时字符串，落到 schema 上就是动态字段（`$
 三处需要定，先记下来，动手前先在这里把结论写清楚：
 
 - **是否要 `IsFast()` 快捷路径**。上游 `CreateCollection` 的 `IsFast()` 会
-  顺带建索引并 load。本项目刻意把这三步拆开（见 README「能力边界」），
+  顺带建索引并 load。本项目刻意把这三步拆开（见 README「特性与能力边界」），
   row-based 若要带这个开关，是回到「一步到位」还是同样拆开，要先定。
 - **一行的值类型**。是复用 `column.ColumnValue`（让回读的 `Column` 改个名字
   写回去），还是另造一个更贴近动态语言的枚举。倾向前者，但 `Array` 列的元素
@@ -60,7 +60,7 @@ row-based 的键是运行时字符串，落到 schema 上就是动态字段（`$
 
 - **schema 缓存**：现在不缓存集合 schema，insert / upsert 的 `schema_timestamp`
   留 0，也没有上游那套 schema-mismatch 自动重试。要做就得连缓存一起补，
-  否则重试没有依据。这是 README「已知限制」里明写的一条。
+  否则重试没有依据。README 不再列这条，改由本文件跟踪。
   对齐上游 `client/milvusclient` 的做法：`DescribeCollection` 结果按集合名缓存，
   `schema_timestamp` 带进写请求；服务端报 mismatch 时刷新缓存重试一次。
   这是 P1 row-based 的前置条件，也是「写请求多一次 RPC 往返」的解法。
@@ -75,7 +75,7 @@ row-based 的键是运行时字符串，落到 schema 上就是动态字段（`$
   `GPU_*` 等尚未建模，未建模的参数走 `IndexParams::set` 兜底。
 - **Binary / Int8 向量的 Array 列**：`WriteColumn` 目前不支持 `Array` 列 ——
   元素的 `DataType` 推不出来。补一个带元素类型的列构造器即可，不用等别的。
-- `Unary` 已经是可替换的函数值（见 README「传输层」），但还没有
+- `Unary` 已经是可替换的函数值，但还没有
   HTTP / 自定义协议的参考实现；这是给上层「不想引 gRPC」的场景留的口子。
 
 ## 不做
