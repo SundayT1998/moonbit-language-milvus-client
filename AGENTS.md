@@ -66,3 +66,18 @@ You can browse and install extra skills here:
   scientific computations), prefer assertion tests. You can use
   `moon coverage analyze > uncovered.log` to see which parts of your code are
   not covered by tests.
+
+## Protobuf 生成代码（`proto/`）
+
+`proto/` 下的 MoonBit 代码由 `protoc` + `moonbitlang/protoc-gen-mbt` **自动生成**，
+**不要手工修改**。改了会在下次生成时被覆盖。
+
+- `proto/upstream/` —— 上游 `milvus-io/milvus-proto` 的 `.proto` 只读快照，
+  锚定 commit 见 `proto/upstream/PROVENANCE.md`。同样不手改。
+- `proto/trimmed/` —— 裁剪到 P0 子集的 `.proto`。上游变更时需同步。
+- `proto/gen/` —— 生成产物，**不入版本库**（见 `.gitignore`）。
+- `proto/tools/p0test/` —— 手写的 wire 往返测试模板，生成后由脚本叠加进产物。
+- `proto/tools/gen.sh` —— 一键生成。`gen.sh upstream` 全量，`gen.sh trimmed` P0 集。
+- `proto/REPORT.md` —— 生成器支持度探针报告（含已知缺陷与退路）。
+
+要改生成结果，改 `.proto` 或 `gen.sh` 的参数，然后重新生成。

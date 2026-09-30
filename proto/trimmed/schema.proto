@@ -1,0 +1,205 @@
+syntax = "proto3";
+package milvus.proto.schema;
+option go_package = "github.com/milvus-io/milvus-proto/go-api/v3/schemapb";
+option java_multiple_files = true;
+option java_package = "io.milvus.grpc";
+option java_outer_classname = "SchemaProto";
+option java_generate_equals_and_hash = true;
+option csharp_namespace = "Milvus.Client.Grpc";
+import "common.proto";
+message CollectionSchema {
+  string name = 1;
+  string description = 2;
+  bool autoID = 3 [deprecated=true]; // deprecated later, keep compatible with c++ part now
+  repeated FieldSchema fields = 4;
+  bool enable_dynamic_field = 5; // mark whether this table has the dynamic field function enabled.
+  repeated common.KeyValuePair properties = 6;
+  repeated FunctionSchema functions = 7;
+  string dbName = 8;
+  repeated StructArrayFieldSchema struct_array_fields = 9;
+  int32 version = 10; // The version of current collection schema updates, increment every time the schema content is updating, 
+                      // 0 when the collection is created or the collection schema is updated before 2.6.5.
+                      // the name dbName and description take no effect to it.
+  string external_source = 11;
+  string external_spec = 12;
+  bool do_physical_backfill = 13;
+  repeated int64 file_resource_ids = 14;
+  bool enable_namespace = 15;
+}
+
+message CollectionShardInfo {
+  // The time tick this shard's WAL is truncated up to, 0 if never. Nothing to
+  // do with routing; the truncate API keeps it here.
+  //
+  // Its number is pinned. A separate message that happens to share this one's
+  // name, etcdpb.CollectionShardInfo, holds this field and nothing else in the
+  // collection meta today, and the meta swaps that message for this one at the
+  // same field number -- so records written before the swap must still decode.
+  uint64 last_truncate_time_tick = 1;
+  ShardState state = 2;
+  // The shard's own vchannel, so a consumer can key by it rather than by
+  // position in a parallel virtual_channel_names array. The server fills it in
+  // on load, so it is always set in a response; a tool reading the meta
+  // directly may find it empty on a record older than the field.
+  string vchannel_name = 3;
+  // Which keys this shard owns. Unset means the collection has never been
+  // split, or this shard is a split source, whose predicate the write switch
+  // strips when it fences.
+  //
+  // A oneof with one member, so a second placement scheme has somewhere to
+  // arrive. It would not be additive: a reader built today sees an unknown
+  // variant as unset and takes that for never-split, so whatever makes the two
+  // distinguishable has to arrive with the variant.
+  oneof routing {
+    HashRouting hash_routing = 4;
+  }
+}
+
+message FieldSchema {
+  int64 fieldID = 1;
+  string name = 2;
+  bool is_primary_key = 3;
+  string description = 4;
+  DataType data_type = 5;
+  repeated common.KeyValuePair type_params = 6;
+  repeated common.KeyValuePair index_params = 7;
+  bool autoID = 8;
+  FieldState state = 9; // To keep compatible with older version, the default
+                        // state is `Created`.
+  DataType element_type = 10; // For array type, the element type is stored here
+  ValueField default_value = 11; // default_value only support scalars except array, json, date, time and timestamptz for now
+  bool is_dynamic = 12; // mark whether this field is the dynamic field
+  bool is_partition_key = 13; // enable logic partitions
+  bool is_clustering_key = 14;
+  bool nullable = 15; // enable set null as field value
+  bool is_function_output =16;
+  string external_field = 17; // external field name 
+  // Recursive type definition. When data_type/element_type fields are also populated,
+  // they must describe the same type.
+  TypeSchema type_schema = 18;
+  bool element_nullable = 19; // enable null elements for Array and ArrayOfVector fields
+}
+
+message FunctionSchema {
+  string name = 1;
+  int64 id =2;
+  string description = 3;
+  FunctionType type = 4;
+  repeated string input_field_names = 5;
+  repeated int64 input_field_ids = 6;
+  repeated string output_field_names = 7;
+  repeated int64 output_field_ids = 8;
+  repeated common.KeyValuePair params = 9;
+}
+
+message HashRouting {
+  repeated uint64 buckets = 1;
+}
+
+message StructArrayFieldSchema {
+  int64 fieldID = 1;
+  string name = 2;
+  string description = 3;
+  repeated FieldSchema fields = 4;
+  repeated common.KeyValuePair type_params = 5;
+  bool nullable = 6;
+
+  // TODO: STRUCT type may also need to support Function in the future
+}
+
+message TypeSchema {
+  oneof kind {
+    // Non-container types, such as Int64, VarChar, and FloatVector.
+    DataType leaf_type = 1;
+    // Selecting this member means the current node is an Array; its value
+    // describes the element type.
+    TypeSchema array_element = 2;
+  }
+
+  repeated common.KeyValuePair type_params = 3;
+  bool nullable = 4;
+}
+
+message ValueField {
+  oneof data {
+    bool bool_data = 1;
+    int32 int_data = 2;
+    int64 long_data = 3;
+    float float_data = 4;
+    double double_data = 5;
+    string string_data = 6;
+    bytes bytes_data = 7;
+    int64 timestamptz_data = 8;
+    int32 date_data = 9;
+    int64 time_data = 10;
+  }
+}
+
+enum DataType {
+  None = 0;
+  Bool = 1;
+  Int8 = 2;
+  Int16 = 3;
+  Int32 = 4;
+  Int64 = 5;
+
+  Float = 10;
+  Double = 11;
+
+  String = 20;
+  VarChar = 21; // variable-length strings with a specified maximum length
+  Array = 22;
+  JSON = 23;
+  Geometry = 24;
+  Text = 25;
+  Timestamptz = 26;
+  Mol = 27; // Molecular data type
+  Date = 28;
+  Time = 29;
+  Decimal = 30;
+  UUID = 31;
+
+  BinaryVector = 100;
+  FloatVector = 101;
+  Float16Vector = 102;
+  BFloat16Vector = 103;
+  SparseFloatVector = 104;
+  Int8Vector = 105;
+  ArrayOfVector = 106;
+
+  ArrayOfStruct = 200;  // internal types, not used in user interface
+  Struct = 201;
+}
+
+enum FieldState {
+  FieldCreated = 0;
+  FieldCreating = 1;
+  FieldDropping = 2;
+  FieldDropped = 3;
+}
+
+enum FunctionType{
+  Unknown =0;
+  BM25 =1;
+  TextEmbedding =2;
+  Rerank =3;
+  MinHash =4;
+  MolFingerprint =5;
+}
+
+enum ShardState {
+  // Serving reads and writes, and owning keys. The default, and what every
+  // shard of a collection that has never been split is.
+  ShardNormal = 0;
+  // Split target, created but not yet adopted. Takes writes and owns keys, but
+  // is not serviceable for reads: its reads are served by the source that
+  // fronts it until adoption.
+  ShardCreating = 1;
+  // Split source, fenced. Rejects writes and owns no keys, but still serves
+  // reads, its own and its targets'.
+  ShardSplitting = 2;
+  // Split source, released once its targets are adopted. Serves nothing and
+  // owns no keys; it stays in the vchannel list until a later commit reclaims
+  // it.
+  ShardDropped = 3;
+}
