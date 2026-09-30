@@ -68,6 +68,17 @@ import {
 MOD
 rm -f "$OUT/proto/moon.mod.json"
 
+# 生成器缺陷补丁（见 REPORT.md 第 4 节 Bug #1）：
+# `repeated bytes` 字段的 JSON 编码漏了逐元素 base64，直接写成
+#   @lib.base64_encode(self.<field>).to_json()
+# 而 base64_encode 只收 Bytes，收不下 Array[Bytes]，编译不过。
+# 生成器本身没法改，这里在生成后用 python 逐个字段判定：字段声明是
+# `Array[Bytes]` 才补 `map(@lib.base64_encode)`，`Bytes` 保持原样。
+# 等上游修好后这段可以连同 REPORT.md 的 Bug #1 一起删掉。
+if [ -d "$OUT/proto/src/milvus/proto" ]; then
+  python3 "$ROOT/proto/tools/patch_repeated_bytes.py" "$OUT/proto/src"
+fi
+
 # 探针测试作为源码叠加，避免被重新生成抹掉。
 # p0test  : DescribeCollection 的 wire 往返（#10）
 # indextest: 索引 RPC 的 wire 往返（#16）

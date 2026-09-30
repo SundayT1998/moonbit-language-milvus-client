@@ -163,10 +163,15 @@ pub fn Int8Vector::to_repr(Self) -> @debug.Repr
 pub(all) struct SparseFloatVector {
   indices : Array[UInt]
   values : Array[Float]
-} derive(@debug.Debug)
+} derive(Eq, @debug.Debug)
+#deprecated
+pub fn SparseFloatVector::equal(Self, Self) -> Bool
+pub fn SparseFloatVector::from_bytes(Bytes) -> Self raise SchemaError
 pub fn SparseFloatVector::from_entry(UInt, Float) -> Self
 pub fn SparseFloatVector::inferred_dim(Self) -> Int
 pub fn SparseFloatVector::new(Array[UInt], Array[Float]) -> Self raise SchemaError
+#deprecated
+pub fn SparseFloatVector::not_equal(Self, Self) -> Bool
 pub fn SparseFloatVector::to_bytes(Self) -> Bytes raise SchemaError
 #deprecated
 pub fn SparseFloatVector::to_repr(Self) -> @debug.Repr

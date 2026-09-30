@@ -49,7 +49,7 @@ pub(all) struct Int8Vector {
 pub(all) struct SparseFloatVector {
   indices : Array[UInt]
   values : Array[Float]
-} derive(Debug)
+} derive(Eq, Debug)
 
 ///|
 /// A sparse row from parallel index/value arrays. Both arrays must be the
@@ -173,3 +173,44 @@ pub extend Int8Vector with @debug.Debug::{to_repr}
 ///|
 #deprecated
 pub extend SparseFloatVector with @debug.Debug::{to_repr}
+
+///|
+#deprecated
+pub extend SparseFloatVector with Eq::{not_equal, equal}
+
+///|
+/// The sparse row that a payload written by `SparseFloatVector::to_bytes`
+/// stands for: little-endian uint32 index followed by little-endian float32
+/// value, 8 bytes an entry. Named after the upstream
+/// `entity.DeserializeSliceSparseEmbedding`.
+///
+/// A byte count that is not a multiple of 8, or a NaN value, is rejected the
+/// same way the write side rejects it, so a payload round-trips or fails
+/// loudly at the boundary.
+pub fn SparseFloatVector::from_bytes(
+  bytes : Bytes,
+) -> SparseFloatVector raise SchemaError {
+  if bytes.length() % 8 != 0 {
+    raise SchemaError(
+      "sparse vector payload must be a multiple of 8 bytes, got \{bytes.length()}",
+    )
+  }
+  let indices : Array[UInt] = []
+  let values : Array[Float] = []
+  for i = 0; i * 8 < bytes.length(); i = i + 1 {
+    let base = i * 8
+    let index = bytes[base].to_uint() |
+      (bytes[base + 1].to_uint() << 8) |
+      (bytes[base + 2].to_uint() << 16) |
+      (bytes[base + 3].to_uint() << 24)
+    let bits = bytes[base + 4].to_uint() |
+      (bytes[base + 5].to_uint() << 8) |
+      (bytes[base + 6].to_uint() << 16) |
+      (bytes[base + 7].to_uint() << 24)
+    indices.push(index)
+    values.push(Float::reinterpret_from_uint(bits))
+  }
+  let row = SparseFloatVector::{ indices, values, }
+  row.validate()
+  row
+}
