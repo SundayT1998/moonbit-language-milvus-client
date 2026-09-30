@@ -290,17 +290,24 @@ moon run --target native cmd/integration -- 127.0.0.1:19530
 scripts/milvus-stop.sh           # 停掉并删除容器
 ```
 
-`cmd/integration` 走完整门面：建集合 → 写入 10 行 → 加载集合 → 检索（最近邻
-应当是自己）→ 按表达式查询 → 删集合，任一步不符就非 0 退出。CI 里同样三步一循环，
-收尾放在「成功失败都执行」的位置，容器不会漏在 runner 上。
+`cmd/integration` 走完整门面：建集合 → 写入 10 行 → 建索引 → 加载集合 →
+检索（最近邻应当是自己）→ 按表达式查询 → 删集合，任一步不符就非 0 退出。
+CI 里同样三步一循环，收尾放在「成功失败都执行」的位置，容器不会漏在 runner 上。
 参数（镜像 / 容器名 / 端口 / 等待秒数）都能用环境变量覆盖，
 `scripts/milvus-start.sh` 头部有清单。
 
-「加载集合」这步不能省：Milvus 不会在建表后自动把集合加载进内存，对未加载的集合
-发 `Search` 会直接回 `collection not loaded`。`load_collection` 返回只代表请求被
-受理，数据面就绪是异步的，所以自检会接着轮询 `get_load_state` 到 `Loaded` 才检索。
-自己写检索流程时按同样顺序来：`create_collection` → `load_collection` →
-（轮询）`Loaded` → `search` / `query`。
+这里的前三步顺序是 Milvus 的硬要求，写检索流程时照抄：
+
+```text
+create_collection → create_index → load_collection →（轮询到 Loaded）→ search / query
+```
+
+- 不建索引就 `load_collection`：服务端回 `index not found`。
+- 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
+- `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要轮询
+  `get_load_state` 到 `Loaded`，直接接着检索会偶发失败。
+
+自检用 `new_flat_index(L2)`：10 行的集合上暴力检索就是最优解，也不用等索引构建。
 
 embedded etcd 的配置文件用 `docker cp` 送进容器（`create` → `cp` → `start`），
 不挂单文件卷：CI 的 docker daemon 跑在 dind 容器里，看不到本任务 `/tmp` 下的文件，

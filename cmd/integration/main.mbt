@@ -11,11 +11,12 @@
 // 这个走完整的客户端门面，验的是「协议编排在真服务端上确实成立」。
 // 退出码非 0 即失败，CI 直接看退出码。
 //
-// 本程序只用**已实现**的那部分门面。`client` 目前没有 CreateIndex /
-// DescribeIndex（见 Issue #36），所以这里不带索引，依赖服务端的暴力检索。
-// 但 `LoadCollection` 是必须的：Milvus 不会在建表后自动把集合加载进内存，
-// 对未加载的集合发检索会直接报 `collection not loaded`。等索引那层补上，
-// 再在这里加上建索引一步。
+// 步骤顺序是 Milvus 的硬要求，不能省也不能换：
+//   create_collection → create_index → load_collection（轮询到 Loaded）
+//   → search / query
+// 少一步的报错各不相同：不建索引就 load 会得到 `index not found`
+// （`IndexNotExist`），建了不 load 就检索会得到 `collection not loaded`
+// （`CollectionNotLoaded`）—— 两种都在 #33 的 CI 上真踩过。
 
 ///|
 /// 自检用的集合名与向量维度。固定值，便于失败时人工复现。
@@ -138,20 +139,39 @@ async fn check_steps(client : @client.Client) -> String {
   }
   println("[4] 已写入 \{row_count} 行，计数与主键已确认")
 
-  // 5. 加载集合。检索的前置条件：不加载的话服务端会回
+  // 5. 建索引。必须在加载之前：Milvus 对没有索引的集合拒绝加载，
+  //    报 `index not found`。这里用 FLAT 而不是 HNSW/IVF —— 10 行的
+  //    自检集合上暴力检索就是最优解，也不需要等索引构建。
+  let index = @index.new_flat_index(@index.MetricType::L2)
+  client.create_index(
+    @client.new_create_index_option(collection, "vector", index),
+  ) catch {
+    err => return step_failed("5", "建索引失败：" + err.to_string())
+  }
+  let descriptions = client.describe_index(
+    @client.new_describe_index_option(collection),
+  ) catch {
+    err => return step_failed("5", "查索引失败：" + err.to_string())
+  }
+  if descriptions.length() == 0 {
+    return step_failed("5", "建完索引但 DescribeIndex 返回空")
+  }
+  println("[5] 向量字段已建 FLAT 索引")
+
+  // 6. 加载集合。检索的前置条件：不加载的话服务端会回
   //    `collection not loaded`（错误码 `CollectionNotLoaded`）。
   //    LoadCollection 返回只代表请求被受理，数据面未必就绪，所以要
   //    轮询 get_load_state 直到 Loaded —— 直接接着检索会偶发失败。
   client.load_collection(@client.new_load_collection_option(collection)) catch {
-    err => return step_failed("5", "加载集合失败：" + err.to_string())
+    err => return step_failed("6", "加载集合失败：" + err.to_string())
   }
   match wait_loaded(client) {
     Ok(_) => ()
-    Err(err) => return step_failed("5", err)
+    Err(err) => return step_failed("6", err)
   }
-  println("[5] 集合已加载")
+  println("[6] 集合已加载")
 
-  // 6. 检索：拿最后一行的向量当查询，L2 距离最近的一定是它自己。
+  // 7. 检索：拿最后一行的向量当查询，L2 距离最近的一定是它自己。
   let query_vector = vectors[row_count - 1]
   let searched = client.search(
     @client.new_search_option(collection, 3, [
@@ -161,14 +181,14 @@ async fn check_steps(client : @client.Client) -> String {
     .with_metric_type(@index.MetricType::L2)
     .with_output_fields(["title"]),
   ) catch {
-    err => return step_failed("6", "检索失败：" + err.to_string())
+    err => return step_failed("7", "检索失败：" + err.to_string())
   }
   if searched.hits.length() == 0 {
-    return step_failed("6", "检索没有命中")
+    return step_failed("7", "检索没有命中")
   }
   let first = searched.hits[0]
   if first.score > 1.0e-3 {
-    return step_failed("6", "自距离不为 0：score=\{first.score}")
+    return step_failed("7", "自距离不为 0：score=\{first.score}")
   }
   let self_title = match first.fields.get("title") {
     Some(@column.ColumnValue::VarChar(v)) =>
@@ -188,41 +208,41 @@ async fn check_steps(client : @client.Client) -> String {
   let expected_title = "row-" + (row_count - 1).to_string()
   if self_title != expected_title {
     return step_failed(
-      "6",
+      "7",
       "最近邻的 title 不符：期望 \{expected_title}，实际 \{self_title}",
     )
   }
   println(
-    "[6] 检索命中 top1 title=" +
+    "[7] 检索命中 top1 title=" +
     self_title +
     " score=" +
     first.score.to_string(),
   )
 
-  // 7. 查询：按表达式取两列，验回读的解码路径。
+  // 8. 查询：按表达式取两列，验回读的解码路径。
   let queried = client.query(
     @client.new_query_option(collection)
     .with_filter("id >= 5")
     .with_output_fields(["id", "title"]),
   ) catch {
-    err => return step_failed("7", "查询失败：" + err.to_string())
+    err => return step_failed("8", "查询失败：" + err.to_string())
   }
   if queried.len() != 5 {
     return step_failed(
-      "7",
+      "8",
       "查询行数不符：期望 5，实际 \{queried.len()}",
     )
   }
   let title_column = match queried.column("title") {
     Some(c) => c
-    None => return step_failed("7", "结果里没有 title 列")
+    None => return step_failed("8", "结果里没有 title 列")
   }
   for i = 0; i < title_column.len(); i = i + 1 {
     let expected = "row-" + (i + 5).to_string()
     let cell = title_column.get(i) catch {
       err =>
         return step_failed(
-          "7",
+          "8",
           "title 第 \{i} 行解码失败：" +
           @client.column_error_message(err),
         )
@@ -235,18 +255,18 @@ async fn check_steps(client : @client.Client) -> String {
     }
     if actual != expected {
       return step_failed(
-        "7",
+        "8",
         "title 第 \{i} 行不符：期望 \{expected}，实际 \{actual}",
       )
     }
   }
-  println("[7] 查询按表达式返回 5 行，列内容正确")
+  println("[8] 查询按表达式返回 5 行，列内容正确")
 
-  // 8. 收尾：把自检集合删掉，下次跑还是干净的。
+  // 9. 收尾：把自检集合删掉，下次跑还是干净的。
   client.drop_collection(@client.new_drop_collection_option(collection)) catch {
-    err => return step_failed("8", "删除集合失败：" + err.to_string())
+    err => return step_failed("9", "删除集合失败：" + err.to_string())
   }
-  println("[8] 集合已清理")
+  println("[9] 集合已清理")
   ""
 }
 

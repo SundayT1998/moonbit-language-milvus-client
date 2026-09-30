@@ -839,6 +839,142 @@ async test "get_load_state 的未知枚举值单列出来" {
 }
 
 ///|
+async test "create_index 把 Index 装配成 extra_params" {
+  let (client, recorded) = test_client([
+    (@client.create_index_path, encode(ok_status())),
+  ])
+  let index = @index.new_hnsw_index(@index.MetricType::COSINE)
+    .with_name("vec_idx")
+    .with_extra_params(@index.IndexParams::from_pairs([("M", "16")]))
+  let mut raised = false
+  ignore(
+    client.create_index(
+      @client.new_create_index_option("demo", "vector", index),
+    ),
+  ) catch {
+    _ => raised = true
+  }
+  assert_false(raised)
+  let calls = recorded.val
+  assert_eq(calls[0].path, @client.create_index_path)
+  let request : @milvus.CreateIndexRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+  assert_eq(request.field_name, "vector")
+  assert_eq(request.index_name, "vec_idx")
+  // index_type / metric_type 由 Index 装配，M 由调用方经 extra params 带进来
+  let params = Map::from_array(request.extra_params.map(p => (p.key, p.value)))
+  assert_eq(params.get("metric_type"), Some("COSINE"))
+  assert_eq(params.get("index_type"), Some("HNSW"))
+  assert_eq(params.get("M"), Some("16"))
+}
+
+///|
+async test "describe_index 解出索引描述与状态" {
+  let response = @milvus.DescribeIndexResponse::{
+    status: Some(ok_status()),
+    index_descriptions: [
+      @milvus.IndexDescription::{
+        index_name: "vec_idx",
+        index_id: 7L,
+        params: [
+          @common.KeyValuePair::KeyValuePair("index_type", "HNSW"),
+          @common.KeyValuePair::KeyValuePair("metric_type", "L2"),
+        ],
+        field_name: "vector",
+        indexed_rows: 10L,
+        total_rows: 10L,
+        state: @common.IndexState::Finished,
+        index_state_fail_reason: "",
+        pending_index_rows: 0L,
+        min_index_version: 0,
+        max_index_version: 0,
+      },
+    ],
+  }
+  let (client, recorded) = test_client([
+    (@client.describe_index_path, encode(response)),
+  ])
+  let descriptions = client.describe_index(
+    @client.new_describe_index_option("demo"),
+  ) catch {
+    _ => fail("expected index descriptions")
+  }
+  assert_eq(descriptions.length(), 1)
+  let d = descriptions[0]
+  assert_eq(d.index_name, "vec_idx")
+  assert_eq(d.index_id, 7L)
+  assert_eq(d.field_name, "vector")
+  assert_eq(d.state, @index.IndexState::Finished)
+  assert_true(d.state.is_terminal())
+  assert_eq(d.index_type(), Some(@index.IndexType::HNSW))
+  assert_eq(d.metric_type(), Some(@index.MetricType::L2))
+  let request : @milvus.DescribeIndexRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(recorded.val[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+  // 默认不按字段/名字过滤，即「列全部」
+  assert_eq(request.field_name, "")
+  assert_eq(request.index_name, "")
+}
+
+///|
+async test "describe_index 把未知的构建状态单列出来" {
+  let response = @milvus.DescribeIndexResponse::{
+    status: Some(ok_status()),
+    index_descriptions: [
+      @milvus.IndexDescription::{
+        index_name: "i",
+        index_id: 1L,
+        params: [],
+        field_name: "vector",
+        indexed_rows: 0L,
+        total_rows: 0L,
+        state: @common.IndexState::Unknown(@lib.Enum(42)),
+        index_state_fail_reason: "",
+        pending_index_rows: 0L,
+        min_index_version: 0,
+        max_index_version: 0,
+      },
+    ],
+  }
+  let (client, _) = test_client([
+    (@client.describe_index_path, encode(response)),
+  ])
+  let descriptions = client.describe_index(
+    @client.new_describe_index_option("demo"),
+  ) catch {
+    _ => fail("expected index descriptions")
+  }
+  assert_eq(descriptions[0].state, @index.IndexState::Unknown(42))
+  assert_false(descriptions[0].state.is_terminal())
+}
+
+///|
+async test "drop_index 打的是 DropIndex 路径并带上索引名" {
+  let (client, recorded) = test_client([
+    (@client.drop_index_path, encode(ok_status())),
+  ])
+  let _ = client.drop_index(@client.new_drop_index_option("demo", "vec_idx")) catch {
+    _ => ()
+  }
+  let calls = recorded.val
+  assert_eq(calls[0].path, @client.drop_index_path)
+  let request : @milvus.DropIndexRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+  assert_eq(request.index_name, "vec_idx")
+}
+
+///|
 async test "服务端拒绝变成 Server 错误" {
   let failure = @common.Status::{
     error_code: @common.ErrorCode::UnexpectedError,
