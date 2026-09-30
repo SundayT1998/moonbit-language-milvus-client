@@ -17,6 +17,11 @@
 // 少一步的报错各不相同：不建索引就 load 会得到 `index not found`
 // （`IndexNotExist`），建了不 load 就检索会得到 `collection not loaded`
 // （`CollectionNotLoaded`）—— 两种都在 #33 的 CI 上真踩过。
+//
+// 另一条踩过的坑：Query 的 `output_fields` 必须逐点列名，不能用 `*`、也不能
+// 留空。服务端在返回全部字段时不填 `FieldData.field_name`（只给 `field_id`），
+// 列名会全空 —— 按名取列取不到、`QueryResult::len` 读成 0，症状酷似
+// 「过滤条件没生效、全量返回」。第 8 步的报错就长这样。
 
 ///|
 /// 自检用的集合名与向量维度。固定值，便于失败时人工复现。
@@ -229,40 +234,59 @@ async fn check_steps(client : @client.Client) -> String {
     first.score.to_string(),
   )
 
-  // 8. 查询：按表达式取两列，验回读的解码路径。
-  //    过滤条件用 `title` 而不是主键：主键是服务端发号的 Snowflake ID
-  //    （18 位量级），拿 `id >= 5` 去滤等于全表通过，断言「5 行」只会
-  //    得到一个和预期无关的 10。`row-N` 是本地生成的，可控，才适合当判据。
-  //    用 `in` 而不是范围比较：想断言的就是「这 5 行」，写清楚点，
-  //    也免得依赖字符串排序的细节。
-  let wanted : Array[String] = []
+  // 8. 查询：按 title 精确过滤后取两列，验回读的解码路径。
+  //
+  //    `output_fields` 逐点写 `id, title`，不用 `["*"]`、也不留空：服务端在
+  //    返回**全部字段**时不填 `FieldData.field_name`，只有 `field_id`，列名
+  //    会全空（见文件头）。失败时把 `queried.names` 打出来，好一眼分清是
+  //    「服务端多回了行」还是「列名丢了」。
+  //
+  //    为什么不用 `id >= 5`：主键是 auto_id，服务端发的是时间戳量级的大整数
+  //    （`pkg/common.AllocAutoID`：分配器给的序号再或上 clusterID 的位），
+  //    `id >= 5` 对全部 10 行都为真，所以「期望 5，实际 10」。
+  //    要过滤就得挑**本测试自己控制值**的列，这里用 title。
+  //
+  //    用 `in` 而不是范围：title 是字符串，`>= "row-5"` 走字典序，
+  //    行数一多（row-10）就与数值序分叉；列出要的那几个值没有歧义。
+  //    字面量用双引号，不引号裸写：字面量的内容就是列值本身，不带引号等于在按
+  //    `"row-5"`（含引号）匹配，列里存的是 `row-5`，一行都滤不出来。
+  //    `client/query.mbt` 的 `with_string_ids` 与上游 `pks2Expr` 都写作
+  //    `id in ["a","b"]`，token 间不留空格。
+  let expected_titles : Array[String] = []
   for i = 5; i < row_count; i = i + 1 {
-    wanted.push("\"" + "row-" + i.to_string() + "\"")
+    expected_titles.push("row-" + i.to_string())
   }
+  let filter = "title in [" +
+    expected_titles.map(t => "\"" + t + "\"").join(",") +
+    "]"
   let queried = client.query(
     @client.new_query_option(collection)
-    .with_filter("title in [" + wanted.join(",") + "]")
+    .with_filter(filter)
     .with_output_fields(["id", "title"]),
   ) catch {
     err => return step_failed("8", "查询失败：" + err.to_string())
   }
-  if queried.len() != 5 {
+  if queried.len() != expected_titles.length() {
     return step_failed(
       "8",
-      "查询行数不符：期望 5，实际 \{queried.len()}",
+      "查询行数不符：期望 \{expected_titles.length()}，实际 \{queried.len()}；" +
+      "返回的列=\{queried.names}",
     )
   }
   let title_column = match queried.column("title") {
     Some(c) => c
-    None => return step_failed("8", "结果里没有 title 列")
+    None =>
+      return step_failed(
+        "8",
+        "结果里没有 title 列；返回的列=\{queried.names}",
+      )
   }
-  // 服务端不保证行的顺序（除非显式 order_by），所以这里比集合而不是比第
-  // 几行：收全部 title，看是不是恰好那 5 个。断言顺序等于把「恰好 5 行」
-  // 变成「恰好 5 行且顺序如我所愿」，多绑了一条服务端没承诺的事。
-  let expected : Array[String] = ["row-5", "row-6", "row-7", "row-8", "row-9"]
-  let got : Array[String] = []
+  // 逐行解码，并把结果收成集合：Milvus 的 query 不保证返回顺序（除非显式
+  // order_by），断言「集合相等」比断言「第 i 行等于第 i 个期望值」靠谱 ——
+  // 后者多绑了一条服务端没承诺的事。
+  let seen : Array[String] = []
   for i = 0; i < title_column.len(); i = i + 1 {
-    let cell = title_column.get(i) catch {
+    let actual = title_column.get_as_string(i) catch {
       err =>
         return step_failed(
           "8",
@@ -270,24 +294,25 @@ async fn check_steps(client : @client.Client) -> String {
           @client.column_error_message(err),
         )
     }
-    let actual = match cell {
-      @column.Cell::VarChar(s)
-      | @column.Cell::String(s)
-      | @column.Cell::Text(s) => s
-      _ => return step_failed("8", "title 第 \{i} 行不是字符串")
-    }
-    got.push(actual)
+    seen.push(actual)
   }
-  got.sort()
-  if got != expected {
-    let want = expected.join(",")
-    let have = got.join(",")
+  seen.sort()
+  if seen != expected_titles {
     return step_failed(
       "8",
-      "title 列内容不符：期望 \{want}，实际 \{have}",
+      "title 列内容不符：期望 \{expected_titles.join(",")}，实际 \{seen.join(",")}",
     )
   }
-  println("[8] 查询按表达式返回 5 行，列内容正确")
+  let id_column = match queried.column("id") {
+    Some(c) => c
+    None => return step_failed("8", "结果里没有 id 列")
+  }
+  if id_column.len() != expected_titles.length() {
+    return step_failed("8", "id 列行数与 title 列不一致")
+  }
+  println(
+    "[8] 查询按表达式返回 \{queried.len()} 行，title 集合正确（id 列已回读）",
+  )
 
   // 9. 收尾：把自检集合删掉，下次跑还是干净的。
   client.drop_collection(@client.new_drop_collection_option(collection)) catch {

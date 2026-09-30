@@ -83,8 +83,11 @@ pub(all) struct QueryOption {
 ///|
 /// 上游 `NewQueryOption`：默认一致性 `Bounded`，其余空。
 ///
-/// `limit` **不预置**，与上游一致：不传就是服务端自己的默认上限。
-/// 调用方想要确定的行数就显式 `with_limit`。
+/// `query_params` 不预置任何键——尤其不预置 `limit`。默认 limit 是**适配层
+/// 的概念**，上游由 `CheckAndSetLimit` 在发请求前补齐，本移植的编排里没有
+/// 这一层，所以「没给 limit」就是真的不发；要限制行数就显式 `with_limit`。
+/// 别在这里悄悄塞一个 16384 假装对齐上游，那只是把「没实现适配层」这件事
+/// 藏起来，顺手给出一个错的因果。
 pub fn new_query_option(collection_name : String) -> QueryOption {
   {
     collection_name,

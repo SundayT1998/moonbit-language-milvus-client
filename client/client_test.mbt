@@ -687,6 +687,64 @@ async test "query 解出列" {
 }
 
 ///|
+async test "query 不预置 limit，没给就不发" {
+  // 默认 limit 属于上游适配层（`CheckAndSetLimit`），本移植的编排里没有
+  // 这一层；`new_query_option` 不该偷偷塞一个值进去。
+  let response = @milvus.QueryResults::{
+    status: Some(ok_status()),
+    fields_data: [],
+    collection_name: "demo",
+    output_fields: [],
+    session_ts: 0UL,
+    primary_field_name: "id",
+  }
+  let (client, recorded) = test_client([(@client.query_path, encode(response))])
+  let _ = client.query(@client.new_query_option("demo").with_filter("id > 0")) catch {
+    _ => fail("query should succeed")
+  }
+  let request : @milvus.QueryRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(recorded.val[0].body),
+    ),
+  )
+  let limits : Array[String] = []
+  for pair in request.query_params {
+    if pair.key == @client.query_param_limit {
+      limits.push(pair.value)
+    }
+  }
+  assert_eq(limits, [])
+}
+
+///|
+async test "with_limit 写进 query_params，且只写一条" {
+  let response = @milvus.QueryResults::{
+    status: Some(ok_status()),
+    fields_data: [],
+    collection_name: "demo",
+    output_fields: [],
+    session_ts: 0UL,
+    primary_field_name: "id",
+  }
+  let (client, recorded) = test_client([(@client.query_path, encode(response))])
+  let _ = client.query(@client.new_query_option("demo").with_limit(7)) catch {
+    _ => fail("query should succeed")
+  }
+  let request : @milvus.QueryRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(recorded.val[0].body),
+    ),
+  )
+  let limits : Array[String] = []
+  for pair in request.query_params {
+    if pair.key == @client.query_param_limit {
+      limits.push(pair.value)
+    }
+  }
+  assert_eq(limits, ["7"])
+}
+
+///|
 async test "load_collection 编出请求并认 OK" {
   let (client, recorded) = test_client([
     (@client.load_collection_path, encode(ok_status())),

@@ -272,6 +272,12 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   想断言确定行数必须显式 `with_limit`。
 - 写集成断言时别拿主键当行号：`auto_id` 发的是 Snowflake ID（18 位量级），
   `id >= 5` 这类条件等于全表通过。要按内容筛就用自己写的字段。
+- `query` 的列名来自 `FieldData.field_name`。服务端在返回**全部字段**时
+  （`with_output_fields(["*"])`，或调用方一个 `output_fields` 都没给）不填
+  `field_name`，只有 `field_id`。这时客户端的 `output_fields` 会被逐个切掉、
+  列名全空：`QueryResult::len` 读 `columns[0]` = 0，`column(name)` 也取不到，
+  症状酷似「过滤条件被忽略、全量返回」——集成自检踩过。
+  契约是：要看列名就必须在 `output_fields` 里逐点名，别用 `*`，也别留空。
 
 `entity/` 的 float16 写侧（`float16_from_float` / `float16_vector_bytes`）与
 `column/float16.mbt` 的读侧是一对，逐位对齐 IEEE-754 binary16。
