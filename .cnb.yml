@@ -10,10 +10,15 @@
 # 共用检查步骤
 .check: &check
   stages:
-    - name: fmt-and-info
+    - name: gen-proto
+      # proto/gen/ 不入版本库（见 .gitignore），签出后先重新生成再检查
       script: |
         moon version --all
         moon update
+        proto/tools/gen.sh trimmed
+        moon work init . proto/gen/trimmed/proto || true
+    - name: fmt-and-info
+      script: |
         moon fmt
         git diff --exit-code
         moon info

@@ -33,6 +33,24 @@ jobs:
           moon version --all
           moon update
 
+      - name: install-protoc-ubuntu
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: install-protoc-macos
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: brew install protobuf
+
+      - name: install-protoc-windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: choco install protoc -y
+
+      - name: gen-proto
+        # proto/gen/ 不入版本库（见 .gitignore），签出后先重新生成再检查
+        run: |
+          bash proto/tools/gen.sh trimmed
+          moon work init . proto/gen/trimmed/proto
+
       - name: moon check
         run: moon check --target all
 
