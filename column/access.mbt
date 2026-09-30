@@ -174,3 +174,82 @@ fn Column::data_len(self : Column) -> Int {
     SparseFloatVector(v) => v.length()
   }
 }
+
+///|
+/// 圈出 `[begin, end)` 这几行，得到一列等价的窄列。`end` 为负表示到末尾，
+/// 与 `from_field_data` 的区间参数同一套约定。越界即夹取，不报错 ——
+/// 想取 5 行而列里只有 2 行，是调用方正常会撞上的情形，不是 bug。
+///
+/// 与 `from_field_data` 的 `begin` / `end` 是同一件事，区别是那个作用于
+/// 线上 payload（还没成列），这个作用于已经解好的列。
+pub fn Column::slice(self : Column, begin : Int, end : Int) -> Column {
+  let n = self.len()
+  let b = clamp_begin(begin, n)
+  let e = normalize_end(end, n)
+  if b >= e {
+    return empty_like(self)
+  }
+  let valid = if self.nullable { self.valid[b:e].to_owned() } else { [] }
+  build(slice_value(self, b, e), valid)
+}
+
+///|
+/// 数据数组的那一段。可空紧凑布局下物理下标与逻辑下标不是一回事，
+/// 得先把 `[b, e)` 映射到物理区间再切。
+fn slice_value(column : Column, begin : Int, end : Int) -> ColumnValue {
+  let (lo, hi) = if column.nullable &&
+    column.data_len() != column.valid.length() {
+    (rank_before(column, begin), rank_before(column, end))
+  } else {
+    (begin, end)
+  }
+  slice_value_range(column.column, lo, hi)
+}
+
+///|
+/// `[0, idx)` 里的有效行数，也就是物理下标的前缀和。
+fn rank_before(column : Column, idx : Int) -> Int {
+  let mut count = 0
+  for i = 0; i < idx && i < column.valid.length(); i = i + 1 {
+    if column.valid[i] {
+      count = count + 1
+    }
+  }
+  count
+}
+
+///|
+fn slice_value_range(
+  value : ColumnValue,
+  begin : Int,
+  end : Int,
+) -> ColumnValue {
+  match value {
+    Bool(v) => Bool(v[begin:end].to_owned())
+    Int8(v) => Int8(v[begin:end].to_owned())
+    Int16(v) => Int16(v[begin:end].to_owned())
+    Int32(v) => Int32(v[begin:end].to_owned())
+    Int64(v) => Int64(v[begin:end].to_owned())
+    Float(v) => Float(v[begin:end].to_owned())
+    Double(v) => Double(v[begin:end].to_owned())
+    String(v) => String(v[begin:end].to_owned())
+    VarChar(v) => VarChar(v[begin:end].to_owned())
+    Text(v) => Text(v[begin:end].to_owned())
+    Timestamptz(v) => Timestamptz(v[begin:end].to_owned())
+    Json(v) => Json(v[begin:end].to_owned())
+    Geometry(v) => Geometry(v[begin:end].to_owned())
+    Array(v) => Array(v[begin:end].to_owned())
+    FloatVector(dim, v) => FloatVector(dim, v[begin:end].to_owned())
+    Float16Vector(dim, v) => Float16Vector(dim, v[begin:end].to_owned())
+    BFloat16Vector(dim, v) => BFloat16Vector(dim, v[begin:end].to_owned())
+    BinaryVector(dim, v) => BinaryVector(dim, v[begin:end].to_owned())
+    Int8Vector(dim, v) => Int8Vector(dim, v[begin:end].to_owned())
+    SparseFloatVector(v) => SparseFloatVector(v[begin:end].to_owned())
+  }
+}
+
+///|
+/// 同类型同维度的空列，用于「这一页没有行」。
+fn empty_like(column : Column) -> Column {
+  build(slice_value_range(column.column, 0, 0), [])
+}
