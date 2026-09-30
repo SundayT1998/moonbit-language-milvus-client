@@ -268,6 +268,9 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - 两个状态枚举都保留生成物的 `Unknown` 岔路：`CollectionLoadState::Unknown` /
   `@index.IndexState::Unknown`。别把它们并进 `NotLoad` / `None`，那会把
   「没见过的状态」当成「什么都没发生」，然后无限等下去。
+- `query_params` 里的 `limit` **一定发出**，默认 `default_query_limit`
+  （16384，对齐上游 `queryLimit`）。Milvus 对没带 `limit` 的 Query 不走
+  limit 语义、会全量返回，不补默认值的话调用方看到的行数会随数据量变。
 
 `entity/` 的 float16 写侧（`float16_from_float` / `float16_vector_bytes`）与
 `column/float16.mbt` 的读侧是一对，逐位对齐 IEEE-754 binary16。

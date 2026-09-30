@@ -27,6 +27,8 @@ pub fn data_type_to_proto(@entity.DataType) -> @schema.DataType
 
 pub let default_consistency_level : ConsistencyLevel
 
+pub let default_query_limit : Int
+
 pub fn delete_by_int64_ids(String, String, Array[Int64]) -> DeleteOption
 
 pub fn delete_by_string_ids(String, String, Array[String]) -> DeleteOption
