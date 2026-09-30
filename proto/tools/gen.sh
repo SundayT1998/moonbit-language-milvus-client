@@ -42,7 +42,8 @@ case "${1:-trimmed}" in
       --mbt_opt="project_name=$PROJECT_NAME,username=$USERNAME,paths=source_relative" \
       "$ROOT/proto/trimmed/milvus.proto" \
       "$ROOT/proto/trimmed/schema.proto" \
-      "$ROOT/proto/trimmed/common.proto"
+      "$ROOT/proto/trimmed/common.proto" \
+      "$ROOT/proto/trimmed/msg.proto"
     ;;
   *)
     echo "用法: $0 [upstream|trimmed]" >&2
@@ -80,10 +81,12 @@ if [ -d "$OUT/proto/src/milvus/proto" ]; then
 fi
 
 # 探针测试作为源码叠加，避免被重新生成抹掉。
-# p0test  : DescribeCollection 的 wire 往返（#10）
-# indextest: 索引 RPC 的 wire 往返（#16）
+# p0test       : DescribeCollection 的 wire 往返（#10）
+# indextest    : 索引 RPC 的 wire 往返（#16）
+# rpctest      : Client 门面核心 RPC 的 wire 往返（#15）
+# lifecycletest: 分区 / 加载 / flush 的 wire 往返（#17）
 if [ -d "$OUT/proto/src/milvus/proto" ]; then
-  for suite in p0test indextest rpctest; do
+  for suite in p0test indextest rpctest lifecycletest; do
     src="$ROOT/proto/tools/$suite"
     [ -d "$src" ] || continue
     dest="$OUT/proto/src/milvus/proto/$suite"

@@ -236,10 +236,12 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - `types.mbt` —— `Unary` 函数值、`Client`、`ClientError`、`call_service`、`check_status`
 - `consistency.mbt` / `schema_convert.mbt` —— 一致性等级与 schema ↔ proto 的桥
 - `collection.mbt` —— CreateCollection / DropCollection / HasCollection /
-  DescribeCollection / ListCollections / LoadCollection / ReleaseCollection /
-  GetLoadState 及其 Option
+  DescribeCollection / ListCollections 及其 Option
 - `index.mbt` —— CreateIndex / DescribeIndex / DropIndex 及其 Option，
   把 `@index` 装配好的参数塞进请求、响应翻回 `@index.IndexDescription`
+- `partition.mbt` —— Create / Drop / Has / ListPartitions 及其 Option
+- `load.mbt` —— Load / Release Collection & Partitions、`LoadTask`、`GetLoadState`
+- `flush.mbt` —— `Flush`、`FlushTask`、`GetFlushState`
 - `write_column.mbt` / `write.mbt` —— `WriteColumn` → `FieldData`，insert / upsert / delete
 - `search.mbt` / `query.mbt` —— 占位符编码、search_params、结果反序列化
 - `paths.mbt` —— gRPC 方法路径常量
@@ -263,9 +265,9 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   固定七个键写全，调用方的 `with_search_param` 最后覆盖。
 - **建索引 → 加载 → 检索的顺序不能倒**：Milvus 拒绝加载没有索引的集合
   （`index not found`），也拒绝对未加载的集合检索（`collection not loaded`）。
-  加载是异步的，`load_collection` 返回不代表就绪，调用方要用 `get_load_state`
-  轮询到 `Loaded`。
-- 两个状态枚举都保留生成物的 `Unknown` 岔路：`CollectionLoadState::Unknown` /
+  加载是异步的，`load_collection` 返回不代表就绪，调用方要用 `LoadTask::wait`
+  或 `get_load_state` 轮询到 `Loaded`。
+- 状态枚举都保留生成物的 `Unknown` 岔路：`CollectionLoadState::Unknown` /
   `@index.IndexState::Unknown`。别把它们并进 `NotLoad` / `None`，那会把
   「没见过的状态」当成「什么都没发生」，然后无限等下去。
 - `limit` 不预置，与上游 `NewQueryOption` 一致：不传就是服务端默认上限。
@@ -278,6 +280,11 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   列名全空：`QueryResult::len` 读 `columns[0]` = 0，`column(name)` 也取不到，
   症状酷似「过滤条件被忽略、全量返回」——集成自检踩过。
   契约是：要看列名就必须在 `output_fields` 里逐点名，别用 `*`，也别留空。
+- `LoadTask` / `FlushTask` 的 `wait` 照上游 `Await`：先等一个间隔再查第一次，
+  默认 200ms。轮询用 `@async.sleep`（`moonbitlang/async` 是 `client` 的真依赖，
+  不只是测试依赖），取消翻成 `Code::Cancelled` 的 `Transport` 错误。
+- `has_partition` 用真 `HasPartition` RPC（`BoolResponse`），
+  `has_collection` 用 `DescribeCollection`——两处不同是上游的选择，别顺手统一。
 
 ### 迭代器（`client/iterator.mbt`，对应上游 `iterator.go` / `iterator_option.go`）
 

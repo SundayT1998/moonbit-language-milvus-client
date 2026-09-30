@@ -17,7 +17,7 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 | `errors` | Milvus `common.Status` → MoonBit 错误模型（#13） |
 | `transport` | 配置、metadata 组装、gRPC status —— 跨 target（#11） |
 | `transport/native` | 真连 socket 的 Channel 实现 —— native 专属（#11） |
-| `client` | Client 门面与核心 RPC 编排：collection / insert / upsert / delete / search / query / 迭代器（#15 / #18） |
+| `client` | Client 门面与核心 RPC 编排：collection / partition / load / flush / insert / upsert / delete / search / query / 迭代器（#15 / #17 / #18） |
 | `client/native` | 把 `client` 的 unary 调用接到真实连接上 —— native 专属（#15） |
 
 迭代器（#18）在 `client/iterator.mbt`，与 `client` 同包。
@@ -27,6 +27,11 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 客户端门面（Issue #15）已交付：集合生命周期（创建 / 描述 / 是否存在 / 列出 / 删除）、
 数据面（insert / upsert / delete）、检索面（search / query）都走通了，
 Option 构造函数名与默认值对齐上游。
+
+分区与数据生命周期（Issue #17）也已交付：分区（创建 / 删除 / 是否存在 / 列出）、
+加载与卸载（`LoadCollection` / `ReleaseCollection` / `LoadPartitions` /
+`ReleasePartitions` / `GetLoadState`）、刷盘（`Flush` / `GetFlushState`）。
+加载与刷盘返回可等待的任务，轮询语义与上游一致（默认 200ms 间隔）。
 
 大结果集翻页（Issue #18）也已交付：`QueryIterator`（客户端侧主键游标）与
 `SearchIterator`（服务端侧 v2 游标）。
@@ -267,6 +272,58 @@ channel.close()
 - 未显式设一致性等级时，请求里 `use_default_consistency` 为真、等级填 `Bounded`，
   由服务端决定最终档位。
 
+### 分区与数据生命周期
+
+分区是集合内的写入分组；加载（load）把数据放进查询节点后检索才看得到。
+两者与 flush 都在 `@client.Client` 上，用法与上游 Go SDK 对齐：
+
+```moonbit nocheck
+///|
+async fn lifecycle(client : @client.Client) -> Unit raise @client.ClientError {
+  // 建分区、写入时可以带上它
+  client.create_partition(@client.new_create_partition_option("demo", "p1"))
+
+  // 加载集合：先发 LoadCollection，再等进度到 100
+  let load = client.load_collection(@client.new_load_collection_option("demo"))
+  load.wait()
+
+  // 只加载某个分区
+  let part = client.load_partitions(
+    @client.new_load_partitions_option("demo", ["p1"]).with_replica(2),
+  )
+  part.wait()
+
+  // 不等待时看状态：Loading 时 progress 有意义
+  let state = client.get_load_state(@client.new_get_load_state_option("demo"))
+
+  // 刷盘：Flush 触发，wait 轮询 GetFlushState 到落盘
+  let flush = client.flush(@client.new_flush_option("demo"))
+  flush.wait()
+
+  // 卸载后检索会报错，这是「明确不可查」的判据
+  client.release_collection(@client.new_release_collection_option("demo"))
+}
+```
+
+要点：
+
+- `LoadTask::wait` / `FlushTask::wait` 与上游 `Await` 一致，**先等一个间隔
+  再查第一次**；间隔默认 200ms，可用 `with_check_interval_millis` 调。
+  取消（`@async` 取消）会翻成 `Code::Cancelled` 的 `Transport` 错误。
+- `LoadTask` 只等它对应的那部分：`load_collection` 的等整个集合，
+  `load_partitions` 的只等那几个分区。
+- `refresh` 模式下等的是 `refresh_progress` 而不是 `progress`
+  （`with_refresh()` 打开），与上游 `LoadTask` 的 `refresh` 开关一致。
+- `has_partition` 走真 `HasPartition` RPC（返回 `BoolResponse`），
+  这点与 `has_collection`（走 `DescribeCollection`）不同，前者是上游的选择。
+- `list_partitions` 走 `ShowPartitions` 且 `type = All`，含默认分区 `_default`。
+- `get_load_state` 返回 `LoadState`：`state` 是 `CollectionLoadState`
+  （`NotExist` / `NotLoad` / `Loading` / `Loaded` / `Unknown(n)`），
+  `progress` 只在 `Loading` 时有意义。`Unknown(n)` 保留原始序号，
+  别并进 `NotLoad`——那会把「没见过的状态」当成「还没开始」。
+- `FlushTask` 里的 `segment_ids` / `flush_timestamp` 就是 `GetFlushState` 的入参，
+  单独查时用 `get_flush_state`。
+
 ## 迭代器
 
 Milvus 服务端对单次返回有上限，超过就得翻页。两条路，选一条：
@@ -375,8 +432,9 @@ create_collection → create_index → load_collection →（轮询到 Loaded）
 
 - 不建索引就 `load_collection`：服务端回 `index not found`。
 - 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
-- `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要轮询
-  `get_load_state` 到 `Loaded`，直接接着检索会偶发失败。
+- `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要么
+  `LoadTask::wait` 等进度到 100%，要么轮询 `get_load_state` 到 `Loaded`；
+  直接接着检索会偶发失败。
 - `Query` 的 `limit` 不预置，交给服务端默认；要确定行数就显式
   `with_limit(n)`。另外别拿主键当行号筛数据：`auto_id` 发的是 Snowflake ID，
   `id >= 5` 在 18 位的主键上等于全表通过。

@@ -263,7 +263,57 @@ null 行（紧凑与行满两种布局）、行区间切片、`valid_data` 双�
 `Int8Vector` / `SparseFloatVector`、向量 payload 类型不符、动态字段 JSON
 字符串与 UTF-8 校验、`Array` 列、读错类型、不支持的字段类型。
 
-## 12. 追加：迭代器的续页凭据纳入裁剪集（#18）
+## 12. 追加：分区 / 加载 / flush 的 message 纳入裁剪集（#17）
+
+`#17` 需要分区与数据生命周期的 RPC，裁剪集因此新开了一个 `.proto`
+文件并扩大了若干 message：
+
+| 文件 | 新增 |
+|---|---|
+| `trimmed/milvus.proto` | `LoadCollectionRequest` / `ReleaseCollectionRequest` / `CreatePartitionRequest` / `DropPartitionRequest` / `HasPartitionRequest` / `LoadPartitionsRequest` / `ReleasePartitionsRequest` / `ShowPartitionsRequest` / `ShowPartitionsResponse` / `GetLoadingProgressRequest` / `GetLoadingProgressResponse` / `GetLoadStateRequest` / `GetLoadStateResponse` / `FlushRequest` / `FlushResponse` / `GetFlushStateRequest` / `GetFlushStateResponse` |
+| `trimmed/common.proto` | `LoadState` 枚举、`WALName` 枚举 |
+| `trimmed/msg.proto`（新）| `MsgPosition` |
+
+几点说明：
+
+- **新开 `trimmed/msg.proto`** 只为 `FlushResponse.channel_cps`（`map<string,
+  msg.MsgPosition>`）。上游 `msg.proto` 有一大坨与客户端无关的 segment /
+  timetick message，裁剪集只留 `MsgPosition` 一个，`WALName` 落在
+  `common.proto`（与上游同处一个 package，只是换文件放）。
+- `gen.sh` 的 trimmed 分支多传一个 `msg.proto`；`moon.pkg` 的 import 由
+  生成器按 package 自动接上，生成的 `Tangbuting/proto/milvus/proto/msg`
+  是与 `common` / `schema` 平级的包，`FlushResponse` 引用它。
+- 与第 10 节同样，删掉了这些 message 上的 `option (common.privilege_ext_obj)`：
+  裁剪集里没有 `privilege_ext_obj` 的 `extend` 声明，留着会报 not defined。
+- `ShowPartitionsRequest.type` 与 `ShowPartitionsResponse.inMemory_percentages`
+  是上游标了 `deprecated` 的字段，裁剪集**保留原始声明**（含
+  `[deprecated=true]`），因为客户端列表要走 `ShowType::All`。
+- 这批 message 里 `FlushResponse` 有 `map<string, ...>`，正好检验生成器的
+  map 编码路径——`lifecycletest` 里专门有一条带 map 与嵌套 message 的往返。
+
+裁剪后结果：
+
+```
+moon check --target all  ->  0 error
+moon test  --target all  ->  native 198 / wasm 194 passed，四目标全绿
+```
+
+`tools/lifecycletest/` 的八个测试：
+
+1. `CreatePartitionRequest` 往返
+2. `ShowPartitionsResponse` 往返（repeated string / int64 / uint64）
+3. `LoadPartitionsRequest` 往返（含 `map<string,string>` 的 `load_params`）
+4. `GetLoadStateResponse` 往返（`common.LoadState` 枚举）
+5. `GetLoadingProgressResponse` 往返（`progress` / `refresh_progress`）
+6. `FlushResponse` 往返（三组 map + `msg.MsgPosition` 嵌套）
+7. `GetFlushStateRequest` 往返
+8. `GetFlushStateResponse` 往返
+
+即：分区 / 加载 / flush 的入参/出参 wire codec 已可用；轮询逻辑用假传输
+在 `client/lifecycle_test.mbt` 里覆盖，不依赖真实服务端。
+---
+
+## 13. 追加：迭代器的续页凭据纳入裁剪集（#18）
 
 `#18` 要 `SearchIterator`，它靠 `schema.SearchResultData` 上的
 `search_iterator_v2_results`（token + last_bound）翻下一页，裁剪集因此扩

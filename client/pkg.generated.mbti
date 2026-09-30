@@ -21,11 +21,17 @@ pub let create_collection_path : String
 
 pub let create_index_path : String
 
+pub let create_partition_path : String
+
 pub fn data_type_from_proto(@schema.DataType) -> @entity.DataType?
 
 pub fn data_type_to_proto(@entity.DataType) -> @schema.DataType
 
 pub let default_consistency_level : ConsistencyLevel
+
+pub let default_flush_check_interval_millis : Int
+
+pub let default_load_check_interval_millis : Int
 
 pub fn delete_by_int64_ids(String, String, Array[Int64]) -> DeleteOption
 
@@ -41,15 +47,25 @@ pub let drop_collection_path : String
 
 pub let drop_index_path : String
 
+pub let drop_partition_path : String
+
 pub fn entity_schema_message(@entity.SchemaError) -> String
 
 pub fn field_from_proto(@schema.FieldSchema) -> @entity.Field raise ClientError
 
 pub fn field_to_proto(@entity.Field) -> @schema.FieldSchema
 
+pub let flush_path : String
+
+pub let get_flush_state_path : String
+
 pub let get_load_state_path : String
 
+pub let get_loading_progress_path : String
+
 pub let has_collection_path : String
+
+pub let has_partition_path : String
 
 pub let insert_path : String
 
@@ -69,9 +85,13 @@ pub let iterator_unlimited : Int64
 
 pub let load_collection_path : String
 
+pub let load_partitions_path : String
+
 pub fn new_create_collection_option(String, @entity.CollectionSchema) -> CreateCollectionOption
 
 pub fn new_create_index_option(String, String, @index.Index) -> CreateIndexOption
+
+pub fn new_create_partition_option(String, String) -> CreatePartitionOption
 
 pub fn new_delete_option(String, String) -> DeleteOption
 
@@ -83,13 +103,31 @@ pub fn new_drop_collection_option(String) -> DropCollectionOption
 
 pub fn new_drop_index_option(String, String) -> DropIndexOption
 
+pub fn new_drop_partition_option(String, String) -> DropPartitionOption
+
+pub fn new_flush_option(String) -> FlushOption
+
+pub fn new_get_flush_state_option(String, Array[Int64], UInt64) -> GetFlushStateOption
+
+pub fn new_get_load_state_option(String, partition_names? : Array[String]) -> GetLoadStateOption
+
+pub fn new_has_partition_option(String, String) -> HasPartitionOption
+
 pub fn new_list_collections_option() -> ListCollectionsOption
 
+pub fn new_list_partitions_option(String) -> ListPartitionsOption
+
 pub fn new_load_collection_option(String) -> LoadCollectionOption
+
+pub fn new_load_partitions_option(String, Array[String]) -> LoadPartitionsOption
 
 pub fn new_query_iterator_option(String) -> QueryIteratorOption
 
 pub fn new_query_option(String) -> QueryOption
+
+pub fn new_release_collection_option(String) -> ReleaseCollectionOption
+
+pub fn new_release_partitions_option(String, Array[String]) -> ReleasePartitionsOption
 
 pub fn new_search_iterator_option(String, Int, Array[@column.ColumnValue]) -> SearchIteratorOption
 
@@ -106,6 +144,8 @@ pub let query_param_order_by_fields : String
 pub let query_path : String
 
 pub let release_collection_path : String
+
+pub let release_partitions_path : String
 
 pub fn schema_to_proto(String, @entity.CollectionSchema) -> @schema.CollectionSchema
 
@@ -130,6 +170,8 @@ pub fn serialize_collection_schema(String, @entity.CollectionSchema) -> Bytes ra
 pub let service_name : String
 
 pub let show_collections_path : String
+
+pub let show_partitions_path : String
 
 pub fn simple_create_collection_option(String, Int) -> CreateCollectionOption
 
@@ -170,20 +212,28 @@ pub struct Client {
 pub fn Client::config(Self) -> @transport.Config
 pub async fn Client::create_collection(Self, CreateCollectionOption) -> Unit raise ClientError
 pub async fn Client::create_index(Self, CreateIndexOption) -> Unit raise ClientError
+pub async fn Client::create_partition(Self, CreatePartitionOption) -> Unit raise ClientError
 pub async fn Client::delete(Self, DeleteOption) -> MutationResult raise ClientError
 pub async fn Client::describe_collection(Self, DescribeCollectionOption) -> CollectionDescription raise ClientError
 pub async fn Client::describe_index(Self, DescribeIndexOption) -> Array[@index.IndexDescription] raise ClientError
 pub async fn Client::drop_collection(Self, DropCollectionOption) -> Unit raise ClientError
 pub async fn Client::drop_index(Self, DropIndexOption) -> Unit raise ClientError
-pub async fn Client::get_load_state(Self, DescribeCollectionOption) -> CollectionLoadState raise ClientError
+pub async fn Client::drop_partition(Self, DropPartitionOption) -> Unit raise ClientError
+pub async fn Client::flush(Self, FlushOption) -> FlushTask raise ClientError
+pub async fn Client::get_flush_state(Self, GetFlushStateOption) -> Bool raise ClientError
+pub async fn Client::get_load_state(Self, GetLoadStateOption) -> LoadState raise ClientError
 pub async fn Client::has_collection(Self, DescribeCollectionOption) -> Bool raise ClientError
+pub async fn Client::has_partition(Self, HasPartitionOption) -> Bool raise ClientError
 pub async fn Client::insert(Self, WriteOption) -> MutationResult raise ClientError
 pub async fn Client::list_collections(Self, ListCollectionsOption) -> Array[String] raise ClientError
-pub async fn Client::load_collection(Self, LoadCollectionOption) -> Unit raise ClientError
+pub async fn Client::list_partitions(Self, ListPartitionsOption) -> Array[String] raise ClientError
+pub async fn Client::load_collection(Self, LoadCollectionOption) -> LoadTask raise ClientError
+pub async fn Client::load_partitions(Self, LoadPartitionsOption) -> LoadTask raise ClientError
 pub fn Client::new(@transport.Config, async (String, Bytes) -> Bytes raise @transport.RpcError) -> Self
 pub async fn Client::query(Self, QueryOption) -> QueryResult raise ClientError
 pub async fn Client::query_iterator(Self, QueryIteratorOption) -> QueryIterator raise IteratorError
-pub async fn Client::release_collection(Self, DropCollectionOption) -> Unit raise ClientError
+pub async fn Client::release_collection(Self, ReleaseCollectionOption) -> Unit raise ClientError
+pub async fn Client::release_partitions(Self, ReleasePartitionsOption) -> Unit raise ClientError
 pub async fn Client::search(Self, SearchOption) -> SearchResult raise ClientError
 pub async fn Client::search_iterator(Self, SearchIteratorOption) -> SearchIterator raise IteratorError
 pub async fn Client::upsert(Self, WriteOption) -> MutationResult raise ClientError
@@ -207,6 +257,10 @@ pub(all) enum CollectionLoadState {
   Loaded
   Unknown(Int)
 } derive(Eq, @debug.Debug)
+pub fn CollectionLoadState::from_int(Int) -> Self
+pub fn CollectionLoadState::from_proto(@common.LoadState) -> Self
+pub fn CollectionLoadState::is_loaded(Self) -> Bool
+pub fn CollectionLoadState::to_int(Self) -> Int
 
 pub(all) enum ConsistencyLevel {
   Strong
@@ -251,6 +305,11 @@ pub(all) struct CreateIndexOption {
   index : @index.Index
 }
 
+pub(all) struct CreatePartitionOption {
+  collection_name : String
+  partition_name : String
+}
+
 pub(all) struct DeleteOption {
   collection_name : String
   partition_name : String
@@ -281,21 +340,114 @@ pub(all) struct DropIndexOption {
   index_name : String
 }
 
+pub(all) struct DropPartitionOption {
+  collection_name : String
+  partition_name : String
+}
+
+pub(all) struct FlushOption {
+  collection_name : String
+  check_interval_millis : Int
+}
+pub fn FlushOption::with_check_interval_millis(Self, Int) -> Self
+
+pub struct FlushTask {
+  client : Client
+  collection_name : String
+  segment_ids : Array[Int64]
+  flushed_segment_ids : Array[Int64]
+  flush_timestamp : UInt64
+  interval_millis : Int
+}
+pub fn FlushTask::collection_name(Self) -> String
+pub fn FlushTask::flush_timestamp(Self) -> UInt64
+pub fn FlushTask::flushed_segment_ids(Self) -> Array[Int64]
+pub async fn FlushTask::is_flushed(Self) -> Bool raise ClientError
+pub fn FlushTask::segment_ids(Self) -> Array[Int64]
+pub async fn FlushTask::wait(Self) -> Unit raise ClientError
+
+pub(all) struct GetFlushStateOption {
+  collection_name : String
+  segment_ids : Array[Int64]
+  flush_timestamp : UInt64
+}
+
+pub(all) struct GetLoadStateOption {
+  collection_name : String
+  partition_names : Array[String]
+}
+
+pub(all) struct HasPartitionOption {
+  collection_name : String
+  partition_name : String
+}
+
 type IteratorKey derive(@debug.Debug)
 
 pub(all) struct ListCollectionsOption {
   show_loaded : Bool
 }
 
+pub(all) struct ListPartitionsOption {
+  collection_name : String
+}
+
 pub(all) struct LoadCollectionOption {
-  name : String
+  collection_name : String
   replica_number : Int
   resource_groups : Array[String]
   load_fields : Array[String]
   skip_load_dynamic_field : Bool
   load_params : Array[(String, String)]
+  refresh : Bool
+  check_interval_millis : Int
 }
+pub fn LoadCollectionOption::with_check_interval_millis(Self, Int) -> Self
+pub fn LoadCollectionOption::with_load_fields(Self, Array[String]) -> Self
+pub fn LoadCollectionOption::with_load_param(Self, String, String) -> Self
+pub fn LoadCollectionOption::with_refresh(Self, refresh? : Bool) -> Self
+pub fn LoadCollectionOption::with_replica(Self, Int) -> Self
 pub fn LoadCollectionOption::with_replica_number(Self, Int) -> Self
+pub fn LoadCollectionOption::with_resource_groups(Self, Array[String]) -> Self
+pub fn LoadCollectionOption::with_skip_load_dynamic_field(Self, skip? : Bool) -> Self
+
+pub(all) struct LoadPartitionsOption {
+  collection_name : String
+  partition_names : Array[String]
+  replica_number : Int
+  resource_groups : Array[String]
+  load_fields : Array[String]
+  skip_load_dynamic_field : Bool
+  load_params : Array[(String, String)]
+  refresh : Bool
+  check_interval_millis : Int
+}
+pub fn LoadPartitionsOption::with_check_interval_millis(Self, Int) -> Self
+pub fn LoadPartitionsOption::with_load_fields(Self, Array[String]) -> Self
+pub fn LoadPartitionsOption::with_load_param(Self, String, String) -> Self
+pub fn LoadPartitionsOption::with_refresh(Self, refresh? : Bool) -> Self
+pub fn LoadPartitionsOption::with_replica(Self, Int) -> Self
+pub fn LoadPartitionsOption::with_replica_number(Self, Int) -> Self
+pub fn LoadPartitionsOption::with_resource_groups(Self, Array[String]) -> Self
+pub fn LoadPartitionsOption::with_skip_load_dynamic_field(Self, skip? : Bool) -> Self
+
+pub(all) struct LoadState {
+  state : CollectionLoadState
+  progress : Int64
+} derive(Eq, @debug.Debug)
+
+pub struct LoadTask {
+  client : Client
+  collection_name : String
+  partition_names : Array[String]
+  interval_millis : Int
+  refresh : Bool
+}
+pub fn LoadTask::collection_name(Self) -> String
+pub async fn LoadTask::is_loaded(Self) -> Bool raise ClientError
+pub fn LoadTask::partition_names(Self) -> Array[String]
+pub async fn LoadTask::progress(Self) -> Int64 raise ClientError
+pub async fn LoadTask::wait(Self) -> Unit raise ClientError
 
 pub(all) struct MutationResult {
   ids : @column.ColumnValue?
@@ -360,6 +512,15 @@ pub fn QueryResult::has_column(Self, String) -> Bool
 pub fn QueryResult::len(Self) -> Int
 
 type RawSearchResult derive(@debug.Debug)
+
+pub(all) struct ReleaseCollectionOption {
+  collection_name : String
+}
+
+pub(all) struct ReleasePartitionsOption {
+  collection_name : String
+  partition_names : Array[String]
+}
 
 type SearchCursor derive(@debug.Debug)
 

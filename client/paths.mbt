@@ -74,3 +74,34 @@ pub let search_path : String = method_path("Search")
 
 ///|
 pub let query_path : String = method_path("Query")
+
+// ---- 分区与数据生命周期（#17）----
+// load_collection / release_collection / get_load_state 的路径已在上面
+// （随集成自检一起落地的 #17 前半），这里只补分区与轮询/flush 用到的。
+
+///|
+pub let create_partition_path : String = method_path("CreatePartition")
+
+///|
+pub let drop_partition_path : String = method_path("DropPartition")
+
+///|
+pub let has_partition_path : String = method_path("HasPartition")
+
+///|
+pub let show_partitions_path : String = method_path("ShowPartitions")
+
+///|
+pub let load_partitions_path : String = method_path("LoadPartitions")
+
+///|
+pub let release_partitions_path : String = method_path("ReleasePartitions")
+
+///|
+pub let get_loading_progress_path : String = method_path("GetLoadingProgress")
+
+///|
+pub let flush_path : String = method_path("Flush")
+
+///|
+pub let get_flush_state_path : String = method_path("GetFlushState")

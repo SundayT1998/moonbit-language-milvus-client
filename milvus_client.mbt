@@ -198,3 +198,69 @@ pub type QueryOption = @client.QueryOption
 ///|
 /// 一次查询的结果。
 pub type QueryResult = @client.QueryResult
+
+// ---- 分区（#17）----
+
+///|
+/// 建分区的入参。
+pub type CreatePartitionOption = @client.CreatePartitionOption
+
+///|
+/// 删分区的入参。
+pub type DropPartitionOption = @client.DropPartitionOption
+
+///|
+/// 查分区是否存在的入参。
+pub type HasPartitionOption = @client.HasPartitionOption
+
+///|
+/// 列分区的入参。
+pub type ListPartitionsOption = @client.ListPartitionsOption
+
+// ---- 加载 / 卸载（#17）----
+
+///|
+/// 加载档位。
+pub type CollectionLoadState = @client.CollectionLoadState
+
+///|
+/// 集合 / 分区的加载状态。
+pub type LoadState = @client.LoadState
+
+///|
+/// 加载集合的入参。
+pub type LoadCollectionOption = @client.LoadCollectionOption
+
+///|
+/// 卸载集合的入参。
+pub type ReleaseCollectionOption = @client.ReleaseCollectionOption
+
+///|
+/// 加载分区的入参。
+pub type LoadPartitionsOption = @client.LoadPartitionsOption
+
+///|
+/// 卸载分区的入参。
+pub type ReleasePartitionsOption = @client.ReleasePartitionsOption
+
+///|
+/// 查加载状态的入参。
+pub type GetLoadStateOption = @client.GetLoadStateOption
+
+///|
+/// 加载任务，`LoadTask::wait` 等加载完成。
+pub type LoadTask = @client.LoadTask
+
+// ---- flush（#17）----
+
+///|
+/// flush 的入参。
+pub type FlushOption = @client.FlushOption
+
+///|
+/// flush 任务，`FlushTask::wait` 等落盘完成。
+pub type FlushTask = @client.FlushTask
+
+///|
+/// 查落盘状态的入参。
+pub type GetFlushStateOption = @client.GetFlushStateOption
