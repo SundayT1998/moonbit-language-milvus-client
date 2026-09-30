@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Tangbuting/milvus-client/errors"
+package "SundayT1998/milvus-client/errors"
 
 import {
-  "Tangbuting/milvus-client/proto/milvus/proto/common",
+  "SundayT1998/milvus-client/proto/milvus/proto/common",
 }
 
 // Values

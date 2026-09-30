@@ -9,13 +9,13 @@
 //   "moonbitlang/x@0.4.6",
 // }
 
-name = "Tangbuting/milvus-client"
+name = "SundayT1998/milvus-client"
 
 version = "0.1.0"
 
 readme = "README.mbt.md"
 
-repository = "https://github.com/Tangbuting/moonbit-language-milvus-client"
+repository = "https://github.com/SundayT1998/moonbit-language-milvus-client"
 
 license = "Apache-2.0"
 

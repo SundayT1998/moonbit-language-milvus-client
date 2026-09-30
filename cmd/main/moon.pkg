@@ -1,6 +1,6 @@
 import {
-  "Tangbuting/milvus-client/transport",
-  "Tangbuting/milvus-client/transport/native",
+  "SundayT1998/milvus-client/transport",
+  "SundayT1998/milvus-client/transport/native",
   "moonbitlang/async",
   "moonbitlang/core/env",
 }

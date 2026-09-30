@@ -140,7 +140,7 @@ proto/tools/gen.sh upstream  # 全量上游 proto（预期失败，见 proto/REP
 
 ## 发布
 
-包名 `Tangbuting/milvus-client`，版本随 `moon.mod`。
+包名 `SundayT1998/milvus-client`，版本随 `moon.mod`。
 
 发布链路是 `.github/workflows/publish.yml`（手动触发）：先跑 fmt / check / test
 的预检，通过后 `moon publish`，最后给发出去的 commit 打个 `v<version>` tag。

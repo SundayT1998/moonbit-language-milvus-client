@@ -1,13 +1,13 @@
 supported_targets = "native"
 
 import {
-  "Tangbuting/milvus-client/transport",
+  "SundayT1998/milvus-client/transport",
   "moonbitstack/moonrpc/net",
   "moonbitlang/core/string",
 }
 
 import {
-  "Tangbuting/milvus-client/transport/native" @channel,
+  "SundayT1998/milvus-client/transport/native" @channel,
   "moonbitlang/async",
   "moonbitlang/core/encoding/utf8",
 } for "wbtest"

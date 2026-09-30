@@ -222,18 +222,18 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 
 本仓库**只有一个模块**（`moon.mod` 那一份）。协议代码是它的普通包目录
 `proto/milvus/proto/`，与 `errors` / `client` 同级，语法上是
-`Tangbuting/milvus-client/proto/milvus/proto/<pkg>`。
+`SundayT1998/milvus-client/proto/milvus/proto/<pkg>`。
 
 发布包必须自带被依赖的协议代码。早先的写法是「生成物不入库 + 用 `moon.work`
-把生成模块注册成第二个模块（`Tangbuting/proto`）」，本地面板能跑，但那个
+把生成模块注册成第二个模块（`SundayT1998/proto`）」，本地面板能跑，但那个
 `moon.work` 会跟着进发布 zip，里面的成员路径 `proto/gen/trimmed/proto`
 在包里并不存在，装的人一解析工作区就挂；何况那个成员模块也不在 registry 上。
 **别再引入第二个模块**，也别再加 `moon.work`。
 
 生成后 `gen.sh` 做两件事把它接进主模块：
 
-1. 把产物里的 import 前缀 `Tangbuting/proto/` 改写成
-   `Tangbuting/milvus-client/proto/`（生成器只会写自己那个模块的路径）；
+1. 把产物里的 import 前缀 `SundayT1998/proto/` 改写成
+   `SundayT1998/milvus-client/proto/`（生成器只会写自己那个模块的路径）；
 2. 从 `proto/tools/*/` 叠加四个 wire 往返测试包。
 
 生成是**可复现**的：CI 每次重跑 `gen.sh` 后跟一句

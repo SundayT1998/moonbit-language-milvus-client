@@ -1,14 +1,14 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Tangbuting/milvus-client/client"
+package "SundayT1998/milvus-client/client"
 
 import {
-  "Tangbuting/milvus-client/column",
-  "Tangbuting/milvus-client/entity",
-  "Tangbuting/milvus-client/errors",
-  "Tangbuting/milvus-client/index",
-  "Tangbuting/milvus-client/proto/milvus/proto/common",
-  "Tangbuting/milvus-client/proto/milvus/proto/schema",
-  "Tangbuting/milvus-client/transport",
+  "SundayT1998/milvus-client/column",
+  "SundayT1998/milvus-client/entity",
+  "SundayT1998/milvus-client/errors",
+  "SundayT1998/milvus-client/index",
+  "SundayT1998/milvus-client/proto/milvus/proto/common",
+  "SundayT1998/milvus-client/proto/milvus/proto/schema",
+  "SundayT1998/milvus-client/transport",
   "moonbitlang/core/debug",
 }
 

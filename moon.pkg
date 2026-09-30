@@ -1,4 +1,4 @@
 import {
-  "Tangbuting/milvus-client/client",
-  "Tangbuting/milvus-client/transport",
+  "SundayT1998/milvus-client/client",
+  "SundayT1998/milvus-client/transport",
 }
