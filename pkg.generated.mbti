@@ -52,11 +52,15 @@ pub using @transport {type Code}
 
 pub using @client {type CollectionDescription}
 
+pub using @client {type CollectionLoadState}
+
 pub using @transport {type Config}
 
 pub using @client {type ConsistencyLevel}
 
 pub using @client {type CreateCollectionOption}
+
+pub using @client {type CreatePartitionOption}
 
 pub using @client {type DeleteOption}
 
@@ -64,13 +68,39 @@ pub using @client {type DescribeCollectionOption}
 
 pub using @client {type DropCollectionOption}
 
+pub using @client {type DropPartitionOption}
+
+pub using @client {type FlushOption}
+
+pub using @client {type FlushTask}
+
+pub using @client {type GetFlushStateOption}
+
+pub using @client {type GetLoadStateOption}
+
+pub using @client {type HasPartitionOption}
+
 pub using @client {type ListCollectionsOption}
+
+pub using @client {type ListPartitionsOption}
+
+pub using @client {type LoadCollectionOption}
+
+pub using @client {type LoadPartitionsOption}
+
+pub using @client {type LoadState}
+
+pub using @client {type LoadTask}
 
 pub using @client {type MutationResult}
 
 pub using @client {type QueryOption}
 
 pub using @client {type QueryResult}
+
+pub using @client {type ReleaseCollectionOption}
+
+pub using @client {type ReleasePartitionsOption}
 
 pub using @transport {type RpcError}
 

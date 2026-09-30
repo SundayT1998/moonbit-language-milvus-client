@@ -368,3 +368,21 @@ message PlaceholderValue {
 message PlaceholderGroup {
     repeated PlaceholderValue placeholders = 1;
 }
+// ---- 分区与数据生命周期所需的枚举（#17 partition / load / flush）----
+// 逐条照抄 proto/upstream/common.proto，序号一律不动。
+
+enum LoadState {
+    LoadStateNotExist = 0;
+    LoadStateNotLoad = 1;
+    LoadStateLoading = 2;
+    LoadStateLoaded = 3;
+}
+
+enum WALName {
+    Unknown = 0;
+    RocksMQ = 1;
+    Pulsar = 2;
+    Kafka = 3;
+    WoodPecker = 4;
+    Test = 999;
+}

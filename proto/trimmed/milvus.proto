@@ -3,6 +3,7 @@ package milvus.proto.milvus;
 option go_package="x";
 import "common.proto";
 import "schema.proto";
+import "msg.proto";
 message CreateIndexRequest {
   // Not useful for now
   common.MsgBase base = 1;
@@ -445,4 +446,174 @@ message QueryResults {
   repeated string output_fields = 4;
   uint64 session_ts = 5;
   string primary_field_name = 6;
+}
+
+// ---- 分区与数据生命周期所需的核心 RPC 请求/响应（#17）----
+// 逐条照抄 proto/upstream/milvus.proto，字段号一律不动。
+// privilege_ext_obj 注解是 server 侧 RBAC 元数据，客户端用不着，省略不影响 wire。
+
+message LoadCollectionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name you want to load
+  string collection_name = 3;
+  // The replica number to load, default by 1
+  int32 replica_number = 4;
+  // create replica used resource group
+  repeated string resource_groups = 5;
+  // Whether to enable refresh mode.
+  bool refresh = 6;
+  // Field Partial Load fields list
+  repeated string load_fields = 7;
+  // Field Partial load skip load dynamic fields
+  bool skip_load_dynamic_field = 8;
+  // Additional parameters for load
+  map<string, string> load_params = 9;
+}
+
+message ReleaseCollectionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name you want to release
+  string collection_name = 3;
+}
+
+message CreatePartitionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name in milvus
+  string collection_name = 3;
+  // The partition name you want to create.
+  string partition_name = 4;
+}
+
+message DropPartitionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name in milvus
+  string collection_name = 3;
+  // The partition name you want to drop
+  string partition_name = 4;
+}
+
+message HasPartitionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name in milvus
+  string collection_name = 3;
+  // The partition name you want to check
+  string partition_name = 4;
+}
+
+message LoadPartitionsRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name in milvus
+  string collection_name = 3;
+  // The partition names you want to load
+  repeated string partition_names = 4;
+  // The replicas number you would load, 1 by default
+  int32 replica_number = 5;
+  // create replica used resource group
+  repeated string resource_groups = 6;
+  // Whether to enable refresh mode.
+  bool refresh = 7;
+  // Field Partial Load fields list
+  repeated string load_fields = 8;
+  // Field Partial load skip load dynamic fields
+  bool skip_load_dynamic_field = 9;
+  // Additional parameters for load
+  map<string, string> load_params = 10;
+}
+
+message ReleasePartitionsRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name in milvus
+  string collection_name = 3;
+  // The partition names you want to release
+  repeated string partition_names = 4;
+}
+
+message ShowPartitionsRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  // The collection name you want to describe, you can pass collection_name or collectionID
+  string collection_name = 3;
+  // The collection id in milvus
+  int64 collectionID = 4;
+  // When type is InMemory, will return these patitions's inMemory_percentages.(Optional)
+  repeated string partition_names = 5;
+  // Decide return Loaded partitions or All partitions(Optional)
+  // Deprecated: use GetLoadingProgress rpc instead
+  ShowType type = 6 [deprecated=true];
+}
+
+message ShowPartitionsResponse {
+  // Contain error_code and reason
+  common.Status status = 1;
+  // All partition names for this collection
+  repeated string partition_names = 2;
+  // All partition ids for this collection
+  repeated int64 partitionIDs = 3;
+  // All hybrid timestamps
+  repeated uint64 created_timestamps = 4;
+  // All utc timestamps calculated by created_timestamps
+  repeated uint64 created_utc_timestamps = 5;
+  // Load percentage on querynode
+  // Deprecated: use GetLoadingProgress rpc instead
+  repeated int64 inMemory_percentages = 6 [deprecated=true];
+}
+
+message GetLoadingProgressRequest {
+  common.MsgBase base = 1;
+  string collection_name = 2;
+  repeated string partition_names = 3;
+  string db_name = 4;
+}
+
+message GetLoadingProgressResponse {
+  common.Status status = 1;
+  int64 progress = 2;
+  int64 refresh_progress = 3;
+}
+
+message GetLoadStateRequest {
+  common.MsgBase base = 1;
+  string collection_name = 2;
+  repeated string partition_names = 3;
+  string db_name = 4;
+}
+
+message GetLoadStateResponse {
+  common.Status status = 1;
+  common.LoadState state = 2;
+}
+
+message FlushRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  repeated string collection_names = 3;
+}
+
+message FlushResponse {
+  common.Status status = 1;
+  string db_name = 2;
+  map<string, schema.LongArray> coll_segIDs = 3;
+  map<string, schema.LongArray> flush_coll_segIDs = 4;
+  map<string, int64> coll_seal_times = 5; // physical time for backup tool
+  map<string, uint64> coll_flush_ts = 6; // hybrid ts for geting flush tate
+  map<string, msg.MsgPosition> channel_cps = 7;
+}
+
+message GetFlushStateRequest {
+  repeated int64 segmentIDs = 1;
+  uint64 flush_ts = 2;
+  string db_name = 3;
+  string collection_name = 4;
+}
+
+message GetFlushStateResponse {
+  common.Status status = 1;
+  bool flushed = 2;
 }

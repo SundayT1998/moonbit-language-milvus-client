@@ -166,11 +166,15 @@ async fn check_steps(client : @client.Client) -> String {
   // 6. 加载集合。检索的前置条件：不加载的话服务端会回
   //    `collection not loaded`（错误码 `CollectionNotLoaded`）。
   //    LoadCollection 返回只代表请求被受理，数据面未必就绪，所以要
-  //    轮询 get_load_state 直到 Loaded —— 直接接着检索会偶发失败。
-  client.load_collection(@client.new_load_collection_option(collection)) catch {
+  //    等进度到 100% 再检索 —— 直接接着检索会偶发失败。
+  let load_task = client.load_collection(
+    @client.new_load_collection_option(collection).with_check_interval_millis(
+      500,
+    ),
+  ) catch {
     err => return step_failed("6", "加载集合失败：" + err.to_string())
   }
-  match wait_loaded(client) {
+  match wait_loaded(client, load_task) {
     Ok(_) => ()
     Err(err) => return step_failed("6", err)
   }
@@ -335,21 +339,31 @@ fn build_schema() -> @entity.CollectionSchema {
 }
 
 ///|
-/// 轮询到集合真的 Loaded。
+/// 等集合真的加载完。
 ///
 /// `load_collection` 的返回只表示服务端受理了请求，数据面就绪是异步的。
-/// 这里给一个宽松的上限（60s）就够：CI 上加载一个 10 行的小集合是秒级的，
-/// 真走到超时说明服务端出问题了，该报错而不是无限等。
+/// 优先用 `LoadTask::wait` 轮询 `GetLoadingProgress`；进度查询不可用时
+/// 退到 `get_load_state` 轮询 `Loaded`。两条路都给一个宽松的上限（60s）：
+/// CI 上加载一个 10 行的小集合是秒级的，真走到超时说明服务端出问题了，
+/// 该报错而不是无限等。
 ///
 /// 返回 `Err` 时是已经带好步骤名的失败文本。
-async fn wait_loaded(client : @client.Client) -> Result[Unit, String] {
-  let option = @client.new_describe_collection_option(collection)
+async fn wait_loaded(
+  client : @client.Client,
+  task : @client.LoadTask,
+) -> Result[Unit, String] {
+  let loaded = task.wait() catch {
+    err => return Err("等待加载失败：" + err.to_string())
+  }
+  ignore(loaded)
+  // 进度到 100 后再用状态确认一次，顺带覆盖 get_load_state 这条路。
+  let option = @client.new_get_load_state_option(collection)
   let limit = 120
   for i = 0; i < limit; i = i + 1 {
     let state = client.get_load_state(option) catch {
       err => return Err("查加载状态失败：" + err.to_string())
     }
-    match state {
+    match state.state {
       @client.CollectionLoadState::Loaded => return Ok(())
       @client.CollectionLoadState::NotExist =>
         return Err("加载中集合消失了")
