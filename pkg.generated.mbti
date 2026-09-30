@@ -2,17 +2,32 @@
 package "Tangbuting/milvus-client"
 
 import {
+  "Tangbuting/milvus-client/client",
   "Tangbuting/milvus-client/transport",
 }
 
 // Values
+pub fn client_config(@client.Client) -> @transport.Config
+
+pub fn client_error_code(@client.ClientError) -> Int
+
+pub let default_consistency_level : @client.ConsistencyLevel
+
 pub let default_port : Int
 
 pub let default_timeout_millis : Int
 
+pub fn is_client_error_deadline_exceeded(@client.ClientError) -> Bool
+
+pub fn is_client_error_retryable(@client.ClientError) -> Bool
+
 pub fn is_deadline_exceeded(@transport.RpcError) -> Bool
 
 pub fn is_retryable(@transport.RpcError) -> Bool
+
+pub fn is_transport_failure(@client.ClientError) -> Bool
+
+pub fn new_client(@transport.Config, async (String, Bytes) -> Bytes raise @transport.RpcError) -> @client.Client
 
 pub fn with_address(String) -> @transport.Config
 
@@ -29,10 +44,46 @@ pub fn with_token(@transport.Config, String) -> @transport.Config
 // Types and methods
 
 // Type aliases
+pub using @client {type Client}
+
+pub using @client {type ClientError}
+
 pub using @transport {type Code}
+
+pub using @client {type CollectionDescription}
 
 pub using @transport {type Config}
 
+pub using @client {type ConsistencyLevel}
+
+pub using @client {type CreateCollectionOption}
+
+pub using @client {type DeleteOption}
+
+pub using @client {type DescribeCollectionOption}
+
+pub using @client {type DropCollectionOption}
+
+pub using @client {type ListCollectionsOption}
+
+pub using @client {type MutationResult}
+
+pub using @client {type QueryOption}
+
+pub using @client {type QueryResult}
+
 pub using @transport {type RpcError}
+
+pub using @client {type SearchHit}
+
+pub using @client {type SearchOption}
+
+pub using @client {type SearchResult}
+
+pub type Unary = async (String, Bytes) -> Bytes raise @transport.RpcError
+
+pub using @client {type WriteColumn}
+
+pub using @client {type WriteOption}
 
 // Traits

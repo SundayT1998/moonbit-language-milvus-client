@@ -185,3 +185,38 @@ Milvus `common.Status` → MoonBit 错误模型。对应上游 `client/internal/
 - `same_code` 是 Go 版 `errors.Is` 的等价物：**比对 code，不比对文本**。
 - `MerError?` 上的方法在包外用 UFCS 调用（`@errors.error_code(err)`），
   点调用只对非 Option 的 `MerError` 有效。
+
+## `client/` 包
+
+Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
+（`milvus-io/milvus` commit `1bcc8cb1`，Apache-2.0）。
+
+- `types.mbt` —— `Unary` 函数值、`Client`、`ClientError`、`call_service`、`check_status`
+- `consistency.mbt` / `schema_convert.mbt` —— 一致性等级与 schema ↔ proto 的桥
+- `collection.mbt` —— CreateCollection / DropCollection / HasCollection /
+  DescribeCollection / ListCollections 及其 Option
+- `write_column.mbt` / `write.mbt` —— `WriteColumn` → `FieldData`，insert / upsert / delete
+- `search.mbt` / `query.mbt` —— 占位符编码、search_params、结果反序列化
+- `paths.mbt` —— gRPC 方法路径常量
+- `client/native/connect.mbt` —— native 专属：把 `Unary` 接到 `@channel.Client::unary`
+
+约定：
+- 发字节抽成 `pub type Unary = async (String, Bytes) -> Bytes raise @transport.RpcError`，
+  所以 `client/` 在 wasm / js 下也编得过；真连 socket 的只有 `client/native`。
+- `ClientError` 是**单一** suberror：`Transport` / `Server` / `Schema` / `Encode` / `Decode`。
+  `async fn` 只允许一个 `raise` 类型，多错误组合装不进签名，所以这里是刻意的收敛。
+- Milvus 老式 RPC 把错误放在响应体的 `common.Status` 里，而不是 gRPC status。
+  每个响应都要过一遍 `check_status`，OK 返回 `None`。
+- `ClientError` 的四个分类处置不同：`Transport` 可原样重试，`Server` 看
+  `@errors.is_retryable_err`（只看服务端下发的 `retriable`，不做本地猜测）。
+- 不缓存集合 schema：insert / upsert 的 `schema_timestamp` 留 0，
+  没有上游那套 schema-mismatch 自动重试。这是 R6 里写明的取舍，改它要连带
+  补一个 schema 缓存。
+- `WriteColumn` 用 `@column.ColumnValue` 而不是另造枚举，让回读的 `Column`
+  能改个名字写回去。它推导不出 `Array` 列的元素类型，所以那一支直接报 `Encode`。
+- `search_params` 的键集合与顺序照搬上游 `AnnRequest.searchRequest`：
+  固定七个键写全，调用方的 `with_search_param` 最后覆盖。
+
+`entity/` 的 float16 写侧（`float16_from_float` / `float16_vector_bytes`）与
+`column/float16.mbt` 的读侧是一对，逐位对齐 IEEE-754 binary16。
+改任一侧都要跑 `entity/float16_test.mbt`（期望值由 Python `struct.pack('<e')` 生成）。

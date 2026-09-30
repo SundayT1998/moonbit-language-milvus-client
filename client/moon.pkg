@@ -1,0 +1,17 @@
+import {
+  "Tangbuting/milvus-client/column",
+  "Tangbuting/milvus-client/entity",
+  "Tangbuting/milvus-client/errors",
+  "Tangbuting/milvus-client/index",
+  "Tangbuting/milvus-client/transport",
+  "Tangbuting/proto/milvus/proto/common",
+  "Tangbuting/proto/milvus/proto/milvus",
+  "Tangbuting/proto/milvus/proto/schema",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/string",
+  "moonbitlang/protobuf" @lib,
+}
+
+import {
+  "moonbitlang/async",
+} for "test"

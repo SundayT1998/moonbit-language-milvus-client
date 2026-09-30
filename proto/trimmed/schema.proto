@@ -305,3 +305,23 @@ enum ShardState {
   // it.
   ShardDropped = 3;
 }
+// ---- 检索响应所需的 SearchResultData（#15 Client 门面）----
+// 逐条照抄 proto/upstream/schema.proto 的对应字段，只保留本移植需要的部分。
+// 字段号一律不动；裁剪掉的字段号原样保留空档。
+
+message SearchResultData {
+  int64 num_queries = 1;
+  int64 top_k = 2;
+  repeated FieldData fields_data = 3;
+  repeated float scores = 4;
+  IDs ids = 5;
+  repeated int64 topks = 6;
+  repeated string output_fields = 7;
+  FieldData group_by_field_value = 8;
+  int64 all_search_count = 9;
+  repeated float distances = 10;
+  repeated float recalls = 12;
+  string primary_field_name = 13;
+  LongArray element_indices = 15;
+  repeated FieldData group_by_field_values = 17;
+}

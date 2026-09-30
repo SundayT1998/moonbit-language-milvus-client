@@ -17,12 +17,24 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 | `errors` | Milvus `common.Status` → MoonBit 错误模型（#13） |
 | `transport` | 配置、metadata 组装、gRPC status —— 跨 target（#11） |
 | `transport/native` | 真连 socket 的 Channel 实现 —— native 专属（#11） |
+| `client` | Client 门面与核心 RPC 编排：collection / insert / upsert / delete / search / query（#15） |
+| `client/native` | 把 `client` 的 unary 调用接到真实连接上 —— native 专属（#15） |
 
 ## 当前状态
 
-传输层（Issue #11）已打通：能对真实 Milvus 建立 gRPC channel、
-注入认证与 dbName、按超时控制调用。业务 RPC（collection / search / insert 等）
-尚未实现，见 #5 的规划。
+客户端门面（Issue #15）已交付：集合生命周期（创建 / 描述 / 是否存在 / 列出 / 删除）、
+数据面（insert / upsert / delete）、检索面（search / query）都走通了，
+Option 构造函数名与默认值对齐上游。
+
+**只保留 column-based 一路**，row-based API 不移植（风险 R2）。
+`CreateCollection` 也不会顺带建索引或 load 集合 —— 上游 `IsFast()` 那条路属于后续 Issue。
+
+上层调用只要给一个 `Unary` 函数值就能跑，所以测试与 wasm 下不需要真连接：
+
+```moonbit nocheck
+///|
+let client = @milvus_client.new_client(cfg, my_unary)
+```
 
 ## 来源与许可
 
@@ -193,6 +205,73 @@ match ... {
 ```sh
 moon run cmd/main -- 127.0.0.1:19530 root:Milvus default
 ```
+
+## 客户端
+
+`client` 是薄客户端：Option → protobuf 请求 → 发 RPC → 响应反序列化，
+本地不做任何向量计算。发字节这件事被抽成 `Unary` 函数值，
+所以同一份调用逻辑在 wasm / js 下也编得过。
+
+```moonbit nocheck
+///|
+async fn demo(client : @client.Client) -> Unit raise @client.ClientError {
+  // 建集合：给名字和维度就够，默认 id/vector + 动态字段
+  client.create_collection(
+    @client.simple_create_collection_option("demo", dim=768),
+  )
+
+  // 写入
+  let _ = client.insert(
+    @client.new_write_option("demo", [
+      @client.WriteColumn::new("id", @column.ColumnValue::Int64([1L, 2L])),
+      @client.WriteColumn::new(
+        "vector",
+        @column.ColumnValue::FloatVector(2, [[0.1, 0.2], [0.3, 0.4]]),
+      ),
+    ]),
+  )
+
+  // 检索
+  let hits = client.search(
+    @client.new_search_option("demo", limit=3, [
+      @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
+    ]).with_anns_field("vector"),
+  )
+}
+```
+
+native 下接一条真连接（`client/native`）：
+
+```moonbit nocheck
+let (client, channel) = @native.connect(cfg)
+// ... 跑上面的调用 ...
+channel.close()
+```
+
+要点：
+
+- `MutationResult.ids` 只在服务端回主键时是 `Some`（insert / upsert 有，delete 没有）。
+- 写入前本地校验：列行数必须一致、向量 dim 必须与列声明吻合、空列直接拒。
+  这些在服务端只会表现成「静默少写」，早点失败更好查。
+- `search_params` 固定写全 `anns_field` / `topk` / `offset` / `metric_type` /
+  `round_decimal` / `ignore_growing` / `params` 七个键，调用方的
+  `with_search_param` 最后覆盖 —— 与上游的键集合和顺序一致。
+- `has_collection` 走 `DescribeCollection`，把 `CollectionNotExists` 当 `false`
+  而不是失败，与上游一致。
+- 未显式设一致性等级时，请求里 `use_default_consistency` 为真、等级填 `Bounded`，
+  由服务端决定最终档位。
+
+## 已知限制
+
+- 传输失败与「服务端拒绝」是两个不同的 `ClientError` 分支：
+  `Transport` 可以原样重试，`Server` 要看错误码。`is_transport_failure` /
+  `is_client_error_retryable` 用来分流。
+- 不缓存集合 schema，所以 insert / upsert 不带 `schema_timestamp`，
+  也没有上游那套 schema-mismatch 自动重试。schema 变更后由调用方重新描述集合。
+- `WriteColumn` 不支持 `Array` 列：元素的 `DataType` 没法从值本身推出来，
+  要写数组字段得等后续 Issue 补一个带元素类型的列类型。
+- Binary / Int8 向量列在 `@column.ColumnValue` 里是「逐行一块字节」，
+  行内字节数按 `dim`（binary 按 `dim / 8`）校验。
 
 ## 开发
 

@@ -1,4 +1,7 @@
+supported_targets = "native"
+
 import {
   "Tangbuting/milvus-client/client",
   "Tangbuting/milvus-client/transport",
+  "Tangbuting/milvus-client/transport/native" @channel,
 }

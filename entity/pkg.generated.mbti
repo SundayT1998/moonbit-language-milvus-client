@@ -18,6 +18,10 @@ pub fn bfloat16_vector_from_bytes(Bytes) -> Array[Float] raise SchemaError
 
 pub let dim_key : String
 
+pub fn float16_from_float(Float) -> UInt
+
+pub fn float16_vector_bytes(Array[Float]) -> Bytes
+
 pub let max_length_key : String
 
 // Errors

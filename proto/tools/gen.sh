@@ -83,7 +83,7 @@ fi
 # p0test  : DescribeCollection 的 wire 往返（#10）
 # indextest: 索引 RPC 的 wire 往返（#16）
 if [ -d "$OUT/proto/src/milvus/proto" ]; then
-  for suite in p0test indextest; do
+  for suite in p0test indextest rpctest; do
     src="$ROOT/proto/tools/$suite"
     [ -d "$src" ] || continue
     dest="$OUT/proto/src/milvus/proto/$suite"
