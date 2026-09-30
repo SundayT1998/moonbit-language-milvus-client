@@ -172,14 +172,22 @@ moon test  --target js    ->  3 passed
 
 ```
 proto/
-  upstream/     # 上游只读快照（7 个 .proto + PROVENANCE.md）
-  trimmed/      # P0 裁剪集（3 个 .proto）
-  gen/          # 生成物（不进版本库，见 .gitignore）
-  tools/gen.sh  # 一键生成
+  upstream/         # 上游只读快照（7 个 .proto + PROVENANCE.md）
+  trimmed/          # P0 裁剪集（4 个 .proto）
+  milvus/proto/     # 生成物（入版本库，主模块的普通包目录）
+  tools/gen.sh      # 一键生成
   tools/p0test/     # DescribeCollection 的 wire 往返测试（#10）
   tools/indextest/  # 索引 RPC 的 wire 往返测试（#16）
-  REPORT.md     # 本文件
+  tools/rpctest/    # Client 门面核心 RPC 的 wire 往返测试（#15）
+  tools/lifecycletest/ # 分区 / 加载 / flush 的 wire 往返测试（#17）
+  REPORT.md         # 本文件
 ```
+
+> 生成目标早期写作 `proto/gen/trimmed/proto`，配 `moon.work` 把生成物注册成
+> 第二个模块。那个写法打出来的发布包自带一份 `moon.work`，指向包内并不存在的
+> `proto/gen/trimmed/proto`，装不上。现在生成物直接落在主模块的包目录
+> `proto/milvus/proto/` 并入库，`moon.work` 已删除。理由见 AGENTS.md
+> 「单模块优先」一节。
 
 ## 10. 追加：索引 RPC 的 message 纳入裁剪集（#16）
 

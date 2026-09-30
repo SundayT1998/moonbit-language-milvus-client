@@ -46,10 +46,12 @@ jobs:
         run: choco install protoc -y
 
       - name: gen-proto
-        # proto/gen/ 不入版本库（见 .gitignore），签出后先重新生成再检查
+        # 生成物已入库（proto/milvus/proto），这一步是**校验生成可复现**：
+        # 重跑一遍应当产生零 diff，否则说明有人手改了生成物或改了 .proto 没重新生成。
+        # 与下面的 `moon fmt && git diff --exit-code` 是同一个套路。
         run: |
           bash proto/tools/gen.sh trimmed
-          moon work use . proto/gen/trimmed/proto
+          git diff --exit-code -- proto/milvus/proto
 
       - name: moon check
         run: moon check --target all
@@ -91,7 +93,7 @@ jobs:
       - name: gen-proto
         run: |
           bash proto/tools/gen.sh trimmed
-          moon work use . proto/gen/trimmed/proto
+          git diff --exit-code -- proto/milvus/proto
 
       - name: start milvus
         run: scripts/milvus-start.sh --force

@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/proto/milvus/proto/msg"
+
+import {
+  "Tangbuting/milvus-client/proto/milvus/proto/common",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "moonbitlang/protobuf",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct MsgPosition {
+  mut channel_name : String
+  mut msg_id : Bytes
+  mut msg_group : String
+  mut timestamp : UInt64
+  mut wal_name : @common.WALName
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn MsgPosition::MsgPosition(String, Bytes, String, UInt64, @common.WALName) -> Self
+pub impl Default for MsgPosition
+pub impl ToJson for MsgPosition
+pub impl @json.FromJson for MsgPosition
+pub impl @protobuf.AsyncRead for MsgPosition
+pub impl @protobuf.AsyncWrite for MsgPosition
+pub impl @protobuf.Read for MsgPosition
+pub impl @protobuf.Sized for MsgPosition
+pub impl @protobuf.Write for MsgPosition
+
+// Type aliases
+
+// Traits

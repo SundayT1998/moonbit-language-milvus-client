@@ -26,7 +26,6 @@ preferred_target = "wasm"
 description = "Milvus vector database client for MoonBit"
 
 import {
-  "Tangbuting/proto@0.1.0",
   "moonbitstack/moonrpc@0.19.3",
   "moonbitstack/moonhttp@0.12.1",
   "moonbitlang/async@0.20.3",

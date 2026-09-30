@@ -1,0 +1,670 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/proto/milvus/proto/schema"
+
+import {
+  "Tangbuting/milvus-client/proto/milvus/proto/common",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "moonbitlang/protobuf",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct ArrayArray {
+  mut data : Array[ScalarField]
+  mut element_type : DataType
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ArrayArray::ArrayArray(Array[ScalarField], DataType) -> Self
+pub impl Default for ArrayArray
+pub impl ToJson for ArrayArray
+pub impl @json.FromJson for ArrayArray
+pub impl @protobuf.AsyncRead for ArrayArray
+pub impl @protobuf.AsyncWrite for ArrayArray
+pub impl @protobuf.Read for ArrayArray
+pub impl @protobuf.Sized for ArrayArray
+pub impl @protobuf.Write for ArrayArray
+
+pub(all) struct BoolArray {
+  mut data : Array[Bool]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn BoolArray::BoolArray(Array[Bool]) -> Self
+pub impl Default for BoolArray
+pub impl ToJson for BoolArray
+pub impl @json.FromJson for BoolArray
+pub impl @protobuf.AsyncRead for BoolArray
+pub impl @protobuf.AsyncWrite for BoolArray
+pub impl @protobuf.Read for BoolArray
+pub impl @protobuf.Sized for BoolArray
+pub impl @protobuf.Write for BoolArray
+
+pub(all) struct BytesArray {
+  mut data : Array[Bytes]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn BytesArray::BytesArray(Array[Bytes]) -> Self
+pub impl Default for BytesArray
+pub impl ToJson for BytesArray
+pub impl @json.FromJson for BytesArray
+pub impl @protobuf.AsyncRead for BytesArray
+pub impl @protobuf.AsyncWrite for BytesArray
+pub impl @protobuf.Read for BytesArray
+pub impl @protobuf.Sized for BytesArray
+pub impl @protobuf.Write for BytesArray
+
+pub(all) struct CollectionSchema {
+  mut name : String
+  mut description : String
+  mut auto_id : Bool
+  mut fields : Array[FieldSchema]
+  mut enable_dynamic_field : Bool
+  mut properties : Array[@common.KeyValuePair]
+  mut functions : Array[FunctionSchema]
+  mut db_name : String
+  mut struct_array_fields : Array[StructArrayFieldSchema]
+  mut version : Int
+  mut external_source : String
+  mut external_spec : String
+  mut do_physical_backfill : Bool
+  mut file_resource_ids : Array[Int64]
+  mut enable_namespace : Bool
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn CollectionSchema::CollectionSchema(String, String, Bool, Array[FieldSchema], Bool, Array[@common.KeyValuePair], Array[FunctionSchema], String, Array[StructArrayFieldSchema], Int, String, String, Bool, Array[Int64], Bool) -> Self
+pub impl Default for CollectionSchema
+pub impl ToJson for CollectionSchema
+pub impl @json.FromJson for CollectionSchema
+pub impl @protobuf.AsyncRead for CollectionSchema
+pub impl @protobuf.AsyncWrite for CollectionSchema
+pub impl @protobuf.Read for CollectionSchema
+pub impl @protobuf.Sized for CollectionSchema
+pub impl @protobuf.Write for CollectionSchema
+
+pub(all) struct CollectionShardInfo {
+  mut last_truncate_time_tick : UInt64
+  mut state : ShardState
+  mut vchannel_name : String
+  mut routing : CollectionShardInfo_Routing
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn CollectionShardInfo::CollectionShardInfo(UInt64, ShardState, String, routing? : CollectionShardInfo_Routing) -> Self
+pub impl Default for CollectionShardInfo
+pub impl ToJson for CollectionShardInfo
+pub impl @json.FromJson for CollectionShardInfo
+pub impl @protobuf.AsyncRead for CollectionShardInfo
+pub impl @protobuf.AsyncWrite for CollectionShardInfo
+pub impl @protobuf.Read for CollectionShardInfo
+pub impl @protobuf.Sized for CollectionShardInfo
+pub impl @protobuf.Write for CollectionShardInfo
+
+pub(all) enum CollectionShardInfo_Routing {
+  HashRouting(HashRouting)
+  NotSet
+} derive(Eq, @debug.Debug)
+pub impl Default for CollectionShardInfo_Routing
+pub impl ToJson for CollectionShardInfo_Routing
+pub impl @json.FromJson for CollectionShardInfo_Routing
+
+pub(all) enum DataType {
+  None
+  Bool
+  Int8
+  Int16
+  Int32
+  Int64
+  Float
+  Double
+  String
+  VarChar
+  Array
+  JSON
+  Geometry
+  Text
+  Timestamptz
+  Mol
+  Date
+  Time
+  Decimal
+  UUID
+  BinaryVector
+  FloatVector
+  Float16Vector
+  BFloat16Vector
+  SparseFloatVector
+  Int8Vector
+  ArrayOfVector
+  ArrayOfStruct
+  Struct
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn DataType::from_enum(@protobuf.Enum) -> Self
+pub fn DataType::to_enum(Self) -> @protobuf.Enum
+pub impl Default for DataType
+pub impl ToJson for DataType
+pub impl @json.FromJson for DataType
+pub impl @protobuf.Sized for DataType
+
+pub(all) struct DoubleArray {
+  mut data : Array[Double]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn DoubleArray::DoubleArray(Array[Double]) -> Self
+pub impl Default for DoubleArray
+pub impl ToJson for DoubleArray
+pub impl @json.FromJson for DoubleArray
+pub impl @protobuf.AsyncRead for DoubleArray
+pub impl @protobuf.AsyncWrite for DoubleArray
+pub impl @protobuf.Read for DoubleArray
+pub impl @protobuf.Sized for DoubleArray
+pub impl @protobuf.Write for DoubleArray
+
+pub(all) struct FieldData {
+  mut type_ : DataType
+  mut field_name : String
+  mut field_id : Int64
+  mut is_dynamic : Bool
+  mut valid_data : Array[Bool]
+  mut field : FieldData_Field
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FieldData::FieldData(DataType, String, Int64, Bool, Array[Bool], field? : FieldData_Field) -> Self
+pub impl Default for FieldData
+pub impl ToJson for FieldData
+pub impl @json.FromJson for FieldData
+pub impl @protobuf.AsyncRead for FieldData
+pub impl @protobuf.AsyncWrite for FieldData
+pub impl @protobuf.Read for FieldData
+pub impl @protobuf.Sized for FieldData
+pub impl @protobuf.Write for FieldData
+
+pub(all) enum FieldData_Field {
+  Scalars(ScalarField)
+  Vectors(VectorField)
+  NotSet
+} derive(Eq, @debug.Debug)
+pub impl Default for FieldData_Field
+pub impl ToJson for FieldData_Field
+pub impl @json.FromJson for FieldData_Field
+
+pub(all) struct FieldSchema {
+  mut field_id : Int64
+  mut name : String
+  mut is_primary_key : Bool
+  mut description : String
+  mut data_type : DataType
+  mut type_params : Array[@common.KeyValuePair]
+  mut index_params : Array[@common.KeyValuePair]
+  mut auto_id : Bool
+  mut state : FieldState
+  mut element_type : DataType
+  mut default_value : ValueField?
+  mut is_dynamic : Bool
+  mut is_partition_key : Bool
+  mut is_clustering_key : Bool
+  mut nullable : Bool
+  mut is_function_output : Bool
+  mut external_field : String
+  mut type_schema : TypeSchema?
+  mut element_nullable : Bool
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FieldSchema::FieldSchema(Int64, String, Bool, String, DataType, Array[@common.KeyValuePair], Array[@common.KeyValuePair], Bool, FieldState, DataType, default_value? : ValueField, Bool, Bool, Bool, Bool, Bool, String, type_schema? : TypeSchema, Bool) -> Self
+pub impl Default for FieldSchema
+pub impl ToJson for FieldSchema
+pub impl @json.FromJson for FieldSchema
+pub impl @protobuf.AsyncRead for FieldSchema
+pub impl @protobuf.AsyncWrite for FieldSchema
+pub impl @protobuf.Read for FieldSchema
+pub impl @protobuf.Sized for FieldSchema
+pub impl @protobuf.Write for FieldSchema
+
+pub(all) enum FieldState {
+  FieldCreated
+  FieldCreating
+  FieldDropping
+  FieldDropped
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn FieldState::from_enum(@protobuf.Enum) -> Self
+pub fn FieldState::to_enum(Self) -> @protobuf.Enum
+pub impl Default for FieldState
+pub impl ToJson for FieldState
+pub impl @json.FromJson for FieldState
+pub impl @protobuf.Sized for FieldState
+
+pub(all) struct FloatArray {
+  mut data : Array[Float]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FloatArray::FloatArray(Array[Float]) -> Self
+pub impl Default for FloatArray
+pub impl ToJson for FloatArray
+pub impl @json.FromJson for FloatArray
+pub impl @protobuf.AsyncRead for FloatArray
+pub impl @protobuf.AsyncWrite for FloatArray
+pub impl @protobuf.Read for FloatArray
+pub impl @protobuf.Sized for FloatArray
+pub impl @protobuf.Write for FloatArray
+
+pub(all) struct FunctionSchema {
+  mut name : String
+  mut id : Int64
+  mut description : String
+  mut type_ : FunctionType
+  mut input_field_names : Array[String]
+  mut input_field_ids : Array[Int64]
+  mut output_field_names : Array[String]
+  mut output_field_ids : Array[Int64]
+  mut params : Array[@common.KeyValuePair]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn FunctionSchema::FunctionSchema(String, Int64, String, FunctionType, Array[String], Array[Int64], Array[String], Array[Int64], Array[@common.KeyValuePair]) -> Self
+pub impl Default for FunctionSchema
+pub impl ToJson for FunctionSchema
+pub impl @json.FromJson for FunctionSchema
+pub impl @protobuf.AsyncRead for FunctionSchema
+pub impl @protobuf.AsyncWrite for FunctionSchema
+pub impl @protobuf.Read for FunctionSchema
+pub impl @protobuf.Sized for FunctionSchema
+pub impl @protobuf.Write for FunctionSchema
+
+pub(all) enum FunctionType {
+  Unknown
+  BM25
+  TextEmbedding
+  Rerank
+  MinHash
+  MolFingerprint
+  Unknown1(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn FunctionType::from_enum(@protobuf.Enum) -> Self
+pub fn FunctionType::to_enum(Self) -> @protobuf.Enum
+pub impl Default for FunctionType
+pub impl ToJson for FunctionType
+pub impl @json.FromJson for FunctionType
+pub impl @protobuf.Sized for FunctionType
+
+pub(all) struct GeometryArray {
+  mut data : Array[Bytes]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn GeometryArray::GeometryArray(Array[Bytes]) -> Self
+pub impl Default for GeometryArray
+pub impl ToJson for GeometryArray
+pub impl @json.FromJson for GeometryArray
+pub impl @protobuf.AsyncRead for GeometryArray
+pub impl @protobuf.AsyncWrite for GeometryArray
+pub impl @protobuf.Read for GeometryArray
+pub impl @protobuf.Sized for GeometryArray
+pub impl @protobuf.Write for GeometryArray
+
+pub(all) struct GeometryWktArray {
+  mut data : Array[String]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn GeometryWktArray::GeometryWktArray(Array[String]) -> Self
+pub impl Default for GeometryWktArray
+pub impl ToJson for GeometryWktArray
+pub impl @json.FromJson for GeometryWktArray
+pub impl @protobuf.AsyncRead for GeometryWktArray
+pub impl @protobuf.AsyncWrite for GeometryWktArray
+pub impl @protobuf.Read for GeometryWktArray
+pub impl @protobuf.Sized for GeometryWktArray
+pub impl @protobuf.Write for GeometryWktArray
+
+pub(all) struct HashRouting {
+  mut buckets : Array[UInt64]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn HashRouting::HashRouting(Array[UInt64]) -> Self
+pub impl Default for HashRouting
+pub impl ToJson for HashRouting
+pub impl @json.FromJson for HashRouting
+pub impl @protobuf.AsyncRead for HashRouting
+pub impl @protobuf.AsyncWrite for HashRouting
+pub impl @protobuf.Read for HashRouting
+pub impl @protobuf.Sized for HashRouting
+pub impl @protobuf.Write for HashRouting
+
+pub(all) struct IDs {
+  mut id_field : IDs_IdField
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn IDs::IDs(id_field? : IDs_IdField) -> Self
+pub impl Default for IDs
+pub impl ToJson for IDs
+pub impl @json.FromJson for IDs
+pub impl @protobuf.AsyncRead for IDs
+pub impl @protobuf.AsyncWrite for IDs
+pub impl @protobuf.Read for IDs
+pub impl @protobuf.Sized for IDs
+pub impl @protobuf.Write for IDs
+
+pub(all) enum IDs_IdField {
+  IntId(LongArray)
+  StrId(StringArray)
+  UuidId(UUIDArray)
+  NotSet
+} derive(Eq, @debug.Debug)
+pub impl Default for IDs_IdField
+pub impl ToJson for IDs_IdField
+pub impl @json.FromJson for IDs_IdField
+
+pub(all) struct IntArray {
+  mut data : Array[Int]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn IntArray::IntArray(Array[Int]) -> Self
+pub impl Default for IntArray
+pub impl ToJson for IntArray
+pub impl @json.FromJson for IntArray
+pub impl @protobuf.AsyncRead for IntArray
+pub impl @protobuf.AsyncWrite for IntArray
+pub impl @protobuf.Read for IntArray
+pub impl @protobuf.Sized for IntArray
+pub impl @protobuf.Write for IntArray
+
+pub(all) struct JSONArray {
+  mut data : Array[Bytes]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn JSONArray::JSONArray(Array[Bytes]) -> Self
+pub impl Default for JSONArray
+pub impl ToJson for JSONArray
+pub impl @json.FromJson for JSONArray
+pub impl @protobuf.AsyncRead for JSONArray
+pub impl @protobuf.AsyncWrite for JSONArray
+pub impl @protobuf.Read for JSONArray
+pub impl @protobuf.Sized for JSONArray
+pub impl @protobuf.Write for JSONArray
+
+pub(all) struct LongArray {
+  mut data : Array[Int64]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn LongArray::LongArray(Array[Int64]) -> Self
+pub impl Default for LongArray
+pub impl ToJson for LongArray
+pub impl @json.FromJson for LongArray
+pub impl @protobuf.AsyncRead for LongArray
+pub impl @protobuf.AsyncWrite for LongArray
+pub impl @protobuf.Read for LongArray
+pub impl @protobuf.Sized for LongArray
+pub impl @protobuf.Write for LongArray
+
+pub(all) struct ScalarField {
+  mut valid_data : Array[Bool]
+  mut data : ScalarField_Data
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ScalarField::ScalarField(Array[Bool], data? : ScalarField_Data) -> Self
+pub impl Default for ScalarField
+pub impl ToJson for ScalarField
+pub impl @json.FromJson for ScalarField
+pub impl @protobuf.AsyncRead for ScalarField
+pub impl @protobuf.AsyncWrite for ScalarField
+pub impl @protobuf.Read for ScalarField
+pub impl @protobuf.Sized for ScalarField
+pub impl @protobuf.Write for ScalarField
+
+pub(all) enum ScalarField_Data {
+  BoolData(BoolArray)
+  IntData(IntArray)
+  LongData(LongArray)
+  FloatData(FloatArray)
+  DoubleData(DoubleArray)
+  StringData(StringArray)
+  BytesData(BytesArray)
+  ArrayData(ArrayArray)
+  JsonData(JSONArray)
+  GeometryData(GeometryArray)
+  TimestamptzData(TimestamptzArray)
+  GeometryWktData(GeometryWktArray)
+  NotSet
+} derive(Eq, @debug.Debug)
+pub impl Default for ScalarField_Data
+pub impl ToJson for ScalarField_Data
+pub impl @json.FromJson for ScalarField_Data
+
+pub(all) struct SearchIteratorV2Results {
+  mut token : String
+  mut last_bound : Float
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn SearchIteratorV2Results::SearchIteratorV2Results(String, Float) -> Self
+pub impl Default for SearchIteratorV2Results
+pub impl ToJson for SearchIteratorV2Results
+pub impl @json.FromJson for SearchIteratorV2Results
+pub impl @protobuf.AsyncRead for SearchIteratorV2Results
+pub impl @protobuf.AsyncWrite for SearchIteratorV2Results
+pub impl @protobuf.Read for SearchIteratorV2Results
+pub impl @protobuf.Sized for SearchIteratorV2Results
+pub impl @protobuf.Write for SearchIteratorV2Results
+
+pub(all) struct SearchResultData {
+  mut num_queries : Int64
+  mut top_k : Int64
+  mut fields_data : Array[FieldData]
+  mut scores : Array[Float]
+  mut ids : IDs?
+  mut topks : Array[Int64]
+  mut output_fields : Array[String]
+  mut group_by_field_value : FieldData?
+  mut all_search_count : Int64
+  mut distances : Array[Float]
+  mut search_iterator_v2_results : SearchIteratorV2Results?
+  mut recalls : Array[Float]
+  mut primary_field_name : String
+  mut element_indices : LongArray?
+  mut group_by_field_values : Array[FieldData]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn SearchResultData::SearchResultData(Int64, Int64, Array[FieldData], Array[Float], ids? : IDs, Array[Int64], Array[String], group_by_field_value? : FieldData, Int64, Array[Float], search_iterator_v2_results? : SearchIteratorV2Results, Array[Float], String, element_indices? : LongArray, Array[FieldData]) -> Self
+pub impl Default for SearchResultData
+pub impl ToJson for SearchResultData
+pub impl @json.FromJson for SearchResultData
+pub impl @protobuf.AsyncRead for SearchResultData
+pub impl @protobuf.AsyncWrite for SearchResultData
+pub impl @protobuf.Read for SearchResultData
+pub impl @protobuf.Sized for SearchResultData
+pub impl @protobuf.Write for SearchResultData
+
+pub(all) enum ShardState {
+  ShardNormal
+  ShardCreating
+  ShardSplitting
+  ShardDropped
+  Unknown(@protobuf.Enum)
+} derive(Eq, @debug.Debug)
+pub fn ShardState::from_enum(@protobuf.Enum) -> Self
+pub fn ShardState::to_enum(Self) -> @protobuf.Enum
+pub impl Default for ShardState
+pub impl ToJson for ShardState
+pub impl @json.FromJson for ShardState
+pub impl @protobuf.Sized for ShardState
+
+pub(all) struct SparseFloatArray {
+  mut contents : Array[Bytes]
+  mut dim : Int64
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn SparseFloatArray::SparseFloatArray(Array[Bytes], Int64) -> Self
+pub impl Default for SparseFloatArray
+pub impl ToJson for SparseFloatArray
+pub impl @json.FromJson for SparseFloatArray
+pub impl @protobuf.AsyncRead for SparseFloatArray
+pub impl @protobuf.AsyncWrite for SparseFloatArray
+pub impl @protobuf.Read for SparseFloatArray
+pub impl @protobuf.Sized for SparseFloatArray
+pub impl @protobuf.Write for SparseFloatArray
+
+pub(all) struct StringArray {
+  mut data : Array[String]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn StringArray::StringArray(Array[String]) -> Self
+pub impl Default for StringArray
+pub impl ToJson for StringArray
+pub impl @json.FromJson for StringArray
+pub impl @protobuf.AsyncRead for StringArray
+pub impl @protobuf.AsyncWrite for StringArray
+pub impl @protobuf.Read for StringArray
+pub impl @protobuf.Sized for StringArray
+pub impl @protobuf.Write for StringArray
+
+pub(all) struct StructArrayFieldSchema {
+  mut field_id : Int64
+  mut name : String
+  mut description : String
+  mut fields : Array[FieldSchema]
+  mut type_params : Array[@common.KeyValuePair]
+  mut nullable : Bool
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn StructArrayFieldSchema::StructArrayFieldSchema(Int64, String, String, Array[FieldSchema], Array[@common.KeyValuePair], Bool) -> Self
+pub impl Default for StructArrayFieldSchema
+pub impl ToJson for StructArrayFieldSchema
+pub impl @json.FromJson for StructArrayFieldSchema
+pub impl @protobuf.AsyncRead for StructArrayFieldSchema
+pub impl @protobuf.AsyncWrite for StructArrayFieldSchema
+pub impl @protobuf.Read for StructArrayFieldSchema
+pub impl @protobuf.Sized for StructArrayFieldSchema
+pub impl @protobuf.Write for StructArrayFieldSchema
+
+pub(all) struct TimestamptzArray {
+  mut data : Array[Int64]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn TimestamptzArray::TimestamptzArray(Array[Int64]) -> Self
+pub impl Default for TimestamptzArray
+pub impl ToJson for TimestamptzArray
+pub impl @json.FromJson for TimestamptzArray
+pub impl @protobuf.AsyncRead for TimestamptzArray
+pub impl @protobuf.AsyncWrite for TimestamptzArray
+pub impl @protobuf.Read for TimestamptzArray
+pub impl @protobuf.Sized for TimestamptzArray
+pub impl @protobuf.Write for TimestamptzArray
+
+pub(all) struct TypeSchema {
+  mut type_params : Array[@common.KeyValuePair]
+  mut nullable : Bool
+  mut kind : TypeSchema_Kind
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn TypeSchema::TypeSchema(Array[@common.KeyValuePair], Bool, kind? : TypeSchema_Kind) -> Self
+pub impl Default for TypeSchema
+pub impl ToJson for TypeSchema
+pub impl @json.FromJson for TypeSchema
+pub impl @protobuf.AsyncRead for TypeSchema
+pub impl @protobuf.AsyncWrite for TypeSchema
+pub impl @protobuf.Read for TypeSchema
+pub impl @protobuf.Sized for TypeSchema
+pub impl @protobuf.Write for TypeSchema
+
+pub(all) enum TypeSchema_Kind {
+  LeafType(DataType)
+  ArrayElement(TypeSchema)
+  NotSet
+} derive(Eq, @debug.Debug)
+pub impl Default for TypeSchema_Kind
+pub impl ToJson for TypeSchema_Kind
+pub impl @json.FromJson for TypeSchema_Kind
+
+pub(all) struct UUIDArray {
+  mut data : Array[Bytes]
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn UUIDArray::UUIDArray(Array[Bytes]) -> Self
+pub impl Default for UUIDArray
+pub impl ToJson for UUIDArray
+pub impl @json.FromJson for UUIDArray
+pub impl @protobuf.AsyncRead for UUIDArray
+pub impl @protobuf.AsyncWrite for UUIDArray
+pub impl @protobuf.Read for UUIDArray
+pub impl @protobuf.Sized for UUIDArray
+pub impl @protobuf.Write for UUIDArray
+
+pub(all) struct ValueField {
+  mut data : ValueField_Data
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn ValueField::ValueField(data? : ValueField_Data) -> Self
+pub impl Default for ValueField
+pub impl ToJson for ValueField
+pub impl @json.FromJson for ValueField
+pub impl @protobuf.AsyncRead for ValueField
+pub impl @protobuf.AsyncWrite for ValueField
+pub impl @protobuf.Read for ValueField
+pub impl @protobuf.Sized for ValueField
+pub impl @protobuf.Write for ValueField
+
+pub(all) enum ValueField_Data {
+  BoolData(Bool)
+  IntData(Int)
+  LongData(Int64)
+  FloatData(Float)
+  DoubleData(Double)
+  StringData(String)
+  BytesData(Bytes)
+  TimestamptzData(Int64)
+  DateData(Int)
+  TimeData(Int64)
+  NotSet
+} derive(Eq, @debug.Debug)
+pub impl Default for ValueField_Data
+pub impl ToJson for ValueField_Data
+pub impl @json.FromJson for ValueField_Data
+
+pub(all) struct VectorArray {
+  mut dim : Int64
+  mut data : Array[VectorField]
+  mut element_type : DataType
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn VectorArray::VectorArray(Int64, Array[VectorField], DataType) -> Self
+pub impl Default for VectorArray
+pub impl ToJson for VectorArray
+pub impl @json.FromJson for VectorArray
+pub impl @protobuf.AsyncRead for VectorArray
+pub impl @protobuf.AsyncWrite for VectorArray
+pub impl @protobuf.Read for VectorArray
+pub impl @protobuf.Sized for VectorArray
+pub impl @protobuf.Write for VectorArray
+
+pub(all) struct VectorField {
+  mut dim : Int64
+  mut valid_data : Array[Bool]
+  mut data : VectorField_Data
+} derive(Eq, @debug.Debug)
+#alias(new, deprecated)
+pub fn VectorField::VectorField(Int64, Array[Bool], data? : VectorField_Data) -> Self
+pub impl Default for VectorField
+pub impl ToJson for VectorField
+pub impl @json.FromJson for VectorField
+pub impl @protobuf.AsyncRead for VectorField
+pub impl @protobuf.AsyncWrite for VectorField
+pub impl @protobuf.Read for VectorField
+pub impl @protobuf.Sized for VectorField
+pub impl @protobuf.Write for VectorField
+
+pub(all) enum VectorField_Data {
+  FloatVector(FloatArray)
+  BinaryVector(Bytes)
+  Float16Vector(Bytes)
+  Bfloat16Vector(Bytes)
+  SparseFloatVector(SparseFloatArray)
+  Int8Vector(Bytes)
+  VectorArray(VectorArray)
+  NotSet
+} derive(Eq, @debug.Debug)
+pub impl Default for VectorField_Data
+pub impl ToJson for VectorField_Data
+pub impl @json.FromJson for VectorField_Data
+
+// Type aliases
+
+// Traits

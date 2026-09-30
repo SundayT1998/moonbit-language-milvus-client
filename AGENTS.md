@@ -87,7 +87,7 @@ You can browse and install extra skills here:
 ## entity 包
 
 `entity/` 放协议无关的领域类型（`DataType` / `Field` / `CollectionSchema` / 各向量类型），
-不 import `proto/gen/`，也不碰 wire 编解码。数值常量（`DataType::to_int`）与
+不 import `proto/milvus/proto/`，也不碰 wire 编解码。数值常量（`DataType::to_int`）与
 `milvus.proto.schema` 逐条对齐，改动等于改协议，必须同步改 `entity/datatype_test.mbt`。
 
 BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上游 `ml_dtypes.bfloat16`
@@ -166,33 +166,38 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 - `proto/upstream/` —— 上游 `milvus-io/milvus-proto` 的 `.proto` 只读快照，
   锚定 commit 见 `proto/upstream/PROVENANCE.md`。同样不手改。
 - `proto/trimmed/` —— 裁剪到 P0 子集的 `.proto`。上游变更时需同步。
-- `proto/gen/` —— 生成产物，**不入版本库**（见 `.gitignore`）。
+- `proto/milvus/proto/` —— 生成产物，**已入版本库**，是主模块里的普通包目录。
 - `proto/tools/p0test/` —— 手写的 wire 往返测试模板，生成后由脚本叠加进产物。
 - `proto/tools/gen.sh` —— 一键生成。`gen.sh upstream` 全量，`gen.sh trimmed` P0 集。
 - `proto/REPORT.md` —— 生成器支持度探针报告（含已知缺陷与退路）。
 
-要改生成结果，改 `.proto` 或 `gen.sh` 的参数，然后重新生成。
+要改生成结果，改 `.proto` 或 `gen.sh` 的参数，然后重新生成、把生成的 diff
+一起提交。
 
-### 生成物与工作区接线
+### 单模块优先：没有第二个模块，也没有 moon.work
 
-`proto/gen/` 不进版本库，所以签出后必须先跑一次生成，否则 `errors` 包
-找不到 `Tangbuting/proto/milvus/proto/common`：
+本仓库**只有一个模块**（`moon.mod` 那一份）。协议代码是它的普通包目录
+`proto/milvus/proto/`，与 `errors` / `client` 同级，语法上是
+`Tangbuting/milvus-client/proto/milvus/proto/<pkg>`。
 
-```sh
-proto/tools/gen.sh trimmed                 # 生成 P0 裁剪集
-moon work use . proto/gen/trimmed/proto    # 把生成模块注册进工作区
-```
+发布包必须自带被依赖的协议代码。早先的写法是「生成物不入库 + 用 `moon.work`
+把生成模块注册成第二个模块（`Tangbuting/proto`）」，本地面板能跑，但那个
+`moon.work` 会跟着进发布 zip，里面的成员路径 `proto/gen/trimmed/proto`
+在包里并不存在，装的人一解析工作区就挂；何况那个成员模块也不在 registry 上。
+**别再引入第二个模块**，也别再加 `moon.work`。
 
-`moon.work` **进了版本库**，所以要用 `moon work use` 而不是 `moon work init`：
-`init` 在文件已存在时直接报错退出（`workspace file ... already exists`），
-CI 里就是一条硬失败；`use` 幂等，文件在就只做补齐，成员齐了就打印
-`already up to date`，本地和 CI 都能重复跑。
+生成后 `gen.sh` 做两件事把它接进主模块：
 
-`moon.mod` 里对 `Tangbuting/proto@0.1.0` 的依赖靠工作区解析到本地路径，
-不走 registry。
+1. 把产物里的 import 前缀 `Tangbuting/proto/` 改写成
+   `Tangbuting/milvus-client/proto/`（生成器只会写自己那个模块的路径）；
+2. 从 `proto/tools/*/` 叠加四个 wire 往返测试包。
 
-> 注意：`moon.mod` 不支持路径依赖，只有旧的 `moon.mod.json` 支持。因此这里
-> 用「工作区成员 + 版本号依赖」的写法，别改成 `{ path = ... }`。
+生成是**可复现**的：CI 每次重跑 `gen.sh` 后跟一句
+`git diff --exit-code -- proto/milvus/proto`，有 diff 就红。所以手改生成物
+一定会在 CI 上暴露，别手改。
+
+`proto/upstream/` 与 `proto/trimmed/` 仍是**源码侧输入**，不参与编译；
+只有 `proto/milvus/` 是编译目标。
 
 ## `column/` 包
 

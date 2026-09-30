@@ -1,0 +1,144 @@
+// #17 探针：分区 / 加载 / flush 用到的 RPC 请求/响应的 wire 往返。
+// 不连真实服务，只验证生成物能编码成字节、再解码回等值对象。
+//
+// 这些断言是「生成器 + 裁剪 proto」这一层的正确性下限：字段号写错、
+// map 条目编码错了，都能在这里抓住。
+
+///|
+fn[T : @lib.Write + @lib.Sized, M : @lib.Read + Default] round_trip(
+  value : T,
+) -> M raise {
+  let buf = @buffer.Buffer::Buffer()
+  @lib.Write::write(value, buf)
+  assert_eq(buf.length().reinterpret_as_uint(), @lib.size_of(value))
+  let reader = @lib.BytesReader::from_bytes(buf.to_bytes())
+  @lib.Read::read_with_limit(@lib.LimitedReader::LimitedReader(reader))
+}
+
+///|
+test "CreatePartitionRequest wire round-trip" {
+  let req = @milvus.CreatePartitionRequest::{
+    base: None,
+    db_name: "default",
+    collection_name: "demo",
+    partition_name: "p1",
+  }
+  let decoded : @milvus.CreatePartitionRequest = round_trip(req)
+  assert_eq(decoded.collection_name, "demo")
+  assert_eq(decoded.partition_name, "p1")
+}
+
+///|
+test "ShowPartitionsResponse wire round-trip" {
+  let resp = @milvus.ShowPartitionsResponse::{
+    status: None,
+    partition_names: ["_default", "p1"],
+    partition_ids: [1L, 2L],
+    created_timestamps: [10UL, 20UL],
+    created_utc_timestamps: [0UL, 0UL],
+    in_memory_percentages: [],
+  }
+  let decoded : @milvus.ShowPartitionsResponse = round_trip(resp)
+  assert_eq(decoded.partition_names, ["_default", "p1"])
+  assert_eq(decoded.partition_ids, [1L, 2L])
+  assert_eq(decoded.created_timestamps, [10UL, 20UL])
+}
+
+///|
+test "LoadPartitionsRequest wire round-trip" {
+  let req = @milvus.LoadPartitionsRequest::{
+    base: None,
+    db_name: "default",
+    collection_name: "demo",
+    partition_names: ["p1", "p2"],
+    replica_number: 2,
+    resource_groups: ["rg1"],
+    refresh: false,
+    load_fields: ["vector"],
+    skip_load_dynamic_field: true,
+    load_params: Map([("k", "v")]),
+  }
+  let decoded : @milvus.LoadPartitionsRequest = round_trip(req)
+  assert_eq(decoded.partition_names, ["p1", "p2"])
+  assert_eq(decoded.replica_number, 2)
+  assert_eq(decoded.resource_groups, ["rg1"])
+  assert_eq(decoded.load_fields, ["vector"])
+  assert_true(decoded.skip_load_dynamic_field)
+  assert_eq(decoded.load_params["k"], "v")
+}
+
+///|
+test "GetLoadStateResponse wire round-trip" {
+  let resp = @milvus.GetLoadStateResponse::{
+    status: None,
+    state: @common.LoadState::LoadStateLoading,
+  }
+  let decoded : @milvus.GetLoadStateResponse = round_trip(resp)
+  assert_eq(decoded.state, @common.LoadState::LoadStateLoading)
+}
+
+///|
+test "GetLoadingProgressResponse wire round-trip" {
+  let resp = @milvus.GetLoadingProgressResponse::{
+    status: None,
+    progress: 66L,
+    refresh_progress: 100L,
+  }
+  let decoded : @milvus.GetLoadingProgressResponse = round_trip(resp)
+  assert_eq(decoded.progress, 66L)
+  assert_eq(decoded.refresh_progress, 100L)
+}
+
+///|
+test "FlushResponse wire round-trip（含 map 与嵌套 message）" {
+  let resp = @milvus.FlushResponse::{
+    status: None,
+    db_name: "default",
+    coll_seg_ids: Map([("demo", @schema.LongArray::LongArray([11L, 12L]))]),
+    flush_coll_seg_ids: Map([("demo", @schema.LongArray::LongArray([11L]))]),
+    coll_seal_times: Map([("demo", 1234L)]),
+    coll_flush_ts: Map([("demo", 900UL)]),
+    channel_cps: Map([
+      (
+        "ch1",
+        @msg.MsgPosition::{
+          channel_name: "ch1",
+          msg_id: b"\x01\x02",
+          msg_group: "g",
+          timestamp: 7UL,
+          wal_name: @common.WALName::RocksMQ,
+        },
+      ),
+    ]),
+  }
+  let decoded : @milvus.FlushResponse = round_trip(resp)
+  assert_eq(decoded.db_name, "default")
+  assert_eq(decoded.coll_seg_ids["demo"].data, [11L, 12L])
+  assert_eq(decoded.flush_coll_seg_ids["demo"].data, [11L])
+  assert_eq(decoded.coll_seal_times["demo"], 1234L)
+  assert_eq(decoded.coll_flush_ts["demo"], 900UL)
+  assert_eq(decoded.channel_cps["ch1"].channel_name, "ch1")
+  assert_eq(decoded.channel_cps["ch1"].msg_id, b"\x01\x02")
+  assert_eq(decoded.channel_cps["ch1"].wal_name, @common.WALName::RocksMQ)
+}
+
+///|
+test "GetFlushStateRequest wire round-trip" {
+  let req = @milvus.GetFlushStateRequest::{
+    segment_ids: [11L, 12L],
+    flush_ts: 900UL,
+    db_name: "default",
+    collection_name: "demo",
+  }
+  let decoded : @milvus.GetFlushStateRequest = round_trip(req)
+  assert_eq(decoded.segment_ids, [11L, 12L])
+  assert_eq(decoded.flush_ts, 900UL)
+  assert_eq(decoded.collection_name, "demo")
+}
+
+///|
+test "GetFlushStateResponse wire round-trip" {
+  let resp = @milvus.GetFlushStateResponse::{ status: None, flushed: true, }
+  let decoded : @milvus.GetFlushStateResponse = round_trip(resp)
+  assert_true(decoded.flushed)
+}

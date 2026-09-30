@@ -1,4 +1,0 @@
-members = [
-  ".",
-  "./proto/gen/trimmed/proto",
-]

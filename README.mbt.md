@@ -8,12 +8,15 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 
 ## 包结构
 
+单模块，下面每一行都是 `Tangbuting/milvus-client` 这个模块里的包。
+
 | 包 | 内容 |
 |---|---|
 | `entity` | Schema / Field / Vector 抽象，含 BF16 手写转换（#12） |
 | `index` | 索引参数 builder、`MetricType` / `IndexType` 枚举、索引 RPC 入参与响应解析（#16） |
 | `column` | 响应 `FieldData` → 列容器反序列化，查询/检索回读的落点（#14） |
-| `proto` | 上游 `.proto` 快照、代码生成与可行性结论，见 `proto/REPORT.md`（#5 / #10） |
+| `proto/milvus/proto/*` | 生成的协议包（`common` / `milvus` / `msg` / `schema`）与四个 wire 往返测试包 |
+| `proto/`（源码侧） | 上游 `.proto` 快照、裁剪集、代码生成与可行性结论，见 `proto/REPORT.md`（#5 / #10） |
 | `errors` | Milvus `common.Status` → MoonBit 错误模型（#13） |
 | `transport` | 配置、metadata 组装、gRPC status —— 跨 target（#11） |
 | `transport/native` | 真连 socket 的 Channel 实现 —— native 专属（#11） |
@@ -41,33 +44,47 @@ Tangbuting/milvus-client = "0.1.0"
 发布到 mooncakes.io 之后，`moon add` 会自动写入这一段。
 
 > 本模块**尚未发布到 mooncakes.io**（见 Issue #37 的验收结论）。在发布前，
-> `moon add` 会失败，请按下面「从源码使用」一节把本仓库加进工作区。
+> `moon add` 会失败，请按下面「从源码使用」一节直接把本仓库当源码用。
+
+本模块没有别的非 registry 依赖：协议代码就是本模块自己的包目录，
+不存在「装上了但依赖没上 registry」的情况。
 
 ### 从源码使用
 
-签出本仓库后，`proto/gen/` 不在版本库里（见 `.gitignore`），第一次构建前要生成一次：
+本仓库**只有一个模块**，生成物也已入库，所以签出后直接就能构建：
 
 ```sh
-proto/tools/gen.sh trimmed                 # 需要 protoc
-moon work init . proto/gen/trimmed/proto   # 把生成模块注册进工作区
 moon check --target all && moon test --target all
 ```
 
-`moon.work` 会进版本库，所以后续 clone / CI 只需重复这两条生成命令。
-把本模块当依赖用时，在自己的工作区里加成员指到本仓库路径即可。
+改了 `proto/trimmed/*.proto` 才需要重新生成（需 `protoc`）：
+
+```sh
+proto/tools/gen.sh trimmed
+```
 
 ### 模块布局
-
-本仓库是一个工作区，含两个模块：
 
 | 模块 | 位置 | 是否发布 |
 |---|---|---|
 | `Tangbuting/milvus-client` | `.` | 是 |
-| `Tangbuting/proto` | `proto/gen/trimmed/proto`（生成物，不入版本库） | 否 |
 
-主模块用版本号依赖 `Tangbuting/proto@0.1.0`，靠工作区解析到本地路径：
-`moon.mod` 不支持路径依赖（只有旧的 `moon.mod.json` 支持），所以这里是
-「工作区成员 + 版本号依赖」的写法，别改成 `{ path = ... }`。
+没有第二个模块。协议代码是**本模块的普通包目录** `proto/milvus/proto/`，
+与 `errors` / `client` 同级：
+
+```text
+Tangbuting/milvus-client/proto/milvus/proto/{common,milvus,msg,schema}
+```
+
+`protoc-gen-mbt` 生成时只会写「自己那个模块」的 import 路径
+（`Tangbuting/proto/...`），所以 `gen.sh` 在生成后统一改写成主模块名下的路径。
+四个 wire 往返测试包（`p0test` / `indextest` / `rpctest` / `lifecycletest`）
+也是 `gen.sh` 从 `proto/tools/*/` 叠加进去的，和协议包同级。
+
+这么摆的理由：发布包必须自带被依赖的协议代码。早先的布局是
+「生成物不入库 + `moon.work` 注册成第二个模块」，本地面板能跑，
+但 `moon package` 打出来的 zip 里带着一份指向 `proto/gen/trimmed/proto`
+的 `moon.work`，而那个目录不在包里 —— 装的人一解析工作区就挂。
 
 目标平台：模块 `preferred_target = "wasm"`，`client` / `entity` / `index` /
 `column` / `errors` / `transport` 在 `wasm` / `wasm-gc` / `js` / `native` 四个
@@ -513,14 +530,8 @@ embedded etcd 的配置文件用 `docker cp` 送进容器（`create` → `cp` �
 proto/tools/gen.sh trimmed   # P0 + 索引 RPC 的裁剪集
 ```
 
-生成物在 `proto/gen/`，不入版本库；也不要手改，改动请在 `.proto` 或 `gen.sh` 里做。
-签出后先跑一次生成，`proto/gen/` 不在版本库里，否则 `errors` 包找不到
-`Tangbuting/proto/milvus/proto/common`：
+生成物在 `proto/milvus/proto/`，**已入版本库**；也不要手改，改动请在 `.proto`
+或 `gen.sh` 里做，然后重新生成、把生成的 diff 一起提交。
 
-```sh
-proto/tools/gen.sh trimmed                # 生成 P0 裁剪集
-moon work use . proto/gen/trimmed/proto   # 把生成模块注册进工作区（幂等）
-```
-
-`moon.work` 已进版本库，所以用 `moon work use`：`moon work init` 在文件已存在时
-会直接报错退出。
+CI 每次都会重跑一遍生成并 `git diff --exit-code`：生成物与 `.proto` 对不上时
+会直接红，不会悄悄漂走。

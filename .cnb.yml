@@ -11,12 +11,14 @@
 .check: &check
   stages:
     - name: gen-proto
-      # proto/gen/ 不入版本库（见 .gitignore），签出后先重新生成再检查
+      # 生成物已入库（proto/milvus/proto），这一步是**校验生成可复现**：
+      # 重跑一遍应当产生零 diff —— 有 diff 就说明有人手改了生成物，
+      # 或者改了 .proto 没重新生成。与下面的 fmt-and-info 是同一个套路。
       script: |
         moon version --all
         moon update
         proto/tools/gen.sh trimmed
-        moon work use . proto/gen/trimmed/proto
+        git diff --exit-code -- proto/milvus/proto
     - name: fmt-and-info
       script: |
         moon fmt
@@ -49,7 +51,7 @@
         moon version --all
         moon update
         proto/tools/gen.sh trimmed
-        moon work use . proto/gen/trimmed/proto
+        git diff --exit-code -- proto/milvus/proto
     - name: start-milvus
       script: scripts/milvus-start.sh --force
     - name: integration-test
