@@ -15,7 +15,7 @@ version = "0.1.0"
 
 readme = "README.mbt.md"
 
-repository = "https://github.com/Tangbuting/milvus-client"
+repository = "https://github.com/Tangbuting/moonbit-language-milvus-client"
 
 license = "Apache-2.0"
 
