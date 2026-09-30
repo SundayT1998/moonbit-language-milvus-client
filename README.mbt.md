@@ -14,6 +14,14 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 | `index` | 索引参数 builder、`MetricType` / `IndexType` 枚举、索引 RPC 入参与响应解析（#16） |
 | `proto` | 上游 `.proto` 快照、代码生成与可行性结论，见 `proto/REPORT.md`（#5 / #10） |
 | `errors` | Milvus `common.Status` → MoonBit 错误模型（#13） |
+| `transport` | 配置、metadata 组装、gRPC status —— 跨 target（#11） |
+| `transport/native` | 真连 socket 的 Channel 实现 —— native 专属（#11） |
+
+## 当前状态
+
+传输层（Issue #11）已打通：能对真实 Milvus 建立 gRPC channel、
+注入认证与 dbName、按超时控制调用。业务 RPC（collection / search / insert 等）
+尚未实现，见 #5 的规划。
 
 ## 来源与许可
 
@@ -97,6 +105,67 @@ let _ = @index.new_hnsw_index(@index.MetricType::L2, m=1)
 // raise IndexParamError::OutOfRange(key="M", value=1, expected=">= 2")
 ```
 
+## 传输层
+
+```
+transport/          配置、metadata 组装、gRPC status —— 跨 target（wasm / wasm-gc / js / native）
+transport/native/   真连 socket 的 Channel 实现 —— native 专属
+```
+
+为什么要拆开：传输实现依赖 `moonbitstack/moonrpc/net`，
+而它自己声明了 `supported_targets = "native"`。
+模块的 `preferred_target = "wasm"` 与之冲突，
+混在一个包里会让 wasm / js 直接编不过。
+拆开后，wasm 下拿到的是可用的配置与错误类型，缺的只是「谁来发字节」。
+
+详见下面「已知限制」一节。
+
+### 用法
+
+```moonbit nocheck
+// 配置（跨 target）
+
+///|
+let cfg = @milvus_client.with_address("127.0.0.1:19530")
+  |> @milvus_client.with_token("root:Milvus")
+  |> @milvus_client.with_db_name("default")
+  |> @milvus_client.with_timeout_millis(5000)
+```
+
+native 下发起调用：
+
+```moonbit nocheck
+///|
+async fn demo() -> Unit raise @transport.RpcError {
+  let cfg = @transport.Config::new("127.0.0.1:19530")
+    .with_token("root:Milvus")
+    .with_db_name("default")
+    .with_timeout_millis(5000)
+  let client = @native.Client::connect(cfg)
+  let reply = client.unary(
+    "/milvus.proto.milvus.MilvusService/DescribeCollection", body,
+  )
+  client.close()
+  ignore(reply)
+}
+```
+
+判断失败是不是超时：
+
+```moonbit nocheck
+match ... {
+  // ...
+} catch {
+  err => if err.is_deadline_exceeded() { /* 超时 */ }
+}
+```
+
+自检程序（连上后发一次 Health/Check）：
+
+```sh
+moon run cmd/main -- 127.0.0.1:19530 root:Milvus default
+```
+
 ## 开发
 
 ```sh
@@ -110,3 +179,10 @@ proto/tools/gen.sh trimmed   # P0 + 索引 RPC 的裁剪集
 ```
 
 生成物在 `proto/gen/`，不入版本库；也不要手改，改动请在 `.proto` 或 `gen.sh` 里做。
+签出后先跑一次生成，`proto/gen/` 不在版本库里，否则 `errors` 包找不到
+`Tangbuting/proto/milvus/proto/common`：
+
+```sh
+proto/tools/gen.sh trimmed                 # 生成 P0 裁剪集
+moon work init . proto/gen/trimmed/proto   # 把生成模块注册进工作区
+```
