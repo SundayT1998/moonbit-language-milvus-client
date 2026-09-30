@@ -452,32 +452,6 @@ message QueryResults {
 // 逐条照抄 proto/upstream/milvus.proto，字段号一律不动。
 // privilege_ext_obj 注解是 server 侧 RBAC 元数据，客户端用不着，省略不影响 wire。
 
-message LoadCollectionRequest {
-  common.MsgBase base = 1;
-  string db_name = 2;
-  // The collection name you want to load
-  string collection_name = 3;
-  // The replica number to load, default by 1
-  int32 replica_number = 4;
-  // create replica used resource group
-  repeated string resource_groups = 5;
-  // Whether to enable refresh mode.
-  bool refresh = 6;
-  // Field Partial Load fields list
-  repeated string load_fields = 7;
-  // Field Partial load skip load dynamic fields
-  bool skip_load_dynamic_field = 8;
-  // Additional parameters for load
-  map<string, string> load_params = 9;
-}
-
-message ReleaseCollectionRequest {
-  common.MsgBase base = 1;
-  string db_name = 2;
-  // The collection name you want to release
-  string collection_name = 3;
-}
-
 message CreatePartitionRequest {
   common.MsgBase base = 1;
   string db_name = 2;
@@ -576,18 +550,6 @@ message GetLoadingProgressResponse {
   common.Status status = 1;
   int64 progress = 2;
   int64 refresh_progress = 3;
-}
-
-message GetLoadStateRequest {
-  common.MsgBase base = 1;
-  string collection_name = 2;
-  repeated string partition_names = 3;
-  string db_name = 4;
-}
-
-message GetLoadStateResponse {
-  common.Status status = 1;
-  common.LoadState state = 2;
 }
 
 message FlushRequest {

@@ -370,13 +370,8 @@ message PlaceholderGroup {
 }
 // ---- 分区与数据生命周期所需的枚举（#17 partition / load / flush）----
 // 逐条照抄 proto/upstream/common.proto，序号一律不动。
-
-enum LoadState {
-    LoadStateNotExist = 0;
-    LoadStateNotLoad = 1;
-    LoadStateLoading = 2;
-    LoadStateLoaded = 3;
-}
+// LoadState 本文件上面已有，别重复定义：protobuf 的 enum 值遵循 C++ 作用域规则，
+// 值是枚举类型的兄弟而非子项，重复定义会以 "already defined" 直接编译失败。
 
 enum WALName {
     Unknown = 0;
