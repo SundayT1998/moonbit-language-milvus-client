@@ -39,6 +39,34 @@ You can browse and install extra skills here:
 BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上游 `ml_dtypes.bfloat16`
 逐位一致；不要为了省事换成有损的近似算法。改这个函数要跑 `entity/bfloat16_test.mbt`。
 
+## 许可与上游同步
+
+本项目是上游 Milvus Go SDK 的移植/改写，Apache-2.0 → Apache-2.0。
+
+- 基线：`milvus-io/milvus` commit `1bcc8cb1`（2026-09-30），`client/`。
+  `.proto` 来自 `milvus-io/milvus-proto`，锚定 commit 见 `proto/upstream/PROVENANCE.md`。
+- 归属声明：来源仓库 + commit + 改写定性写明在 README「来源与许可」一节。
+  归属相关事实变更时，同时更新这一节与 `proto/upstream/PROVENANCE.md`。
+- 移植文件保留来源声明头：
+  ```
+  // 移植自 github.com/milvus-io/milvus client/<path> (Apache-2.0)
+  // Copyright (c) LF AI & Data Foundation
+  ```
+  新增移植文件时必须带上；这是 Apache-2.0 §4(a)(b) 的要求，不是可选项。
+- 商标：不得在文档里把本项目写成 official Milvus SDK。统一措辞是
+  "community-driven MoonBit client for Milvus"。
+
+### 上游变更 → 手动评估（风险 R6）
+
+上游 `client/` 是活跃代码，本移植是快照。**不做自动同步**，流程是：
+
+1. 比对上游 `client/` 自基线 commit 以来的改动；
+2. 判断每处改动是否落在已移植的包里——**按语义判断，不按目录名机械对照**，
+   MoonBit 侧分包与上游并非一一对应；
+3. 受影响则在对应包内手动回移，PR 里注明对齐的上游 commit；
+4. 需要推进基线时，同步更新 README「来源与许可」、
+   `proto/upstream/PROVENANCE.md` 与本文件。
+
 ## Coding convention
 
 - MoonBit code is organized in block style, each block is separated by `///|`,

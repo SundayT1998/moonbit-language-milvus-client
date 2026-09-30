@@ -1,6 +1,10 @@
 # Tangbuting/milvus-client
 
-MoonBit client for [Milvus](https://milvus.io/) vector database.
+A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector database.
+
+> 本项目是社区驱动的 Milvus 客户端，**不是** Milvus 官方 SDK。"Milvus" 是 LF Projects, LLC
+> 的商标；Apache-2.0 不授予商标权，包名中的 "milvus" 仅为指明兼容对象的描述性使用。
+> 来源、改写定性与同步策略见下节「来源与许可」。
 
 ## 包结构
 
@@ -10,6 +14,39 @@ MoonBit client for [Milvus](https://milvus.io/) vector database.
 | `index` | 索引参数 builder、`MetricType` / `IndexType` 枚举、索引 RPC 入参与响应解析（#16） |
 | `proto` | 上游 `.proto` 快照、代码生成与可行性结论，见 `proto/REPORT.md`（#5 / #10） |
 | `errors` | Milvus `common.Status` → MoonBit 错误模型（#13） |
+
+## 来源与许可
+
+本项目是 [milvus-io/milvus](https://github.com/milvus-io/milvus) 的 Go SDK（`client/`，
+Apache-2.0，Copyright (c) LF AI & Data Foundation）向 MoonBit 的移植/改写。
+协议定义取自独立的 [milvus-io/milvus-proto](https://github.com/milvus-io/milvus-proto)
+仓库，快照与锚定 commit 见 `proto/upstream/PROVENANCE.md`。
+
+| 项 | 值 |
+|---|---|
+| 上游仓库 | `milvus-io/milvus`，`client/` 目录 |
+| 基线 commit | `1bcc8cb1`（2026-09-30） |
+| 上游许可 | Apache-2.0 |
+| 上游版权 | Copyright (c) LF AI & Data Foundation |
+| 本项目许可 | Apache-2.0（见 [`LICENSE`](./LICENSE)） |
+
+关于「改写」的定性：Go → MoonBit 是重新实现而非逐行翻译，但**不是 clean-room**。
+API 名称、字段名、协议常量值（如 `FieldType = 101`）、Option 构造函数名与默认值
+均沿用上游，这些正是 Apache-2.0 覆盖的贡献物。归属说明就是本节，加上每个移植文件
+顶部的来源声明头。
+
+### 同步策略
+
+上游 `client/` 是持续演进的活跃代码，本移植是它在一个时间点上的快照。
+同步策略是**手动评估、不自动合并**：
+
+1. 定期（或按需）比对上游 `client/` 自基线 commit 以来的改动；
+2. 对每处改动判断是否影响已移植的包（`entity` / `index` / `errors` / …）；
+3. 受影响则在对应包内手动回移，并在 PR 中注明对齐的上游 commit；
+4. 不跟随上游做「机械等价」的目录级同步——MoonBit 侧的分包与上游并非一一对应。
+
+流程细节见 [`AGENTS.md`](./AGENTS.md)。基线 commit 变更时，需同步更新本节、
+`proto/upstream/PROVENANCE.md` 与 `AGENTS.md`。
 
 ## entity
 
