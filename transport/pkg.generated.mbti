@@ -1,0 +1,84 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/transport"
+
+import {
+  "moonbitstack/moonhttp/header",
+}
+
+// Values
+pub fn auth_header(String) -> @header.Header
+
+pub let authorization_header : Bytes
+
+pub let db_name_header : Bytes
+
+pub fn db_name_header_field(String) -> @header.Header
+
+pub let default_port : Int
+
+pub let default_timeout_millis : Int
+
+pub let grpc_accept_encoding_header : Bytes
+
+pub let grpc_accept_encoding_value : String
+
+pub let grpc_encoding_header : Bytes
+
+pub fn metadata_get(Array[@header.Header], String) -> String?
+
+pub fn request_metadata(Config) -> Array[@header.Header]
+
+// Errors
+pub suberror RpcError {
+  RpcError(Code, Int, String)
+}
+pub fn RpcError::code(Self) -> Code
+pub fn RpcError::is_deadline_exceeded(Self) -> Bool
+pub fn RpcError::is_retryable(Self) -> Bool
+pub fn RpcError::message(Self) -> String
+pub fn RpcError::new(Int, String) -> Self
+pub fn RpcError::raw_code(Self) -> Int
+pub fn RpcError::same_kind(Self, Self) -> Bool
+pub fn RpcError::to_string(Self) -> String
+
+// Types and methods
+pub(all) enum Code {
+  Ok
+  Cancelled
+  Unknown
+  InvalidArgument
+  DeadlineExceeded
+  NotFound
+  AlreadyExists
+  PermissionDenied
+  ResourceExhausted
+  FailedPrecondition
+  Aborted
+  OutOfRange
+  Unimplemented
+  Internal
+  Unavailable
+  DataLoss
+  Unauthenticated
+}
+pub fn Code::debug_repr(Self) -> String
+pub fn Code::from_int(Int) -> Self
+pub fn Code::name(Self) -> String
+pub fn Code::to_int(Self) -> Int
+
+pub(all) struct Config {
+  address : String
+  token : String?
+  db_name : String?
+  timeout_millis : Int
+  enable_gzip : Bool
+}
+pub fn Config::new(String) -> Self
+pub fn Config::with_db_name(Self, String) -> Self
+pub fn Config::with_gzip(Self, enable? : Bool) -> Self
+pub fn Config::with_timeout_millis(Self, Int) -> Self
+pub fn Config::with_token(Self, String) -> Self
+
+// Type aliases
+
+// Traits

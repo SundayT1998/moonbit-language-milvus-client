@@ -15,6 +15,18 @@ You can browse and install extra skills here:
 - In the toplevel directory, there is a `moon.mod` file listing module
   metadata.
 
+## 传输层分层（`transport/`）
+
+- `transport/` 只放跨 target 的东西：配置、metadata 组装、gRPC status。
+  模块 `preferred_target = "wasm"`，这层在 wasm / wasm-gc / js / native 下
+  都必须编得过，所以**不要**在这里 import `moonbitstack/moonrpc/net`
+  或任何 native-only 的包。
+- `transport/native/` 放真连 socket 的实现，`moon.pkg` 里声明
+  `supported_targets = "native"`。新开的 native-only 包照此办理。
+- 根包 `milvus_client.mbt` 用 `pub type` + 转发函数暴露公共 API，
+  不直接暴露 `@transport` 的内部结构。
+- 细节与理由见 `README.mbt.md` 的「已知限制」。
+
 ## Development Environment
 
 - CNB 云原生开发：在 `.cnb.yml` 的 `vscode` 事件中声明，与 CI 共用同一基础镜像

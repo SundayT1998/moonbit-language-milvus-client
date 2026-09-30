@@ -1,12 +1,38 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Tangbuting/milvus-client"
 
+import {
+  "Tangbuting/milvus-client/transport",
+}
+
 // Values
+pub let default_port : Int
+
+pub let default_timeout_millis : Int
+
+pub fn is_deadline_exceeded(@transport.RpcError) -> Bool
+
+pub fn is_retryable(@transport.RpcError) -> Bool
+
+pub fn with_address(String) -> @transport.Config
+
+pub fn with_db_name(@transport.Config, String) -> @transport.Config
+
+pub fn with_gzip(@transport.Config, enable? : Bool) -> @transport.Config
+
+pub fn with_timeout_millis(@transport.Config, Int) -> @transport.Config
+
+pub fn with_token(@transport.Config, String) -> @transport.Config
 
 // Errors
 
 // Types and methods
 
 // Type aliases
+pub using @transport {type Code}
+
+pub using @transport {type Config}
+
+pub using @transport {type RpcError}
 
 // Traits

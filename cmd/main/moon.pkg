@@ -1,5 +1,12 @@
-// import {
-//   "Tangbuting/milvus-client" @lib,
-// }
+import {
+  "Tangbuting/milvus-client/transport",
+  "Tangbuting/milvus-client/transport/native",
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+}
 
 pkgtype(kind: "executable")
+
+options(
+  supported_targets: "native",
+)
