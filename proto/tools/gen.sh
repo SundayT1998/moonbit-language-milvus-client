@@ -50,12 +50,36 @@ case "${1:-trimmed}" in
     ;;
 esac
 
-# P0 探针测试作为源码叠加，避免被重新生成抹掉
-if [ -d "$ROOT/proto/tools/p0test" ] && [ -d "$OUT/proto/src/milvus/proto" ]; then
-  DEST="$OUT/proto/src/milvus/proto/p0test"
-  mkdir -p "$DEST"
-  for f in "$ROOT"/proto/tools/p0test/*.template; do
-    cp "$f" "$DEST/$(basename "$f" .template)"
+# 生成的模块里，protoc-gen-mbt 产出的 moon.mod.json 会触发 200+ 条
+# implicit_impl_as_method 弃用告警（生成器风格，非本仓库可修）。统一静音，
+# 让 `moon check` 的输出只反映手写代码的问题。
+cat > "$OUT/proto/moon.mod" <<'MOD'
+name = "Tangbuting/proto"
+
+version = "0.1.0"
+
+source = "src"
+
+warnings = "-implicit_impl_as_method"
+
+import {
+  "moonbitlang/protobuf@0.1.3",
+}
+MOD
+rm -f "$OUT/proto/moon.mod.json"
+
+# 探针测试作为源码叠加，避免被重新生成抹掉。
+# p0test  : DescribeCollection 的 wire 往返（#10）
+# indextest: 索引 RPC 的 wire 往返（#16）
+if [ -d "$OUT/proto/src/milvus/proto" ]; then
+  for suite in p0test indextest; do
+    src="$ROOT/proto/tools/$suite"
+    [ -d "$src" ] || continue
+    dest="$OUT/proto/src/milvus/proto/$suite"
+    mkdir -p "$dest"
+    for f in "$src"/*.template; do
+      cp "$f" "$dest/$(basename "$f" .template)"
+    done
   done
 fi
 

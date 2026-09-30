@@ -1,0 +1,93 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/errors"
+
+import {
+  "Tangbuting/proto/milvus/proto/common",
+}
+
+// Values
+pub let canceled_code : Int
+
+pub fn err_collection_not_found() -> MerError
+
+pub fn err_collection_schema_mismatch() -> MerError
+
+pub fn err_index_not_found() -> MerError
+
+pub fn err_parameter_invalid() -> MerError
+
+pub fn err_parameter_missing() -> MerError
+
+pub fn err_service_internal() -> MerError
+
+pub fn err_service_not_ready() -> MerError
+
+pub fn err_service_unimplemented() -> MerError
+
+pub fn err_unexpected() -> MerError
+
+pub fn error_code(MerError?) -> Int
+
+pub fn error_detail(MerError?) -> String
+
+pub fn error_legacy_code(MerError?) -> @common.ErrorCode
+
+pub fn from_status(@common.Status) -> MerError?
+
+pub let input_error_flag_key : String
+
+pub fn is_input_error(MerError?) -> Bool
+
+pub fn is_ok(@common.Status?) -> Bool
+
+pub fn is_retryable_err(MerError?) -> Bool
+
+pub fn legacy_code_from_modern(Int) -> @common.ErrorCode
+
+pub fn modern_code_from_legacy(@common.ErrorCode) -> Int
+
+pub fn redact(String) -> String
+
+pub fn success(reason? : String) -> @common.Status
+
+pub let timeout_code : Int
+
+pub fn to_status(MerError?) -> @common.Status
+
+pub let unexpected_code : Int
+
+pub fn wrap_err_collection_not_found(String, messages? : Array[String]) -> MerError
+
+pub fn wrap_err_collection_schema_mismatch(String, messages? : Array[String]) -> MerError
+
+pub fn wrap_err_index_not_found(String, messages? : Array[String]) -> MerError
+
+pub fn wrap_err_parameter_invalid(String, String, messages? : Array[String]) -> MerError
+
+pub fn wrap_err_parameter_invalid_err(String, String) -> MerError
+
+pub fn wrap_err_parameter_invalid_msg(String) -> MerError
+
+pub fn wrap_err_parameter_missing_msg(String) -> MerError
+
+pub fn wrap_err_service_internal(String, messages? : Array[String]) -> MerError
+
+pub fn wrap_err_service_not_ready(String, Int64, String, messages? : Array[String]) -> MerError
+
+// Errors
+pub suberror MerError {
+  RpcError(code~ : Int, legacy_code~ : @common.ErrorCode, message~ : String, detail~ : String, retriable~ : Bool, input~ : Bool)
+}
+pub fn MerError::code(Self?) -> Int
+pub fn MerError::detail(Self?) -> String
+pub fn MerError::is_input_error(Self?) -> Bool
+pub fn MerError::is_retryable(Self?) -> Bool
+pub fn MerError::legacy_code(Self?) -> @common.ErrorCode
+pub fn MerError::same_code(Self, Self) -> Bool
+pub impl Show for MerError
+
+// Types and methods
+
+// Type aliases
+
+// Traits

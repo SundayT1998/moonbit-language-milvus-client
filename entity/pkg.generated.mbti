@@ -1,0 +1,177 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/entity"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn bfloat16_from_float(Float) -> UInt
+
+pub fn bfloat16_from_floats(Array[Float]) -> Array[UInt]
+
+pub fn bfloat16_to_float(UInt) -> Float
+
+pub fn bfloat16_vector_bytes(Array[Float]) -> Bytes
+
+pub fn bfloat16_vector_from_bytes(Bytes) -> Array[Float] raise SchemaError
+
+pub let dim_key : String
+
+pub let max_length_key : String
+
+// Errors
+pub(all) suberror SchemaError {
+  SchemaError(String)
+} derive(Eq, @debug.Debug)
+#deprecated
+pub fn SchemaError::equal(Self, Self) -> Bool
+#deprecated
+pub fn SchemaError::not_equal(Self, Self) -> Bool
+#deprecated
+pub fn SchemaError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) struct BFloat16Vector {
+  dim : Int
+  values : Array[Float]
+} derive(@debug.Debug)
+#deprecated
+pub fn BFloat16Vector::to_repr(Self) -> @debug.Repr
+
+pub(all) struct BinaryVector {
+  dim : Int
+  data : Bytes
+} derive(@debug.Debug)
+#deprecated
+pub fn BinaryVector::to_repr(Self) -> @debug.Repr
+
+pub(all) struct CollectionSchema {
+  fields : Array[Field]
+  description : String
+  enable_dynamic_field : Bool
+} derive(@debug.Debug)
+pub fn CollectionSchema::field(Self, String) -> Field?
+pub fn CollectionSchema::from_field(Field) -> Self
+pub fn CollectionSchema::new(Array[Field]) -> Self
+pub fn CollectionSchema::primary_key(Self) -> Field?
+#deprecated
+pub fn CollectionSchema::to_repr(Self) -> @debug.Repr
+pub fn CollectionSchema::validate(Self) -> Unit raise SchemaError
+pub fn CollectionSchema::vector_fields(Self) -> Array[Field]
+pub fn CollectionSchema::with_auto_id_primary(Array[Field]) -> Self
+pub fn CollectionSchema::with_description(Self, String) -> Self
+pub fn CollectionSchema::with_dynamic_field(Self, Bool) -> Self
+pub fn CollectionSchema::with_field(Self, Field) -> Self
+
+pub(all) enum DataType {
+  None
+  Bool
+  Int8
+  Int16
+  Int32
+  Int64
+  Float
+  Double
+  String
+  VarChar
+  Array
+  Json
+  Geometry
+  Text
+  Timestamptz
+  Mol
+  Date
+  Time
+  Decimal
+  Uuid
+  BinaryVector
+  FloatVector
+  Float16Vector
+  BFloat16Vector
+  SparseFloatVector
+  Int8Vector
+  ArrayOfVector
+  ArrayOfStruct
+  Struct
+} derive(Eq, @debug.Debug)
+#deprecated
+pub fn DataType::equal(Self, Self) -> Bool
+pub fn DataType::from_int(Int) -> Self?
+pub fn DataType::is_dense_vector_type(Self) -> Bool
+pub fn DataType::is_vector_type(Self) -> Bool
+pub fn DataType::name(Self) -> String
+#deprecated
+pub fn DataType::not_equal(Self, Self) -> Bool
+pub fn DataType::to_int(Self) -> Int
+#deprecated
+pub fn DataType::to_repr(Self) -> @debug.Repr
+pub fn DataType::vector_bytes_per_dim(Self) -> Int?
+
+pub(all) struct Field {
+  name : String
+  data_type : DataType
+  field_id : Int64
+  is_primary_key : Bool
+  auto_id : Bool
+  description : String
+  is_dynamic : Bool
+  is_partition_key : Bool
+  is_clustering_key : Bool
+  nullable : Bool
+  element_type : DataType?
+  dim : Int?
+  max_length : Int?
+  type_params : Array[(String, String)]
+} derive(@debug.Debug)
+pub fn Field::as_auto_id(Self) -> Self
+pub fn Field::as_nullable(Self) -> Self
+pub fn Field::as_partition_key(Self) -> Self
+pub fn Field::as_primary_key(Self) -> Self
+pub fn Field::is_sparse_vector(Self) -> Bool
+pub fn Field::new(String, DataType) -> Self
+#deprecated
+pub fn Field::to_repr(Self) -> @debug.Repr
+pub fn Field::type_params_pairs(Self) -> Array[(String, String)]
+pub fn Field::validate(Self) -> Unit raise SchemaError
+pub fn Field::with_dim(Self, Int) -> Self raise SchemaError
+pub fn Field::with_element_type(Self, DataType) -> Self
+pub fn Field::with_max_length(Self, Int) -> Self raise SchemaError
+pub fn Field::with_type_param(Self, String, String) -> Self
+
+pub(all) struct Float16Vector {
+  dim : Int
+  values : Array[Float]
+} derive(@debug.Debug)
+#deprecated
+pub fn Float16Vector::to_repr(Self) -> @debug.Repr
+
+pub(all) struct FloatVector {
+  dim : Int
+  values : Array[Float]
+} derive(@debug.Debug)
+#deprecated
+pub fn FloatVector::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Int8Vector {
+  dim : Int
+  data : Bytes
+} derive(@debug.Debug)
+#deprecated
+pub fn Int8Vector::to_repr(Self) -> @debug.Repr
+
+pub(all) struct SparseFloatVector {
+  indices : Array[UInt]
+  values : Array[Float]
+} derive(@debug.Debug)
+pub fn SparseFloatVector::from_entry(UInt, Float) -> Self
+pub fn SparseFloatVector::inferred_dim(Self) -> Int
+pub fn SparseFloatVector::new(Array[UInt], Array[Float]) -> Self raise SchemaError
+pub fn SparseFloatVector::to_bytes(Self) -> Bytes raise SchemaError
+#deprecated
+pub fn SparseFloatVector::to_repr(Self) -> @debug.Repr
+pub fn SparseFloatVector::validate(Self) -> Unit raise SchemaError
+
+// Type aliases
+
+// Traits

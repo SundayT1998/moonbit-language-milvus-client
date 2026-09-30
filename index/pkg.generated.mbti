@@ -1,0 +1,184 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/index"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn check_float_vector_metric(Index) -> Unit raise IndexParamError
+
+pub let create_index_path : String
+
+pub let describe_index_path : String
+
+pub let drop_index_path : String
+
+pub fn find_by_field(Array[IndexDescription], String) -> Array[IndexDescription]
+
+pub fn find_by_name(Array[IndexDescription], String) -> IndexDescription?
+
+pub let index_type_key : String
+
+pub let metric_type_key : String
+
+pub fn new_auto_index(MetricType) -> Index
+
+pub fn new_flat_index(MetricType) -> Index
+
+pub fn new_generic_index(String, IndexParams) -> Index raise IndexParamError
+
+pub fn new_hnsw_index(MetricType, m? : Int, ef_construction? : Int) -> Index raise IndexParamError
+
+pub fn new_ivf_flat_index(MetricType, nlist? : Int) -> Index raise IndexParamError
+
+// Errors
+pub suberror IndexParamError {
+  OutOfRange(key~ : String, value~ : Int, expected~ : String)
+  InvalidCombination(index_type~ : String, reason~ : String)
+  InvalidArgument(reason~ : String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct CreateIndexRequest {
+  db_name : String
+  collection_name : String
+  field_name : String
+  index_name : String
+  extra_params : Array[(String, String)]
+} derive(Eq, @debug.Debug)
+pub fn CreateIndexRequest::from_index(String, String, Index, db_name? : String) -> Self raise IndexParamError
+
+pub(all) struct DescribeIndexRequest {
+  db_name : String
+  collection_name : String
+  field_name : String
+  index_name : String
+} derive(Eq, @debug.Debug)
+pub fn DescribeIndexRequest::by_field(String, String, db_name? : String) -> Self raise IndexParamError
+pub fn DescribeIndexRequest::by_name(String, String, db_name? : String) -> Self raise IndexParamError
+pub fn DescribeIndexRequest::list_all(String, db_name? : String) -> Self raise IndexParamError
+
+pub(all) struct DropIndexRequest {
+  db_name : String
+  collection_name : String
+  index_name : String
+} derive(Eq, @debug.Debug)
+pub fn DropIndexRequest::new(String, String, db_name? : String) -> Self raise IndexParamError
+
+pub(all) struct Index {
+  name : String
+  metric_type : MetricType
+  index_type : IndexType
+  params : IndexParams
+}
+pub fn Index::index_type(Self) -> IndexType
+pub fn Index::metric_type(Self) -> MetricType
+pub fn Index::name(Self) -> String
+pub fn Index::params(Self) -> IndexParams
+pub fn Index::with_extra_params(Self, IndexParams) -> Self
+pub fn Index::with_name(Self, String) -> Self
+
+pub(all) struct IndexDescription {
+  index_name : String
+  index_id : Int64
+  params : Array[(String, String)]
+  field_name : String
+  indexed_rows : Int64
+  total_rows : Int64
+  pending_index_rows : Int64
+  state : IndexState
+  fail_reason : String
+} derive(Eq, @debug.Debug)
+pub fn IndexDescription::index_params(Self) -> IndexParams
+pub fn IndexDescription::index_type(Self) -> IndexType?
+pub fn IndexDescription::metric_type(Self) -> MetricType?
+pub fn IndexDescription::progress(Self) -> Double?
+
+pub(all) struct IndexParams {
+  entries : Array[(String, String)]
+} derive(Eq)
+pub fn IndexParams::from_pairs(Array[(String, String)]) -> Self
+pub fn IndexParams::get(Self, String) -> String?
+pub fn IndexParams::new() -> Self
+pub fn IndexParams::set(Self, String, String) -> Unit
+pub fn IndexParams::set_default(Self, String, String) -> Unit
+pub fn IndexParams::set_int(Self, String, Int) -> Unit
+pub fn IndexParams::size(Self) -> Int
+pub fn IndexParams::to_json(Self) -> String
+pub fn IndexParams::to_pairs(Self) -> Array[(String, String)]
+pub impl Show for IndexParams
+
+pub(all) enum IndexState {
+  None
+  Unissued
+  InProgress
+  Finished
+  Failed
+  Retry
+  Unknown(Int)
+} derive(Eq, @debug.Debug)
+pub fn IndexState::from_int(Int) -> Self
+pub fn IndexState::is_terminal(Self) -> Bool
+pub fn IndexState::to_int(Self) -> Int
+
+pub(all) enum IndexType {
+  Flat
+  BinFlat
+  IvfFlat
+  BinIvfFlat
+  IvfPQ
+  IvfSQ8
+  IvfRabitQ
+  HNSW
+  HNSWSQ
+  HNSWPQ
+  HNSWPRQ
+  IvfHNSW
+  AutoIndex
+  DiskANN
+  AISAQ
+  SCANN
+  MinHashLSH
+  SparseInverted
+  SparseWAND
+  GpuIvfFlat
+  GpuIvfPQ
+  GpuCagra
+  GpuBruteForce
+  Trie
+  Sorted
+  Inverted
+  Bitmap
+  Ngram
+  FmIndex
+  RTree
+} derive(Eq, @debug.Debug)
+pub fn IndexType::from_string(String) -> Self?
+pub fn IndexType::to_string(Self) -> String
+
+pub(all) enum MetricType {
+  L2
+  IP
+  COSINE
+  HAMMING
+  JACCARD
+  TANIMOTO
+  Substructure
+  Superstructure
+  BM25
+  MhJaccard
+  MaxSim
+  MaxSimCosine
+  MaxSimL2
+  MaxSimIP
+  MaxSimHamming
+  MaxSimJaccard
+} derive(Eq, @debug.Debug)
+pub fn MetricType::from_string(String) -> Self?
+pub fn MetricType::to_string(Self) -> String
+pub fn MetricType::valid_for_float_vector(Self) -> Bool
+
+// Type aliases
+
+// Traits
