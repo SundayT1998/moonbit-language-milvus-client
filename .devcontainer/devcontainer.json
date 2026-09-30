@@ -2,9 +2,8 @@
   "name": "milvus-client (MoonBit)",
   "build": {
     "dockerfile": "Dockerfile",
-    "context": "."
+    "context": ".."
   },
-  "postCreateCommand": "moon version --all || curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash",
   "remoteEnv": {
     "PATH": "${containerEnv:HOME}/.moon/bin:${containerEnv:PATH}"
   }
