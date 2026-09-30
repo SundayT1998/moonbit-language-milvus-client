@@ -409,6 +409,144 @@ pub async fn Client::drop_collection(
 }
 
 ///|
+/// 加载集合的入参。对应上游 `loadCollectionOption`。
+///
+/// 服务端只返回一个 `common.Status`，没有 `GetLoadingProgress` 那套进度
+/// 查询。上游 SDK 拿到状态后自己轮询 `GetLoadingProgress` 等到 100%，
+/// 本移植暂时不做 —— 调用方如果需要等待，用 `get_load_state` 自己轮询。
+pub(all) struct LoadCollectionOption {
+  name : String
+  replica_number : Int
+  resource_groups : Array[String]
+  load_fields : Array[String]
+  skip_load_dynamic_field : Bool
+  load_params : Array[(String, String)]
+}
+
+///|
+pub fn new_load_collection_option(name : String) -> LoadCollectionOption {
+  {
+    name,
+    replica_number: 0,
+    resource_groups: [],
+    load_fields: [],
+    skip_load_dynamic_field: false,
+    load_params: [],
+  }
+}
+
+///|
+pub fn LoadCollectionOption::with_replica_number(
+  self : LoadCollectionOption,
+  replica_number : Int,
+) -> LoadCollectionOption {
+  { ..self, replica_number, }
+}
+
+///|
+/// 把集合加载进内存，之后才能对它做检索。
+///
+/// 这是 `Search` / `Query` 的前置条件：Milvus 不会在建表后自动加载，
+/// 对未加载的集合发检索会得到 `collection not loaded`（错误码
+/// `CollectionNotLoaded`）。
+pub async fn Client::load_collection(
+  self : Client,
+  option : LoadCollectionOption,
+) -> Unit raise ClientError {
+  let request = @milvus.LoadCollectionRequest::{
+    base: None,
+    db_name: "",
+    collection_name: option.name,
+    replica_number: option.replica_number,
+    resource_groups: option.resource_groups,
+    refresh: false,
+    load_fields: option.load_fields,
+    skip_load_dynamic_field: option.skip_load_dynamic_field,
+    load_params: Map::from_array(
+      option.load_params.map(pair => (pair.0, pair.1)),
+    ),
+  }
+  let response : @common.Status = self.call_service(
+    load_collection_path, request,
+  )
+  match check_status(Some(response)) {
+    Some(err) => raise err
+    None => ()
+  }
+}
+
+///|
+/// 从内存里卸载集合，释放查询节点的资源。
+///
+/// 与 `load_collection` 成对；对应的上游调用点是 `ReleaseCollection`。
+pub async fn Client::release_collection(
+  self : Client,
+  option : DropCollectionOption,
+) -> Unit raise ClientError {
+  let request = @milvus.ReleaseCollectionRequest::{
+    base: None,
+    db_name: "",
+    collection_name: option.name,
+  }
+  let response : @common.Status = self.call_service(
+    release_collection_path, request,
+  )
+  match check_status(Some(response)) {
+    Some(err) => raise err
+    None => ()
+  }
+}
+
+///|
+/// 集合的加载状态。对应上游 `entity.LoadState`。
+///
+/// 只暴露本移植用得到的四项；生成物里的 `LoadState::Unknown` 是
+/// 未知枚举值的岔路，这里归到 `NotExist` 之外单列，避免被当成
+/// 「什么都没发生」而静默等下去。
+pub(all) enum CollectionLoadState {
+  NotExist
+  NotLoad
+  Loading
+  Loaded
+  Unknown(Int)
+} derive(Eq, Debug)
+
+///|
+fn load_state_from_proto(state : @common.LoadState) -> CollectionLoadState {
+  match state {
+    LoadStateNotExist => CollectionLoadState::NotExist
+    LoadStateNotLoad => CollectionLoadState::NotLoad
+    LoadStateLoading => CollectionLoadState::Loading
+    LoadStateLoaded => CollectionLoadState::Loaded
+    Unknown(code) => CollectionLoadState::Unknown(code.0.reinterpret_as_int())
+  }
+}
+
+///|
+/// 查集合当前的加载状态。
+///
+/// 给调用方一个可轮询的判据：`load_collection` 返回不代表数据面已经
+/// 就绪，`Loaded` 才是。
+pub async fn Client::get_load_state(
+  self : Client,
+  option : DescribeCollectionOption,
+) -> CollectionLoadState raise ClientError {
+  let request = @milvus.GetLoadStateRequest::{
+    base: None,
+    collection_name: option.name,
+    partition_names: [],
+    db_name: "",
+  }
+  let response : @milvus.GetLoadStateResponse = self.call_service(
+    get_load_state_path, request,
+  )
+  match check_status(response.status) {
+    Some(err) => raise err
+    None => load_state_from_proto(response.state)
+  }
+}
+
+///|
 /// 列集合的入参。上游就一个空请求，这里保留一个类型，
 /// 以便将来加 `type` / `db_name` 时不动调用点。
 pub(all) struct ListCollectionsOption {

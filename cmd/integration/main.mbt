@@ -12,8 +12,10 @@
 // 退出码非 0 即失败，CI 直接看退出码。
 //
 // 本程序只用**已实现**的那部分门面。`client` 目前没有 CreateIndex /
-// DescribeIndex / LoadCollection（见 Issue #36），所以这里不带索引，
-// 依赖服务端的暴力检索。等索引那层补上，再在这里加上建索引一步。
+// DescribeIndex（见 Issue #36），所以这里不带索引，依赖服务端的暴力检索。
+// 但 `LoadCollection` 是必须的：Milvus 不会在建表后自动把集合加载进内存，
+// 对未加载的集合发检索会直接报 `collection not loaded`。等索引那层补上，
+// 再在这里加上建索引一步。
 
 ///|
 /// 自检用的集合名与向量维度。固定值，便于失败时人工复现。
@@ -136,7 +138,20 @@ async fn check_steps(client : @client.Client) -> String {
   }
   println("[4] 已写入 \{row_count} 行，计数与主键已确认")
 
-  // 5. 检索：拿最后一行的向量当查询，L2 距离最近的一定是它自己。
+  // 5. 加载集合。检索的前置条件：不加载的话服务端会回
+  //    `collection not loaded`（错误码 `CollectionNotLoaded`）。
+  //    LoadCollection 返回只代表请求被受理，数据面未必就绪，所以要
+  //    轮询 get_load_state 直到 Loaded —— 直接接着检索会偶发失败。
+  client.load_collection(@client.new_load_collection_option(collection)) catch {
+    err => return step_failed("5", "加载集合失败：" + err.to_string())
+  }
+  match wait_loaded(client) {
+    Ok(_) => ()
+    Err(err) => return step_failed("5", err)
+  }
+  println("[5] 集合已加载")
+
+  // 6. 检索：拿最后一行的向量当查询，L2 距离最近的一定是它自己。
   let query_vector = vectors[row_count - 1]
   let searched = client.search(
     @client.new_search_option(collection, 3, [
@@ -146,14 +161,14 @@ async fn check_steps(client : @client.Client) -> String {
     .with_metric_type(@index.MetricType::L2)
     .with_output_fields(["title"]),
   ) catch {
-    err => return step_failed("5", "检索失败：" + err.to_string())
+    err => return step_failed("6", "检索失败：" + err.to_string())
   }
   if searched.hits.length() == 0 {
-    return step_failed("5", "检索没有命中")
+    return step_failed("6", "检索没有命中")
   }
   let first = searched.hits[0]
   if first.score > 1.0e-3 {
-    return step_failed("5", "自距离不为 0：score=\{first.score}")
+    return step_failed("6", "自距离不为 0：score=\{first.score}")
   }
   let self_title = match first.fields.get("title") {
     Some(@column.ColumnValue::VarChar(v)) =>
@@ -173,41 +188,41 @@ async fn check_steps(client : @client.Client) -> String {
   let expected_title = "row-" + (row_count - 1).to_string()
   if self_title != expected_title {
     return step_failed(
-      "5",
+      "6",
       "最近邻的 title 不符：期望 \{expected_title}，实际 \{self_title}",
     )
   }
   println(
-    "[5] 检索命中 top1 title=" +
+    "[6] 检索命中 top1 title=" +
     self_title +
     " score=" +
     first.score.to_string(),
   )
 
-  // 6. 查询：按表达式取两列，验回读的解码路径。
+  // 7. 查询：按表达式取两列，验回读的解码路径。
   let queried = client.query(
     @client.new_query_option(collection)
     .with_filter("id >= 5")
     .with_output_fields(["id", "title"]),
   ) catch {
-    err => return step_failed("6", "查询失败：" + err.to_string())
+    err => return step_failed("7", "查询失败：" + err.to_string())
   }
   if queried.len() != 5 {
     return step_failed(
-      "6",
+      "7",
       "查询行数不符：期望 5，实际 \{queried.len()}",
     )
   }
   let title_column = match queried.column("title") {
     Some(c) => c
-    None => return step_failed("6", "结果里没有 title 列")
+    None => return step_failed("7", "结果里没有 title 列")
   }
   for i = 0; i < title_column.len(); i = i + 1 {
     let expected = "row-" + (i + 5).to_string()
     let cell = title_column.get(i) catch {
       err =>
         return step_failed(
-          "6",
+          "7",
           "title 第 \{i} 行解码失败：" +
           @client.column_error_message(err),
         )
@@ -220,18 +235,18 @@ async fn check_steps(client : @client.Client) -> String {
     }
     if actual != expected {
       return step_failed(
-        "6",
+        "7",
         "title 第 \{i} 行不符：期望 \{expected}，实际 \{actual}",
       )
     }
   }
-  println("[6] 查询按表达式返回 5 行，列内容正确")
+  println("[7] 查询按表达式返回 5 行，列内容正确")
 
-  // 7. 收尾：把自检集合删掉，下次跑还是干净的。
+  // 8. 收尾：把自检集合删掉，下次跑还是干净的。
   client.drop_collection(@client.new_drop_collection_option(collection)) catch {
-    err => return step_failed("7", "删除集合失败：" + err.to_string())
+    err => return step_failed("8", "删除集合失败：" + err.to_string())
   }
-  println("[7] 集合已清理")
+  println("[8] 集合已清理")
   ""
 }
 
@@ -258,6 +273,35 @@ fn build_schema() -> @entity.CollectionSchema {
     },
   )
   @entity.CollectionSchema::new(fields)
+}
+
+///|
+/// 轮询到集合真的 Loaded。
+///
+/// `load_collection` 的返回只表示服务端受理了请求，数据面就绪是异步的。
+/// 这里给一个宽松的上限（60s）就够：CI 上加载一个 10 行的小集合是秒级的，
+/// 真走到超时说明服务端出问题了，该报错而不是无限等。
+///
+/// 返回 `Err` 时是已经带好步骤名的失败文本。
+async fn wait_loaded(client : @client.Client) -> Result[Unit, String] {
+  let option = @client.new_describe_collection_option(collection)
+  let limit = 120
+  for i = 0; i < limit; i = i + 1 {
+    let state = client.get_load_state(option) catch {
+      err => return Err("查加载状态失败：" + err.to_string())
+    }
+    match state {
+      @client.CollectionLoadState::Loaded => return Ok(())
+      @client.CollectionLoadState::NotExist =>
+        return Err("加载中集合消失了")
+      @client.CollectionLoadState::Unknown(code) =>
+        return Err("无法识别的加载状态：" + code.to_string())
+      _ => ()
+    }
+    // 每半秒问一次；120 次即最长等 60s。
+    @async.sleep(500)
+  }
+  Err("等集合加载超时（60s 内没到 Loaded）")
 }
 
 ///|

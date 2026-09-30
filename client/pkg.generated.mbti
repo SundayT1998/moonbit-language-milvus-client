@@ -41,9 +41,13 @@ pub fn field_from_proto(@schema.FieldSchema) -> @entity.Field raise ClientError
 
 pub fn field_to_proto(@entity.Field) -> @schema.FieldSchema
 
+pub let get_load_state_path : String
+
 pub let has_collection_path : String
 
 pub let insert_path : String
+
+pub let load_collection_path : String
 
 pub fn new_create_collection_option(String, @entity.CollectionSchema) -> CreateCollectionOption
 
@@ -54,6 +58,8 @@ pub fn new_describe_collection_option(String) -> DescribeCollectionOption
 pub fn new_drop_collection_option(String) -> DropCollectionOption
 
 pub fn new_list_collections_option() -> ListCollectionsOption
+
+pub fn new_load_collection_option(String) -> LoadCollectionOption
 
 pub fn new_query_option(String) -> QueryOption
 
@@ -68,6 +74,8 @@ pub let query_param_offset : String
 pub let query_param_order_by_fields : String
 
 pub let query_path : String
+
+pub let release_collection_path : String
 
 pub fn schema_to_proto(String, @entity.CollectionSchema) -> @schema.CollectionSchema
 
@@ -122,11 +130,14 @@ pub async fn Client::create_collection(Self, CreateCollectionOption) -> Unit rai
 pub async fn Client::delete(Self, DeleteOption) -> MutationResult raise ClientError
 pub async fn Client::describe_collection(Self, DescribeCollectionOption) -> CollectionDescription raise ClientError
 pub async fn Client::drop_collection(Self, DropCollectionOption) -> Unit raise ClientError
+pub async fn Client::get_load_state(Self, DescribeCollectionOption) -> CollectionLoadState raise ClientError
 pub async fn Client::has_collection(Self, DescribeCollectionOption) -> Bool raise ClientError
 pub async fn Client::insert(Self, WriteOption) -> MutationResult raise ClientError
 pub async fn Client::list_collections(Self, ListCollectionsOption) -> Array[String] raise ClientError
+pub async fn Client::load_collection(Self, LoadCollectionOption) -> Unit raise ClientError
 pub fn Client::new(@transport.Config, async (String, Bytes) -> Bytes raise @transport.RpcError) -> Self
 pub async fn Client::query(Self, QueryOption) -> QueryResult raise ClientError
+pub async fn Client::release_collection(Self, DropCollectionOption) -> Unit raise ClientError
 pub async fn Client::search(Self, SearchOption) -> SearchResult raise ClientError
 pub async fn Client::upsert(Self, WriteOption) -> MutationResult raise ClientError
 
@@ -141,6 +152,14 @@ pub(all) struct CollectionDescription {
   properties : Array[(String, String)]
   update_timestamp : UInt64
 } derive(@debug.Debug)
+
+pub(all) enum CollectionLoadState {
+  NotExist
+  NotLoad
+  Loading
+  Loaded
+  Unknown(Int)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum ConsistencyLevel {
   Strong
@@ -199,6 +218,16 @@ pub(all) struct DropCollectionOption {
 pub(all) struct ListCollectionsOption {
   show_loaded : Bool
 }
+
+pub(all) struct LoadCollectionOption {
+  name : String
+  replica_number : Int
+  resource_groups : Array[String]
+  load_fields : Array[String]
+  skip_load_dynamic_field : Bool
+  load_params : Array[(String, String)]
+}
+pub fn LoadCollectionOption::with_replica_number(Self, Int) -> Self
 
 pub(all) struct MutationResult {
   ids : @column.ColumnValue?

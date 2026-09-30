@@ -687,6 +687,158 @@ async test "query 解出列" {
 }
 
 ///|
+async test "load_collection 编出请求并认 OK" {
+  let (client, recorded) = test_client([
+    (@client.load_collection_path, encode(ok_status())),
+  ])
+  let mut raised = false
+  ignore(client.load_collection(@client.new_load_collection_option("demo"))) catch {
+    _ => raised = true
+  }
+  assert_false(raised)
+  let calls = recorded.val
+  assert_eq(calls.length(), 1)
+  assert_eq(calls[0].path, @client.load_collection_path)
+  let request : @milvus.LoadCollectionRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+  // 不显式设副本数时留 0，由服务端取默认值
+  assert_eq(request.replica_number, 0)
+  assert_false(request.refresh)
+  assert_false(request.skip_load_dynamic_field)
+  assert_eq(request.resource_groups.length(), 0)
+  assert_eq(request.load_fields.length(), 0)
+  assert_eq(request.load_params.length(), 0)
+}
+
+///|
+async test "load_collection 把 load_params 与部分加载字段带上去" {
+  let (client, recorded) = test_client([
+    (@client.load_collection_path, encode(ok_status())),
+  ])
+  let option = @client.new_load_collection_option("demo").with_replica_number(2)
+  let option = { ..option, resource_groups: ["rg1"], load_fields: ["vector"], }
+  let option = {
+    ..option,
+    skip_load_dynamic_field: true,
+    load_params: [("mmap.enabled", "true")],
+  }
+  let _ = client.load_collection(option) catch { _ => () }
+  let calls = recorded.val
+  let request : @milvus.LoadCollectionRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.replica_number, 2)
+  assert_eq(request.resource_groups, ["rg1"])
+  assert_eq(request.load_fields, ["vector"])
+  assert_true(request.skip_load_dynamic_field)
+  assert_eq(request.load_params.get("mmap.enabled"), Some("true"))
+}
+
+///|
+async test "release_collection 打的是 ReleaseCollection 路径" {
+  let (client, recorded) = test_client([
+    (@client.release_collection_path, encode(ok_status())),
+  ])
+  let _ = client.release_collection(@client.new_drop_collection_option("demo")) catch {
+    _ => ()
+  }
+  let calls = recorded.val
+  assert_eq(calls.length(), 1)
+  assert_eq(calls[0].path, @client.release_collection_path)
+  let request : @milvus.ReleaseCollectionRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(calls[0].body),
+    ),
+  )
+  assert_eq(request.collection_name, "demo")
+}
+
+///|
+async test "load_collection 被服务端拒绝时抛 Server" {
+  let failure = @common.Status::{
+    error_code: @common.ErrorCode::UnexpectedError,
+    reason: "collection not found",
+    code: 100,
+    retriable: false,
+    detail: "",
+    extra_info: {},
+  }
+  let (client, _) = test_client([
+    (@client.load_collection_path, encode(failure)),
+  ])
+  let outcome : Result[Unit, @client.ClientError] = try {
+    ignore(client.load_collection(@client.new_load_collection_option("x")))
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected a server error")
+    Err(Server(err)) => assert_eq(@errors.error_code(Some(err)), 100)
+    Err(_) => fail("expected Server")
+  }
+}
+
+///|
+async test "get_load_state 解出四种状态" {
+  let cases : Array[(@common.LoadState, @client.CollectionLoadState)] = [
+    (
+      @common.LoadState::LoadStateNotExist,
+      @client.CollectionLoadState::NotExist,
+    ),
+    (@common.LoadState::LoadStateNotLoad, @client.CollectionLoadState::NotLoad),
+    (@common.LoadState::LoadStateLoading, @client.CollectionLoadState::Loading),
+    (@common.LoadState::LoadStateLoaded, @client.CollectionLoadState::Loaded),
+  ]
+  for pair in cases {
+    let response = @milvus.GetLoadStateResponse::{
+      status: Some(ok_status()),
+      state: pair.0,
+    }
+    let (client, recorded) = test_client([
+      (@client.get_load_state_path, encode(response)),
+    ])
+    let state = client.get_load_state(
+      @client.new_describe_collection_option("demo"),
+    ) catch {
+      _ => fail("expected a load state")
+    }
+    assert_eq(state, pair.1)
+    let request : @milvus.GetLoadStateRequest = @lib.Read::read_with_limit(
+      @lib.LimitedReader::LimitedReader(
+        @lib.BytesReader::from_bytes(recorded.val[0].body),
+      ),
+    )
+    assert_eq(request.collection_name, "demo")
+  }
+}
+
+///|
+async test "get_load_state 的未知枚举值单列出来" {
+  // 99 不在 LoadState 的定义里，生成物会落到 Unknown 岔路。
+  // 上层靠它区分「没见过的状态」和「那就是没加载」。
+  let response = @milvus.GetLoadStateResponse::{
+    status: Some(ok_status()),
+    state: @common.LoadState::Unknown(@lib.Enum(99)),
+  }
+  let (client, _) = test_client([
+    (@client.get_load_state_path, encode(response)),
+  ])
+  let state = client.get_load_state(
+    @client.new_describe_collection_option("demo"),
+  ) catch {
+    _ => fail("expected a load state")
+  }
+  assert_eq(state, @client.CollectionLoadState::Unknown(99))
+}
+
+///|
 async test "服务端拒绝变成 Server 错误" {
   let failure = @common.Status::{
     error_code: @common.ErrorCode::UnexpectedError,

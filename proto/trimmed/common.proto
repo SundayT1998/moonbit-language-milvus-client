@@ -51,6 +51,13 @@ enum IndexState {
     Retry = 5;
 }
 
+enum LoadState {
+    LoadStateNotExist = 0;
+    LoadStateNotLoad = 1;
+    LoadStateLoading = 2;
+    LoadStateLoaded = 3;
+}
+
 enum ConsistencyLevel {
     Strong = 0;
     Session = 1; // default in PyMilvus

@@ -75,8 +75,13 @@ You can browse and install extra skills here:
 - `cmd/integration` 是 native-only 的自检程序，与 `cmd/main`（只管传输层）分工：
   它走完整门面，验「建集合 → 写入 → 检索 → 查询 → 清理」在真服务端上成立，
   失败以非 0 退出码结束。
-- 目前**不带建索引一步**：`client/` 还没有 `CreateIndex` / `DescribeIndex` /
-  `LoadCollection` 的编排，集成测试依赖服务端暴力检索。等索引那层补上再加。
+- 目前**不带建索引一步**：`client/` 还没有 `CreateIndex` / `DescribeIndex` 的
+  编排，集成测试依赖服务端暴力检索。等索引那层补上再加。
+- 但 `LoadCollection` **必须有**：Milvus 不会在建表后自动把集合加载进内存，
+  对未加载的集合发 `Search` 会直接回 `collection not loaded`
+  （`CollectionNotLoaded`）—— #33 的 CI 第二轮就是这么红的。
+  `Client::load_collection` 返回只表示请求被受理，数据面就绪是异步的，
+  所以集成测试接着轮询 `Client::get_load_state` 到 `Loaded` 才检索。
 
 ## entity 包
 
@@ -230,7 +235,8 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - `types.mbt` —— `Unary` 函数值、`Client`、`ClientError`、`call_service`、`check_status`
 - `consistency.mbt` / `schema_convert.mbt` —— 一致性等级与 schema ↔ proto 的桥
 - `collection.mbt` —— CreateCollection / DropCollection / HasCollection /
-  DescribeCollection / ListCollections 及其 Option
+  DescribeCollection / ListCollections / LoadCollection / ReleaseCollection /
+  GetLoadState 及其 Option
 - `write_column.mbt` / `write.mbt` —— `WriteColumn` → `FieldData`，insert / upsert / delete
 - `search.mbt` / `query.mbt` —— 占位符编码、search_params、结果反序列化
 - `paths.mbt` —— gRPC 方法路径常量
@@ -252,6 +258,10 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   能改个名字写回去。它推导不出 `Array` 列的元素类型，所以那一支直接报 `Encode`。
 - `search_params` 的键集合与顺序照搬上游 `AnnRequest.searchRequest`：
   固定七个键写全，调用方的 `with_search_param` 最后覆盖。
+- **检索前要 `load_collection`**：Milvus 不会在建表后自动加载集合，未加载就
+  `Search` 会回 `collection not loaded`。加载是异步的，`load_collection` 返回
+  不代表就绪，调用方要用 `get_load_state` 轮询到 `Loaded`。上游对齐的
+  `CollectionLoadState` 保留了生成物的 `Unknown` 岔路，别把它并进 `NotLoad`。
 
 `entity/` 的 float16 写侧（`float16_from_float` / `float16_vector_bytes`）与
 `column/float16.mbt` 的读侧是一对，逐位对齐 IEEE-754 binary16。
