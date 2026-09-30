@@ -212,3 +212,53 @@ moon test  --target all  ->  7 passed（3 个 p0test + 4 个 indextest），四�
    `common.IndexState` 枚举值正确
 
 即：索引 RPC 的入参/出参 wire codec 已验证可用，接 `moonrpc` 只剩传输层。
+
+## 11. 追加：响应 `FieldData` 纳入裁剪集（#14）
+
+`#14` 需要把响应里的 `FieldData` 解成列，裁剪集因此再扩 20 个 message：
+`FieldData` / `ScalarField` / `VectorField` / `VectorArray` / `SparseFloatArray`
+以及 `BoolArray` / `IntArray` / `LongArray` / `FloatArray` / `DoubleArray` /
+`BytesArray` / `StringArray` / `UUIDArray` / `ArrayArray` / `JSONArray` /
+`GeometryArray` / `GeometryWktArray` / `TimestamptzArray`，另加 `IDs`。
+字段号一律照抄 `proto/upstream/schema.proto`。
+
+`FieldData.field` oneof 里的 `struct_arrays = 8` 没纳入——`ArrayOfStruct` /
+`Struct` 不在本 Issue 的范围，带上它会把 `StructArrayField` 一整串拖进来。
+少了这一支后 oneof 只剩 `scalars` / `vectors`，读的一侧不可能解出结构数组。
+
+### 这回撞上了 Bug #1，并修好了
+
+`FieldData` 这一族里有 `repeated bytes`（`BytesArray.data`、`JSONArray.data`、
+`GeometryArray.data`、`UUIDArray.data`、`SparseFloatArray.contents`），
+正好命中第 4 节的 **Bug #1**：生成器把它们编成
+
+```moonbit
+json["data"] = @lib.base64_encode(self.data).to_json()
+```
+
+而 `base64_encode(Bytes) -> String` 收不下 `Array[Bytes]`，5 处编译不过。
+
+`proto/tools/gen.sh` 因此多了一步后处理：
+`proto/tools/patch_repeated_bytes.py` 在生成后按**结构体字段声明**判定，
+字段是 `Array[Bytes]` 才补 `map(@lib.base64_encode)`，`Bytes` 字段原样不动。
+该脚本是文本补丁、不是语义重写，所以判据是「同文件里既有
+`mut <f> : Array[Bytes]` 声明、又有 `base64_encode(self.<f>).to_json()`」两条
+同时成立才改，宁可漏判题。上游修好 Bug #1 后，这个脚本连同本节一起删。
+
+顺带纠一处：第 4 节原本说「`repeated bytes` + JSON 关掉也仅是换一个错」，
+在**裁剪集**里不成立——把这 5 处 JSON 编码改对之后，其余代码不受影响，
+`moon check` 干净通过。也就是说 Bug #1 只在 P0 没碰 `repeated bytes` 时被绕过，
+不是无法回避。
+
+### 结果
+
+```
+moon check --target all  ->  0 error
+moon test  --target all  ->  130 passed，四目标全绿
+```
+
+其中 `column/` 包 20 条测试覆盖：标量各类型、窄整数有符号收窄、空列、
+null 行（紧凑与行满两种布局）、行区间切片、`valid_data` 双源冲突、
+`FloatVector` / `BinaryVector` / `Float16Vector` / `BFloat16Vector` /
+`Int8Vector` / `SparseFloatVector`、向量 payload 类型不符、动态字段 JSON
+字符串与 UTF-8 校验、`Array` 列、读错类型、不支持的字段类型。

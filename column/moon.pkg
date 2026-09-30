@@ -1,0 +1,6 @@
+import {
+  "Tangbuting/proto/milvus/proto/schema",
+  "Tangbuting/milvus-client/entity",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+}

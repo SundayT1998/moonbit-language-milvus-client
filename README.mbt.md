@@ -12,6 +12,7 @@ A community-driven MoonBit client for the [Milvus](https://milvus.io/) vector da
 |---|---|
 | `entity` | Schema / Field / Vector 抽象，含 BF16 手写转换（#12） |
 | `index` | 索引参数 builder、`MetricType` / `IndexType` 枚举、索引 RPC 入参与响应解析（#16） |
+| `column` | 响应 `FieldData` → 列容器反序列化，查询/检索回读的落点（#14） |
 | `proto` | 上游 `.proto` 快照、代码生成与可行性结论，见 `proto/REPORT.md`（#5 / #10） |
 | `errors` | Milvus `common.Status` → MoonBit 错误模型（#13） |
 | `transport` | 配置、metadata 组装、gRPC status —— 跨 target（#11） |
@@ -75,6 +76,33 @@ schema.validate() // 本地就挡下服务端会拒绝的 schema
 - BF16 转换是手写的（`bfloat16_from_float`），对 float32 做 bit 截断加
   round-half-to-even，行为与上游 `ml_dtypes.bfloat16` 一致，零依赖。
 - 稀疏向量保留 `(indices, values)` 表示，wire 上是每项 4 字节 index + 4 字节 float32 的小端对。
+
+## 列容器
+
+`column` 把响应里的 `FieldData` 解成列，`Query` / `Search` 的回读都从这里过。
+
+```moonbit nocheck
+let col = @column.from_field_data(field_data, begin=0, end=-1)
+for i = 0; i < col.len(); i = i + 1 {
+  if col.is_null(i) {
+    continue
+  }
+  // 按列类型取；读错类型会报 ColumnError，不做隐式转换
+  let v = col.get_as_int64(i)
+}
+```
+
+要点：
+
+- 支持 Bool / Int8~Int64 / Float / Double / String / VarChar / Text /
+  Timestamptz / Geometry / JSON / Array，以及全部向量类型。
+- 窄整数按位宽有符号收窄：服务端把 `Int8` 放在 `int32` 数组里，`0xFF` 读成 -1。
+- 可空列两种布局都认：`valid_data` 与数据等长（行满）或等于有效数（紧凑）。
+  两处有效性位图（旧的 `FieldData.valid_data` 与字段级的）都有且不一致时
+  报错，不挑一边。
+- 动态字段（JSON）以 **JSON 字符串**取回（`get_as_json_string`），不做路径查询，
+  因此不引 `tidwall/gjson`。
+- float16 / bfloat16 解码逐位对齐 IEEE-754，不是近似。
 
 ## 索引
 

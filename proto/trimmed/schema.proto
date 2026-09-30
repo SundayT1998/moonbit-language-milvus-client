@@ -135,6 +135,108 @@ message ValueField {
   }
 }
 
+// ---- 响应回读所需的标量/向量数组（#14 列容器反序列化）----
+// 这些 message 逐条照抄 proto/upstream/schema.proto，字段号一律不动。
+
+message BoolArray { repeated bool data = 1; }
+
+message IntArray { repeated int32 data = 1; }
+
+message LongArray { repeated int64 data = 1; }
+
+message FloatArray { repeated float data = 1; }
+
+message DoubleArray { repeated double data = 1; }
+
+message BytesArray { repeated bytes data = 1; }
+
+message StringArray { repeated string data = 1; }
+
+message UUIDArray { repeated bytes data = 1; }
+
+message ArrayArray {
+  repeated ScalarField data = 1;
+  DataType element_type = 2;
+}
+
+message JSONArray { repeated bytes data = 1; }
+
+message GeometryArray { repeated bytes data = 1; }
+
+message GeometryWktArray { repeated string data = 1; }
+
+message TimestamptzArray { repeated int64 data = 1; }
+
+message ScalarField {
+  oneof data {
+    BoolArray bool_data = 1;
+    IntArray int_data = 2;
+    LongArray long_data = 3;
+    FloatArray float_data = 4;
+    DoubleArray double_data = 5;
+    StringArray string_data = 6;
+    BytesArray bytes_data = 7;
+    ArrayArray array_data = 8;
+    JSONArray json_data = 9;
+    GeometryArray geometry_data = 10;
+    TimestamptzArray timestamptz_data = 11;
+    GeometryWktArray geometry_wkt_data = 12;
+  }
+  // 逐逻辑值的有效性：valid_data[i] 为 true 表示第 i 行有值，false 表示 null。
+  repeated bool valid_data = 17;
+}
+
+message SparseFloatArray {
+  repeated bytes contents = 1;
+  // 本批次向量的最大维度。
+  int64 dim = 2;
+}
+
+message VectorField {
+  // 稀疏向量的 dim 是本批次向量的最大维度。
+  int64 dim = 1;
+  oneof data {
+    FloatArray float_vector = 2;
+    bytes binary_vector = 3;
+    bytes float16_vector = 4;
+    bytes bfloat16_vector = 5;
+    SparseFloatArray sparse_float_vector = 6;
+    bytes int8_vector = 7;
+    VectorArray vector_array = 8;
+  }
+  // 与 ScalarField.valid_data 同义：顶层描述 FieldData 的行，
+  // 在 VectorArray 里描述当前层级的元素。规则逐层递归。
+  repeated bool valid_data = 9;
+}
+
+message VectorArray {
+  int64 dim = 1;
+  repeated VectorField data = 2;
+  DataType element_type = 3;
+}
+
+message FieldData {
+  DataType type = 1;
+  string field_name = 2;
+  oneof field {
+    ScalarField scalars = 3;
+    VectorField vectors = 4;
+  }
+  int64 field_id = 5;
+  bool is_dynamic = 6;
+  // 旧版顶层的有效性位图。新写入方应当用 ScalarField.valid_data /
+  // VectorField.valid_data；读取方优先读字段级，读不到再回落到这里。
+  repeated bool valid_data = 7;
+}
+
+message IDs {
+  oneof id_field {
+    LongArray int_id = 1;
+    StringArray str_id = 2;
+    UUIDArray uuid_id = 3;
+  }
+}
+
 enum DataType {
   None = 0;
   Bool = 1;

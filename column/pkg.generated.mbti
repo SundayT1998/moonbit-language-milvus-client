@@ -1,0 +1,102 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Tangbuting/milvus-client/column"
+
+import {
+  "Tangbuting/milvus-client/entity",
+  "Tangbuting/proto/milvus/proto/schema",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn from_field_data(@schema.FieldData, begin? : Int, end? : Int) -> Column raise ColumnError
+
+// Errors
+pub(all) suberror ColumnError {
+  DataTypeNotMatch(String)
+  UnsupportedType(String)
+  IndexOutOfRange(String)
+  MalformedPayload(String)
+  NullValue(String)
+} derive(@debug.Debug)
+#deprecated
+pub fn ColumnError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) enum ArrayValue {
+  Bool(Array[Bool])
+  Int8(Array[Int])
+  Int16(Array[Int])
+  Int32(Array[Int])
+  Int64(Array[Int64])
+  Float(Array[Float])
+  Double(Array[Double])
+  String(Array[String])
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Cell {
+  Bool(Bool)
+  Int8(Int)
+  Int16(Int)
+  Int32(Int)
+  Int64(Int64)
+  Float(Float)
+  Double(Double)
+  String(String)
+  VarChar(String)
+  Text(String)
+  Timestamptz(Int64)
+  Json(Bytes)
+  Geometry(String)
+  Array(ArrayValue)
+  FloatVector(Array[Float])
+  Float16Vector(Array[Float])
+  BFloat16Vector(Array[Float])
+  BinaryVector(Bytes)
+  Int8Vector(Bytes)
+  SparseFloatVector(@entity.SparseFloatVector)
+  Null
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Column {
+  column : ColumnValue
+  nullable : Bool
+  valid : Array[Bool]
+} derive(@debug.Debug)
+pub fn Column::data_type(Self) -> @entity.DataType
+pub fn Column::get(Self, Int) -> Cell raise ColumnError
+pub fn Column::get_as_bool(Self, Int) -> Bool raise ColumnError
+pub fn Column::get_as_bytes(Self, Int) -> Bytes raise ColumnError
+pub fn Column::get_as_double(Self, Int) -> Double raise ColumnError
+pub fn Column::get_as_int64(Self, Int) -> Int64 raise ColumnError
+pub fn Column::get_as_json_string(Self, Int) -> String raise ColumnError
+pub fn Column::get_as_string(Self, Int) -> String raise ColumnError
+pub fn Column::is_null(Self, Int) -> Bool raise ColumnError
+pub fn Column::len(Self) -> Int
+pub fn Column::valid_count(Self) -> Int
+
+pub(all) enum ColumnValue {
+  Bool(Array[Bool])
+  Int8(Array[Int])
+  Int16(Array[Int])
+  Int32(Array[Int])
+  Int64(Array[Int64])
+  Float(Array[Float])
+  Double(Array[Double])
+  String(Array[String])
+  VarChar(Array[String])
+  Text(Array[String])
+  Timestamptz(Array[Int64])
+  Json(Array[Bytes])
+  Geometry(Array[String])
+  Array(Array[ArrayValue])
+  FloatVector(Int, Array[Array[Float]])
+  Float16Vector(Int, Array[Array[Float]])
+  BFloat16Vector(Int, Array[Array[Float]])
+  BinaryVector(Int, Array[Bytes])
+  Int8Vector(Int, Array[Bytes])
+  SparseFloatVector(Array[@entity.SparseFloatVector])
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

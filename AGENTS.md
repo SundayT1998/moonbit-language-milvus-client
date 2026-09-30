@@ -147,6 +147,26 @@ moon work init . proto/gen/trimmed/proto   # 把生成模块注册进工作区
 > 注意：`moon.mod` 不支持路径依赖，只有旧的 `moon.mod.json` 支持。因此这里
 > 用「工作区成员 + 版本号依赖」的写法，别改成 `{ path = ... }`。
 
+## `column/` 包
+
+Milvus 响应 `FieldData` → 列容器，对应上游 `client/column/`
+（`milvus-io/milvus` commit `1bcc8cb1`，Apache-2.0）。
+
+- `types.mbt` —— `ColumnValue` / `Column`，各列类型（含向量）
+- `decode.mbt` —— `from_field_data`，`FieldData` → `Column` 的唯一入口
+- `valid_data.mbt` —— 有效性位图的双源读取与行区间归一
+- `extract.mbt` / `arrays.mbt` / `vectors.mbt` —— 从生成的 proto 里取数
+- `float16.mbt` —— 回读侧的 fp16/bf16 解码（写侧在 `entity/`）
+- `access.mbt` / `get_as.mbt` —— 行访问接口
+
+约定：
+- 读错类型报 `ColumnError::DataTypeNotMatch`，null 行报 `NullValue`，
+  **不做隐式转换**。
+- 动态字段（JSON）以 JSON 字符串取回，不做路径查询（不引 `tidwall/gjson`）。
+- 生成的 `@schema.DataType` 与 `@entity.DataType` 的对应写在
+  `column/datatype.mbt`；新增类型时两边都要动，`from_field_data` 的
+  `match` 会提醒你漏了哪一支。
+
 ## `errors/` 包
 
 Milvus `common.Status` → MoonBit 错误模型。对应上游 `client/internal/merr/`
