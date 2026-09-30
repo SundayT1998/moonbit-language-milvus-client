@@ -18,8 +18,8 @@ You can browse and install extra skills here:
 ## Development Environment
 
 - CNB 云原生开发：在 `.cnb.yml` 的 `vscode` 事件中声明，与 CI 共用同一基础镜像
-  `.cnb/Dockerfile`（MoonBit 工具链走中国站 `cli.moonbitlang.cn`）。
-- GitHub Codespaces：见 `.devcontainer/`，使用 `.com` 国际站安装工具链。
+  `.cnb/Dockerfile`（基于 `cnbcool/default-dev-env`，MoonBit 工具链走中国站
+  `cli.moonbitlang.cn`）。
 
 ## CI
 
