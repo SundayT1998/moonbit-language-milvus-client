@@ -133,11 +133,21 @@ async fn check_steps(client : @client.Client) -> String {
       "写入计数不符：期望 \{row_count}，实际 \{inserted.insert_count}",
     )
   }
-  let _ = match inserted.ids {
-    Some(_) => ()
+  let ids = match inserted.ids {
+    Some(@column.ColumnValue::Int64(ids)) => ids
+    Some(_) => return step_failed("4", "auto_id 回的主键不是整数列")
     None => return step_failed("4", "auto_id 的写入没有回主键")
   }
-  println("[4] 已写入 \{row_count} 行，计数与主键已确认")
+  if ids.length() != row_count {
+    return step_failed(
+      "4",
+      "auto_id 回的主键个数不符：期望 \{row_count}，实际 \{ids.length()}",
+    )
+  }
+  // 顺手打一行主键：服务端发的是 Snowflake ID，量级与写入顺序都跟本地
+  // 行号无关。后面写过滤表达式时不能拿它当「第几行」用 —— 这条就是踩过
+  // 来的，`id >= 5` 在 18 位的主键上等于全表通过。
+  println("[4] 已写入 \{row_count} 行，首个主键=\{ids[0]}")
 
   // 5. 建索引。必须在加载之前：Milvus 对没有索引的集合拒绝加载，
   //    报 `index not found`。这里用 FLAT 而不是 HNSW/IVF —— 10 行的
@@ -220,9 +230,18 @@ async fn check_steps(client : @client.Client) -> String {
   )
 
   // 8. 查询：按表达式取两列，验回读的解码路径。
+  //    过滤条件用 `title` 而不是主键：主键是服务端发号的 Snowflake ID
+  //    （18 位量级），拿 `id >= 5` 去滤等于全表通过，断言「5 行」只会
+  //    得到一个和预期无关的 10。`row-N` 是本地生成的，可控，才适合当判据。
+  //    用 `in` 而不是范围比较：想断言的就是「这 5 行」，写清楚点，
+  //    也免得依赖字符串排序的细节。
+  let wanted : Array[String] = []
+  for i = 5; i < row_count; i = i + 1 {
+    wanted.push("\"" + "row-" + i.to_string() + "\"")
+  }
   let queried = client.query(
     @client.new_query_option(collection)
-    .with_filter("id >= 5")
+    .with_filter("title in [" + wanted.join(",") + "]")
     .with_output_fields(["id", "title"]),
   ) catch {
     err => return step_failed("8", "查询失败：" + err.to_string())
@@ -237,8 +256,12 @@ async fn check_steps(client : @client.Client) -> String {
     Some(c) => c
     None => return step_failed("8", "结果里没有 title 列")
   }
+  // 服务端不保证行的顺序（除非显式 order_by），所以这里比集合而不是比第
+  // 几行：收全部 title，看是不是恰好那 5 个。断言顺序等于把「恰好 5 行」
+  // 变成「恰好 5 行且顺序如我所愿」，多绑了一条服务端没承诺的事。
+  let expected : Array[String] = ["row-5", "row-6", "row-7", "row-8", "row-9"]
+  let got : Array[String] = []
   for i = 0; i < title_column.len(); i = i + 1 {
-    let expected = "row-" + (i + 5).to_string()
     let cell = title_column.get(i) catch {
       err =>
         return step_failed(
@@ -251,14 +274,18 @@ async fn check_steps(client : @client.Client) -> String {
       @column.Cell::VarChar(s)
       | @column.Cell::String(s)
       | @column.Cell::Text(s) => s
-      _ => ""
+      _ => return step_failed("8", "title 第 \{i} 行不是字符串")
     }
-    if actual != expected {
-      return step_failed(
-        "8",
-        "title 第 \{i} 行不符：期望 \{expected}，实际 \{actual}",
-      )
-    }
+    got.push(actual)
+  }
+  got.sort()
+  if got != expected {
+    let want = expected.join(",")
+    let have = got.join(",")
+    return step_failed(
+      "8",
+      "title 列内容不符：期望 \{want}，实际 \{have}",
+    )
   }
   println("[8] 查询按表达式返回 5 行，列内容正确")
 

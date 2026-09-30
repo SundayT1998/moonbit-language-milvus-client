@@ -306,8 +306,9 @@ create_collection → create_index → load_collection →（轮询到 Loaded）
 - 建了索引不 `load_collection` 就检索：服务端回 `collection not loaded`。
 - `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要轮询
   `get_load_state` 到 `Loaded`，直接接着检索会偶发失败。
-- `Query` 没显式给 `limit` 时，客户端会补上默认的 16384。别指望「不发 limit
-  就是不限量」—— Milvus 对没带 `limit` 的 Query 反而会全量返回。
+- `Query` 的 `limit` 不预置，交给服务端默认；要确定行数就显式
+  `with_limit(n)`。另外别拿主键当行号筛数据：`auto_id` 发的是 Snowflake ID，
+  `id >= 5` 在 18 位的主键上等于全表通过。
 
 自检用 `new_flat_index(L2)`：10 行的集合上暴力检索就是最优解，也不用等索引构建。
 
