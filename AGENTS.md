@@ -135,6 +135,11 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
   - 不写进度、不写「尚未发布」、不写「某任务已交付」这类状态信息 —— 状态会过期，
     README 不该跟着烂。能力清单跟着 API 走，只有 API 真增删才动它。
   - 不写开发流程与集成测试步骤，那是 `docs/DEVELOPMENT.md` 的事，README 只留链接。
+    **具体到连构建命令都别写**：「从源码构建」`moon check && moon test`、改 `.proto`
+    后跑 `gen.sh`、连真 Milvus 跑集成测试——这三条已经在 `DEVELOPMENT.md`
+    「开发流程」里，README 复述一遍就多一份会漂的副本。**构建命令不是
+    「贡献方式」**：贡献一节只留「欢迎提 Issue / PR」加两个指向链接，
+    不要把命令清单当贡献流程塞回去。
   - 不写「改代码走 PR」这类贡献流程，那是 `docs/DEVELOPMENT.md` 与本文件的事。
   - **必须有一节「文档导航」**，登记仓库里的每一份文档（`docs/*`、`AGENTS.md`、
     `proto/REPORT.md`、`proto/upstream/PROVENANCE.md`、`LICENSE`、`.githooks/README.md` 等），
@@ -155,6 +160,10 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
   看懂就行。
 - 对外文档统一措辞是 "community-driven MoonBit client for Milvus"，
   别写成 official Milvus SDK（见「许可与上游同步」）。
+- **「来源与许可」只写事实，不写方法论**：上游仓库、基线 commit、许可与版权、
+  协议来源。不要在里面论证「这是重新实现、不是逐行翻译、也不是 clean-room」
+  这类定性 —— 那是给做评审的人看的辩护，读 README 的人用不上。归属与同步策略
+  的正文在「许可与上游同步」，README 只留指针。
 
 ## Coding convention
 

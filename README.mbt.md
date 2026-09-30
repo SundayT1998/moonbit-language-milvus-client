@@ -136,6 +136,9 @@ async fn quickstart() -> Unit raise @client.ClientError {
 }
 ```
 
+快速上手里的调用都对应 `client` 包的公共 API，逐个函数的签名和选项看各包
+生成的 `.mbti`。
+
 ## 文档导航
 
 仓库里的文档都在下面。
@@ -177,7 +180,5 @@ async fn quickstart() -> Unit raise @client.ClientError {
 | 上游版权 | Copyright (c) LF AI & Data Foundation |
 | 本项目许可 | Apache-2.0（见 [`LICENSE`](./LICENSE)） |
 
-Go 到 MoonBit 是重新实现，不是逐行翻译，但也不是 clean-room：API 名称、字段名、
-协议常量值、Option 构造函数名与默认值都沿用上游，这些正是 Apache-2.0 覆盖的
-贡献物。归属说明就是本节，加上每个移植文件顶部的来源声明头。上游同步走手动评估，
-流程见 [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)。
+上游同步与新文件归属声明的约定见 [`AGENTS.md`](./AGENTS.md)「许可与上游同步」
+一节，同步流程见 [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)。
