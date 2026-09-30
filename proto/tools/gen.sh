@@ -108,4 +108,14 @@ PY
 # 等上游修好后这段可以连同 REPORT.md 的 Bug #1 一起删掉。
 python3 "$ROOT/proto/tools/patch_repeated_bytes.py" "$OUT"
 
+# 生成器不保证输出已格式化，而生成物现在入库、CI 又用 `moon fmt` 卡格式，
+# 所以这里把它 fmt 掉。注意 `moon fmt <目录>` 不会往下递归，得逐个包调。
+moon fmt "$OUT"/* >/dev/null
+
+# 顺带把生成包的 .mbti 也刷新一遍（`moon info` 才会写）。
+# 不刷的话 CI 里那步 `moon fmt && git diff --exit-code` 会先被 `moon info`
+# 生成的文件顶出 diff —— 那句校验的是「仓库干净」，不止格式。
+# 生成目录直接指定：`moon info` 不写 import 了它的那些包。
+moon info "$OUT"/* >/dev/null
+
 echo "生成完成 -> $OUT"
