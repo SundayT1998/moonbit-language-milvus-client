@@ -9,18 +9,18 @@
 //   "moonbitlang/x@0.4.6",
 // }
 
-name = "Tangbuting/moonbit-language-milvus-client"
+name = "Tangbuting/milvus-client"
 
 version = "0.1.0"
 
 readme = "README.mbt.md"
 
-repository = ""
+repository = "https://github.com/Tangbuting/milvus-client"
 
 license = "Apache-2.0"
 
-keywords = []
+keywords = [ ]
 
 preferred_target = "wasm"
 
-description = ""
+description = "Milvus vector database client for MoonBit"

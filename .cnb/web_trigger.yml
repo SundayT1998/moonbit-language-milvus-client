@@ -1,0 +1,9 @@
+# Web 触发器：为仓库提供一键进入的云原生开发环境
+# 文档：https://docs.cnb.cool
+
+branch:
+  - reg: ^main$
+    buttons:
+      - name: 打开云端开发环境
+        description: 在浏览器中打开 Milvus Client 开发环境（内置 MoonBit 工具链）
+        event: web_trigger_selected

@@ -1,0 +1,52 @@
+# CNB 流水线：https://docs.cnb.cool
+# 构建镜像由 `.cnb/Dockerfile` 提供（预装 MoonBit 工具链），无需外部制品库
+# 云端开发环境见 `.cnb/web_trigger.yml` 与 `.cnb/devcontainer.json`
+
+.ci: &ci
+  docker:
+    build: .cnb/Dockerfile
+  stages:
+    - name: fmt-and-info
+      script: |
+        moon version --all
+        moon update
+        moon fmt
+        git diff --exit-code
+        moon info
+        git diff --exit-code
+    - name: check
+      script: moon check --target all
+    - name: test
+      script: moon test --target all
+
+main:
+  push:
+    - name: check-and-test
+      <<: *ci
+  pull_request:
+    - name: check-and-test
+      <<: *ci
+
+"$":
+  tag_push:
+    - name: publish
+      docker:
+        build: .cnb/Dockerfile
+      stages:
+        - name: prepublish-check
+          script: |
+            moon version --all
+            moon update
+            moon fmt
+            git diff --exit-code
+            moon check --target all
+            moon test --target all
+        - name: publish-to-mooncakes
+          script: |
+            if [ -z "$MOONCAKES_TOKEN" ]; then
+              echo "MOONCAKES_TOKEN 未配置，跳过发布"
+              exit 1
+            fi
+            echo "$MOONCAKES_TOKEN" > ~/.moon/credentials.json
+            moon publish
+            rm -f ~/.moon/credentials.json

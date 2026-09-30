@@ -15,6 +15,19 @@ You can browse and install extra skills here:
 - In the toplevel directory, there is a `moon.mod` file listing module
   metadata.
 
+## Development Environment
+
+- CNB 云原生开发：见 `.cnb/web_trigger.yml`，镜像由 `.cnb/Dockerfile` 预装 MoonBit 工具链。
+- GitHub Codespaces / devcontainer：见 `.cnb/devcontainer.json`。
+
+## CI
+
+- CNB 流水线：`.cnb.yml`，`push` / `pull_request` 跑 `moon fmt`、`moon info`、
+  `moon check --target all`、`moon test --target all`；`tag_push` 走发布。
+- GitHub Actions：`.github/workflows/check.yml`（三平台检查），
+  `.github/workflows/publish.yml`（手动触发发布到 mooncakes.io）。
+- 本地等价命令：`moon check --target all && moon test --target all`。
+
 ## Coding convention
 
 - MoonBit code is organized in block style, each block is separated by `///|`,
