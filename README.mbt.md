@@ -296,6 +296,11 @@ scripts/milvus-stop.sh           # 停掉并删除容器
 参数（镜像 / 容器名 / 端口 / 等待秒数）都能用环境变量覆盖，
 `scripts/milvus-start.sh` 头部有清单。
 
+embedded etcd 的配置文件用 `docker cp` 送进容器（`create` → `cp` → `start`），
+不挂单文件卷：CI 的 docker daemon 跑在 dind 容器里，看不到本任务 `/tmp` 下的文件，
+挂载源不可达时 docker 会把目标路径建成空目录，Milvus 读到目录会直接 segfault。
+写新脚本时按同样方式处理配置文件。
+
 生成 proto 代码（需 `protoc`）：
 
 ```sh

@@ -59,6 +59,17 @@ You can browse and install extra skills here:
   `unhealthy` 是终态，后面服务真起来了也不会翻回 `healthy`。Milvus 冷启动
   在 CI 上耗时不定，固定 `start-period`/`retries` 迟早被穿破，一破就永久卡死
   （#33 的 CI 就是这么红了一整轮）。
+- embedded etcd 的两份配置（`embedEtcd.yaml` / `user.yaml`）用 **`docker cp` 送进容器**，
+  不要用 `-v` 挂单文件。CNB 的 `services: - docker` 是 dind，daemon 在另一个容器里，
+  看不到本任务 `/tmp` 下的文件；挂载源在 daemon 侧不存在时，Docker 会在**目标路径建同名
+  空目录**，于是 `/milvus/configs/embedEtcd.yaml` 变成目录。Milvus `v3.0.2` 的
+  `InitEtcdServer` 在 `embed.ConfigFromFile` 失败时只记 `initError` 不返回，紧接着
+  `cfg.Dir = dataDir` 解引用 nil 直接 SIGSEGV（`pkg/util/etcd/etcd_server.go:49`）——
+  #33 的 CI 第一轮就是这么炸的。`docker cp` 走 daemon API 传 tar，跟 daemon 在不在
+  同一文件系统无关。同理，别指望 `mktemp -d` 出的路径能被 daemon 挂进去。
+- 容器配置顺序是 `create` → `cp` → `start`：Milvus 启动即读配置文件，先 `start`
+  再 `cp` 会读到不存在的路径。落位后脚本会把文件 cp 回来比一次大小，配错时给明确原因，
+  而不是甩一段 panic。
 - CNB 侧收尾放 `endStages`（`stages` 成功失败都跑），GitHub 侧用 `if: always()`。
   stop 是幂等的，容器没起来时也只打个跳过。
 - `cmd/integration` 是 native-only 的自检程序，与 `cmd/main`（只管传输层）分工：

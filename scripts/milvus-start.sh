@@ -26,8 +26,8 @@ FORCE=0
 [ "${1:-}" = "--force" ] && FORCE=1
 
 # 本脚本用 rootful docker：容器内 milvus 用户需要写卷，且 embedded etcd
-# 要读挂进去的配置文件。CNB 云原生构建里 docker daemon 由
-# `services: - docker` 提供，`docker` 直接可用。
+# 要读配置文件。CNB 云原生构建里 docker daemon 由 `services: - docker`
+# 提供，`docker` 直接可用。
 if ! command -v docker >/dev/null 2>&1; then
   echo "[milvus-start] 找不到 docker，无法起容器" >&2
   exit 1
@@ -37,19 +37,32 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-# embedded etcd 的配置。上游把这两份 yaml 挂进容器，是为了让
-# embedded etcd 监听在容器内的 2379，而不是默认的 127.0.0.1。
+# 两份配置在容器内的落点。上游 `standalone_embed.sh` 也是放这里。
+CONFIG_DIR=/milvus/configs
+EMBED_ETCD=/milvus/configs/embedEtcd.yaml
+
+# 配置文件先在本地生成，随后用 `docker cp` 拷进容器 —— 不用 `-v` bind mount。
+#
+# 为什么不用 bind mount：CNB 的 `services: - docker` 起的是 dind，daemon 在
+# 另一个容器里，看不到本任务 `/tmp` 下的文件（跨容器共享的只有
+# CNB_BUILD_WORKSPACE 与 docker.volumes 声明的目录）。源在 daemon 侧不存在时，
+# Docker 的默认行为是在**目标路径建一个同名空目录**，于是
+# `/milvus/configs/embedEtcd.yaml` 变成目录，`embed.ConfigFromFile` 读它失败。
+# Milvus v3.0.2 的 `InitEtcdServer` 在 ConfigFromFile 失败时只记 initError 不返回，
+# 紧接着 `cfg.Dir = dataDir` 解引用 nil，直接 SIGSEGV 退出
+# （`pkg/util/etcd/etcd_server.go:49`）。`docker cp` 走 daemon API 传 tar，
+# 与 daemon 在不在同一文件系统无关，本地 docker 和 CI dind 都成立。
 WORKDIR="$(mktemp -d)"
-EMBED_ETCD="$WORKDIR/embedEtcd.yaml"
-USER_YAML="$WORKDIR/user.yaml"
-cat > "$EMBED_ETCD" <<'YAML'
+EMBED_ETCD_SRC="$WORKDIR/embedEtcd.yaml"
+USER_YAML_SRC="$WORKDIR/user.yaml"
+cat > "$EMBED_ETCD_SRC" <<'YAML'
 listen-client-urls: http://0.0.0.0:2379
 advertise-client-urls: http://0.0.0.0:2379
 quota-backend-bytes: 4294967296
 auto-compaction-mode: revision
 auto-compaction-retention: '1000'
 YAML
-cat > "$USER_YAML" <<'YAML'
+cat > "$USER_YAML_SRC" <<'YAML'
 # Extra config to override default milvus.yaml
 YAML
 echo "[milvus-start] config 目录：$WORKDIR"
@@ -62,17 +75,31 @@ if [ -n "$(docker ps -aq -f "name=^${CONTAINER}$")" ]; then
   fi
 fi
 
+CREATED=0
+# create 之后到 start 之前的任何一步失败，都自己把容器收掉。
+# 否则 cp 失败时会在 runner 上留一个 created 状态的空壳，
+# 虽然 endStages 的 stop 脚本兜得住，但本地跑就会越积越多。
+# shellcheck disable=SC2329  # 下面用 trap 调用，shellcheck 看不出来
+cleanup_created() {
+  if [ "$CREATED" = "1" ]; then
+    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+    CREATED=0
+  fi
+}
+trap 'cleanup_created' EXIT
+
 if [ -z "$(docker ps -q -f "name=^${CONTAINER}$")" ]; then
-  docker run -d \
+  # create → cp → start 三步。create 而非 run，是为了在容器跑起来之前把
+  # 配置文件放到位：Milvus 启动即读 `/milvus/configs/embedEtcd.yaml`，
+  # 先 start 再 cp 会读到不存在的路径。
+  docker create \
     --name "$CONTAINER" \
     --security-opt seccomp=unconfined \
     -e ETCD_USE_EMBED=true \
     -e ETCD_DATA_DIR=/var/lib/milvus/etcd \
-    -e ETCD_CONFIG_PATH=/milvus/configs/embedEtcd.yaml \
+    -e ETCD_CONFIG_PATH="$EMBED_ETCD" \
     -e COMMON_STORAGETYPE=local \
     -e DEPLOY_MODE=STANDALONE \
-    -v "$EMBED_ETCD:/milvus/configs/embedEtcd.yaml:ro" \
-    -v "$USER_YAML:/milvus/configs/user.yaml:ro" \
     -p "127.0.0.1:${PORT}:19530" \
     --health-cmd="curl -f http://localhost:9091/healthz" \
     --health-interval=5s \
@@ -81,6 +108,38 @@ if [ -z "$(docker ps -q -f "name=^${CONTAINER}$")" ]; then
     --health-retries=60 \
     "$IMAGE" \
     milvus run standalone >/dev/null
+  CREATED=1
+
+  # `docker cp` 到具体文件路径时，目标文件名取自源文件名，所以这里逐份拷贝，
+  # 保证容器内文件名与 ETCD_CONFIG_PATH 指向的一致。落成 root:root 无妨，
+  # 容器内 milvus 用户只需可读（0644）。
+  docker cp "$EMBED_ETCD_SRC" "${CONTAINER}:${EMBED_ETCD}"
+  docker cp "$USER_YAML_SRC" "${CONTAINER}:${CONFIG_DIR}/user.yaml"
+
+  # 自检：把两份配置从容器里 cp 回来，比字节数。容器还没 start，`docker exec`
+  # 用不了，而 cp 对已创建未启动的容器是有效的。这步能同时挡住「没拷成
+  # 普通文件」和「拷成了空目录/空文件」两种情形 —— 配置没到位时 Milvus 只会以
+  # 一段难读的 panic 退场，不如在这里先给出明确原因。比大小而不是比内容：
+  # 少一个对 `cmp`/`diffutils` 的依赖，这两份 yaml 又是本脚本自己写的。
+  for pair in "$EMBED_ETCD_SRC:$EMBED_ETCD" "$USER_YAML_SRC:${CONFIG_DIR}/user.yaml"; do
+    src="${pair%%:*}"; dst="${pair#*:}"
+    back="$WORKDIR/$(basename "$dst").check"
+    rm -f -- "$back"
+    if ! docker cp "${CONTAINER}:${dst}" "$back" 2>/dev/null; then
+      echo "[milvus-start] 配置文件没拷进容器：$dst" >&2
+      exit 1
+    fi
+    # 拷回来是普通文件：大小与源一致（目录会被 cp 成目录，大小对不上）。
+    if [ ! -f "$back" ] || [ "$(wc -c < "$src")" != "$(wc -c < "$back")" ]; then
+      echo "[milvus-start] 配置文件没正确落到容器里：$dst" >&2
+      exit 1
+    fi
+    rm -f -- "$back"
+  done
+
+  docker start "$CONTAINER" >/dev/null
+  # 容器已经跑起来了，后续由 milvus-stop.sh 负责收尾，trap 不再删它。
+  CREATED=0
   echo "[milvus-start] 容器已启动，等待 healthy"
 else
   echo "[milvus-start] 容器已在运行，等待 healthy"
