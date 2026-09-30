@@ -136,21 +136,8 @@ async fn quickstart() -> Unit raise @client.ClientError {
 }
 ```
 
-逐个函数的签名和选项看各包生成的 `.mbti`。
-
-从源码构建：
-
-```sh
-moon check --target all && moon test --target all
-```
-
-改了 `proto/trimmed/*.proto` 才需要重新生成（需 `protoc`）：
-
-```sh
-proto/tools/gen.sh trimmed
-```
-
-连真实 Milvus 跑集成测试的步骤见 [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md)。
+快速上手里的调用都对应 `client` 包的公共 API，逐个函数的签名和选项看各包
+生成的 `.mbti`。
 
 ## 文档导航
 
