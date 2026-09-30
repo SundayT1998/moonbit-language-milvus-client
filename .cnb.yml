@@ -16,7 +16,7 @@
         moon version --all
         moon update
         proto/tools/gen.sh trimmed
-        moon work init . proto/gen/trimmed/proto || true
+        moon work use . proto/gen/trimmed/proto
     - name: fmt-and-info
       script: |
         moon fmt
@@ -49,7 +49,7 @@
         moon version --all
         moon update
         proto/tools/gen.sh trimmed
-        moon work init . proto/gen/trimmed/proto || true
+        moon work use . proto/gen/trimmed/proto
     - name: start-milvus
       script: scripts/milvus-start.sh --force
     - name: integration-test

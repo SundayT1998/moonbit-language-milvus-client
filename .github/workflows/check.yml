@@ -49,7 +49,7 @@ jobs:
         # proto/gen/ 不入版本库（见 .gitignore），签出后先重新生成再检查
         run: |
           bash proto/tools/gen.sh trimmed
-          moon work init . proto/gen/trimmed/proto
+          moon work use . proto/gen/trimmed/proto
 
       - name: moon check
         run: moon check --target all
@@ -91,7 +91,7 @@ jobs:
       - name: gen-proto
         run: |
           bash proto/tools/gen.sh trimmed
-          moon work init . proto/gen/trimmed/proto
+          moon work use . proto/gen/trimmed/proto
 
       - name: start milvus
         run: scripts/milvus-start.sh --force
