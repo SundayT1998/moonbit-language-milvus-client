@@ -155,6 +155,10 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
   看懂就行。
 - 对外文档统一措辞是 "community-driven MoonBit client for Milvus"，
   别写成 official Milvus SDK（见「许可与上游同步」）。
+- **「来源与许可」只写事实，不写方法论**：上游仓库、基线 commit、许可与版权、
+  协议来源。不要在里面论证「这是重新实现、不是逐行翻译、也不是 clean-room」
+  这类定性 —— 那是给做评审的人看的辩护，读 README 的人用不上。归属与同步策略
+  的正文在「许可与上游同步」，README 只留指针。
 
 ## Coding convention
 
