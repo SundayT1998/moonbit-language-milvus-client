@@ -495,7 +495,7 @@ pub(all) struct CollectionSchema {
   mut functions : Array[FunctionSchema]
   mut db_name : String
   mut struct_array_fields : Array[StructArrayFieldSchema]
-  mut version : Int
+  mut version : Int32
   mut external_source : String
   mut external_spec : String
   mut do_physical_backfill : Bool
@@ -557,7 +557,7 @@ pub impl @lib.Sized for CollectionSchema with fn size_of(self) {
   if !self.file_resource_ids.is_empty() {
     size += @lib.size_of_length_delimited_field(
       14U,
-      self.file_resource_ids.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.file_resource_ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if self.enable_namespace != Default::default() {
@@ -599,7 +599,7 @@ pub fn CollectionSchema::CollectionSchema(
   functions : Array[FunctionSchema],
   db_name : String,
   struct_array_fields : Array[StructArrayFieldSchema],
-  version : Int,
+  version : Int32,
   external_source : String,
   external_spec : String,
   do_physical_backfill : Bool,
@@ -728,7 +728,7 @@ pub impl @lib.Write for CollectionSchema with fn write(
     let size = self.file_resource_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.file_resource_ids {
       writer |> @lib.write_int64(item)
@@ -942,7 +942,7 @@ pub impl @lib.AsyncWrite for CollectionSchema with fn write(
     let size = self.file_resource_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.file_resource_ids {
       writer |> @lib.async_write_int64(item)
@@ -1037,7 +1037,7 @@ pub fn CollectionShardInfo::CollectionShardInfo(
   last_truncate_time_tick : UInt64,
   state : ShardState,
   vchannel_name : String,
-  routing? : CollectionShardInfo_Routing = CollectionShardInfo_Routing::NotSet,
+  routing~ : CollectionShardInfo_Routing = CollectionShardInfo_Routing::NotSet,
 ) -> CollectionShardInfo {
   CollectionShardInfo::{
     last_truncate_time_tick,
@@ -1752,7 +1752,7 @@ pub impl @lib.Sized for FunctionSchema with fn size_of(self) {
   if !self.input_field_ids.is_empty() {
     size += @lib.size_of_length_delimited_field(
       6U,
-      self.input_field_ids.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.input_field_ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   for s in self.output_field_names {
@@ -1761,7 +1761,7 @@ pub impl @lib.Sized for FunctionSchema with fn size_of(self) {
   if !self.output_field_ids.is_empty() {
     size += @lib.size_of_length_delimited_field(
       8U,
-      self.output_field_ids.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.output_field_ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   for s in self.params {
@@ -1875,7 +1875,7 @@ pub impl @lib.Write for FunctionSchema with fn write(
     let size = self.input_field_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.input_field_ids {
       writer |> @lib.write_int64(item)
@@ -1890,7 +1890,7 @@ pub impl @lib.Write for FunctionSchema with fn write(
     let size = self.output_field_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.output_field_ids {
       writer |> @lib.write_int64(item)
@@ -2034,7 +2034,7 @@ pub impl @lib.AsyncWrite for FunctionSchema with fn write(
     let size = self.input_field_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.input_field_ids {
       writer |> @lib.async_write_int64(item)
@@ -2049,7 +2049,7 @@ pub impl @lib.AsyncWrite for FunctionSchema with fn write(
     let size = self.output_field_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.output_field_ids {
       writer |> @lib.async_write_int64(item)
@@ -2072,7 +2072,7 @@ pub impl @lib.Sized for HashRouting with fn size_of(self) {
   if !self.buckets.is_empty() {
     size += @lib.size_of_length_delimited_field(
       1U,
-      self.buckets.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.buckets.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   size
@@ -2115,7 +2115,7 @@ pub impl @lib.Write for HashRouting with fn write(
 ) -> Unit raise {
   if !self.buckets.is_empty() {
     writer |> @lib.write_varint(10UL)
-    let size = self.buckets.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.buckets.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.buckets {
       writer |> @lib.write_uint64(item)
@@ -2178,7 +2178,7 @@ pub impl @lib.AsyncWrite for HashRouting with fn write(
 ) -> Unit raise {
   if !self.buckets.is_empty() {
     writer |> @lib.async_write_varint(10UL)
-    let size = self.buckets.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.buckets.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.buckets {
       writer |> @lib.async_write_uint64(item)
@@ -2494,7 +2494,7 @@ pub impl Default for TypeSchema with fn default() -> TypeSchema {
 pub fn TypeSchema::TypeSchema(
   type_params : Array[@common.KeyValuePair],
   nullable : Bool,
-  kind? : TypeSchema_Kind = TypeSchema_Kind::NotSet,
+  kind~ : TypeSchema_Kind = TypeSchema_Kind::NotSet,
 ) -> TypeSchema {
   TypeSchema::{ type_params, nullable, kind, }
 }
@@ -2651,14 +2651,14 @@ pub(all) struct ValueField {
 ///|
 pub(all) enum ValueField_Data {
   BoolData(Bool)
-  IntData(Int)
+  IntData(Int32)
   LongData(Int64)
   FloatData(Float)
   DoubleData(Double)
   StringData(String)
   BytesData(Bytes)
   TimestamptzData(Int64)
-  DateData(Int)
+  DateData(Int32)
   TimeData(Int64)
   NotSet
 } derive(Eq, Debug)
@@ -2772,7 +2772,7 @@ pub impl Default for ValueField with fn default() -> ValueField {
 ///|
 #alias(new, deprecated)
 pub fn ValueField::ValueField(
-  data? : ValueField_Data = ValueField_Data::NotSet,
+  data~ : ValueField_Data = ValueField_Data::NotSet,
 ) -> ValueField {
   ValueField::{ data, }
 }
@@ -3019,7 +3019,7 @@ pub impl @lib.Sized for BoolArray with fn size_of(self) {
   if !self.data.is_empty() {
     size += @lib.size_of_length_delimited_field(
       1U,
-      self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   size
@@ -3061,7 +3061,7 @@ pub impl @lib.Write for BoolArray with fn write(
 ) -> Unit raise {
   if !self.data.is_empty() {
     writer |> @lib.write_varint(10UL)
-    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.data {
       writer |> @lib.write_bool(item)
@@ -3124,7 +3124,7 @@ pub impl @lib.AsyncWrite for BoolArray with fn write(
 ) -> Unit raise {
   if !self.data.is_empty() {
     writer |> @lib.async_write_varint(10UL)
-    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.data {
       writer |> @lib.async_write_bool(item)
@@ -3134,7 +3134,7 @@ pub impl @lib.AsyncWrite for BoolArray with fn write(
 
 ///|
 pub(all) struct IntArray {
-  mut data : Array[Int]
+  mut data : Array[Int32]
 } derive(Eq, Debug)
 
 ///|
@@ -3143,7 +3143,7 @@ pub impl @lib.Sized for IntArray with fn size_of(self) {
   if !self.data.is_empty() {
     size += @lib.size_of_length_delimited_field(
       1U,
-      self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   size
@@ -3156,7 +3156,7 @@ pub impl Default for IntArray with fn default() -> IntArray {
 
 ///|
 #alias(new, deprecated)
-pub fn IntArray::IntArray(data : Array[Int]) -> IntArray {
+pub fn IntArray::IntArray(data : Array[Int32]) -> IntArray {
   IntArray::{ data, }
 }
 
@@ -3185,7 +3185,7 @@ pub impl @lib.Write for IntArray with fn write(
 ) -> Unit raise {
   if !self.data.is_empty() {
     writer |> @lib.write_varint(10UL)
-    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.data {
       writer |> @lib.write_int32(item)
@@ -3248,7 +3248,7 @@ pub impl @lib.AsyncWrite for IntArray with fn write(
 ) -> Unit raise {
   if !self.data.is_empty() {
     writer |> @lib.async_write_varint(10UL)
-    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.data {
       writer |> @lib.async_write_int32(item)
@@ -3267,7 +3267,7 @@ pub impl @lib.Sized for LongArray with fn size_of(self) {
   if !self.data.is_empty() {
     size += @lib.size_of_length_delimited_field(
       1U,
-      self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   size
@@ -3309,7 +3309,7 @@ pub impl @lib.Write for LongArray with fn write(
 ) -> Unit raise {
   if !self.data.is_empty() {
     writer |> @lib.write_varint(10UL)
-    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.data {
       writer |> @lib.write_int64(item)
@@ -3372,7 +3372,7 @@ pub impl @lib.AsyncWrite for LongArray with fn write(
 ) -> Unit raise {
   if !self.data.is_empty() {
     writer |> @lib.async_write_varint(10UL)
-    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.data {
       writer |> @lib.async_write_int64(item)
@@ -4401,7 +4401,7 @@ pub impl @lib.Sized for TimestamptzArray with fn size_of(self) {
   if !self.data.is_empty() {
     size += @lib.size_of_length_delimited_field(
       1U,
-      self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   size
@@ -4445,7 +4445,7 @@ pub impl @lib.Write for TimestamptzArray with fn write(
 ) -> Unit raise {
   if !self.data.is_empty() {
     writer |> @lib.write_varint(10UL)
-    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.data {
       writer |> @lib.write_int64(item)
@@ -4510,7 +4510,7 @@ pub impl @lib.AsyncWrite for TimestamptzArray with fn write(
 ) -> Unit raise {
   if !self.data.is_empty() {
     writer |> @lib.async_write_varint(10UL)
-    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.data.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.data {
       writer |> @lib.async_write_int64(item)
@@ -4639,7 +4639,7 @@ pub impl @lib.Sized for ScalarField with fn size_of(self) {
   if !self.valid_data.is_empty() {
     size += @lib.size_of_length_delimited_field(
       17U,
-      self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   match self.data {
@@ -4681,7 +4681,7 @@ pub impl Default for ScalarField with fn default() -> ScalarField {
 #alias(new, deprecated)
 pub fn ScalarField::ScalarField(
   valid_data : Array[Bool],
-  data? : ScalarField_Data = ScalarField_Data::NotSet,
+  data~ : ScalarField_Data = ScalarField_Data::NotSet,
 ) -> ScalarField {
   ScalarField::{ valid_data, data, }
 }
@@ -4748,7 +4748,10 @@ pub impl @lib.Write for ScalarField with fn write(
 ) -> Unit raise {
   if !self.valid_data.is_empty() {
     writer |> @lib.write_varint(138UL)
-    let size = self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.valid_data
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.valid_data {
       writer |> @lib.write_bool(item)
@@ -4925,7 +4928,10 @@ pub impl @lib.AsyncWrite for ScalarField with fn write(
 ) -> Unit raise {
   if !self.valid_data.is_empty() {
     writer |> @lib.async_write_varint(138UL)
-    let size = self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.valid_data
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.valid_data {
       writer |> @lib.async_write_bool(item)
@@ -5203,7 +5209,7 @@ pub impl @lib.Sized for VectorField with fn size_of(self) {
   if !self.valid_data.is_empty() {
     size += @lib.size_of_length_delimited_field(
       9U,
-      self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   match self.data {
@@ -5240,7 +5246,7 @@ pub impl Default for VectorField with fn default() -> VectorField {
 pub fn VectorField::VectorField(
   dim : Int64,
   valid_data : Array[Bool],
-  data? : VectorField_Data = VectorField_Data::NotSet,
+  data~ : VectorField_Data = VectorField_Data::NotSet,
 ) -> VectorField {
   VectorField::{ dim, valid_data, data, }
 }
@@ -5297,7 +5303,10 @@ pub impl @lib.Write for VectorField with fn write(
   }
   if !self.valid_data.is_empty() {
     writer |> @lib.write_varint(74UL)
-    let size = self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.valid_data
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.valid_data {
       writer |> @lib.write_bool(item)
@@ -5443,7 +5452,10 @@ pub impl @lib.AsyncWrite for VectorField with fn write(
   }
   if !self.valid_data.is_empty() {
     writer |> @lib.async_write_varint(74UL)
-    let size = self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.valid_data
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.valid_data {
       writer |> @lib.async_write_bool(item)
@@ -5707,7 +5719,7 @@ pub impl @lib.Sized for FieldData with fn size_of(self) {
   if !self.valid_data.is_empty() {
     size += @lib.size_of_length_delimited_field(
       7U,
-      self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   match self.field {
@@ -5740,7 +5752,7 @@ pub fn FieldData::FieldData(
   field_id : Int64,
   is_dynamic : Bool,
   valid_data : Array[Bool],
-  field? : FieldData_Field = FieldData_Field::NotSet,
+  field~ : FieldData_Field = FieldData_Field::NotSet,
 ) -> FieldData {
   FieldData::{ type_, field_name, field_id, is_dynamic, valid_data, field, }
 }
@@ -5797,7 +5809,10 @@ pub impl @lib.Write for FieldData with fn write(
   }
   if !self.valid_data.is_empty() {
     writer |> @lib.write_varint(58UL)
-    let size = self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.valid_data
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.valid_data {
       writer |> @lib.write_bool(item)
@@ -5921,7 +5936,10 @@ pub impl @lib.AsyncWrite for FieldData with fn write(
   }
   if !self.valid_data.is_empty() {
     writer |> @lib.async_write_varint(58UL)
-    let size = self.valid_data.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.valid_data
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.valid_data {
       writer |> @lib.async_write_bool(item)
@@ -6011,7 +6029,7 @@ pub impl Default for IDs with fn default() -> IDs {
 
 ///|
 #alias(new, deprecated)
-pub fn IDs::IDs(id_field? : IDs_IdField = IDs_IdField::NotSet) -> IDs {
+pub fn IDs::IDs(id_field~ : IDs_IdField = IDs_IdField::NotSet) -> IDs {
   IDs::{ id_field, }
 }
 
@@ -6306,7 +6324,7 @@ pub impl @lib.Sized for SearchResultData with fn size_of(self) {
   if !self.topks.is_empty() {
     size += @lib.size_of_length_delimited_field(
       6U,
-      self.topks.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.topks.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   for s in self.output_fields {
@@ -6497,7 +6515,7 @@ pub impl @lib.Write for SearchResultData with fn write(
   }
   if !self.topks.is_empty() {
     writer |> @lib.write_varint(50UL)
-    let size = self.topks.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.topks.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.topks {
       writer |> @lib.write_int64(item)
@@ -6750,7 +6768,7 @@ pub impl @lib.AsyncWrite for SearchResultData with fn write(
   }
   if !self.topks.is_empty() {
     writer |> @lib.async_write_varint(50UL)
-    let size = self.topks.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.topks.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.topks {
       writer |> @lib.async_write_int64(item)

@@ -2900,7 +2900,7 @@ pub impl @lib.AsyncWrite for Status_ExtraInfoEntry with fn write(
 pub(all) struct Status {
   mut error_code : ErrorCode
   mut reason : String
-  mut code : Int
+  mut code : Int32
   mut retriable : Bool
   mut detail : String
   mut extra_info : Map[String, String]
@@ -2949,7 +2949,7 @@ pub impl Default for Status with fn default() -> Status {
 pub fn Status::Status(
   error_code : ErrorCode,
   reason : String,
-  code : Int,
+  code : Int32,
   retriable : Bool,
   detail : String,
   extra_info : Map[String, String],
