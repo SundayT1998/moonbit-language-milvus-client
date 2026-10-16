@@ -3,7 +3,7 @@
 /// The expected values were produced with
 /// `ml_dtypes.bfloat16(np.float32(x)).view(np.uint16)`; the comment on each
 /// line is the float it decodes back to.
-let bfloat16_cases : Array[(Float, UInt)] = [
+let bfloat16_cases : Array[(Float, UInt32)] = [
   // exact round-trips
   (0.0F, 0x0000U), // 0.0
   (-0.0F, 0x8000U), // -0.0
@@ -72,7 +72,7 @@ test "bfloat16 rounding carries into the exponent" {
 test "bfloat16 vector bytes are little-endian pairs" {
   let bytes = @entity.bfloat16_vector_bytes([1.0F, -2.0F, 0.0F])
   assert_eq(bytes.length(), 6)
-  let expected : Array[Int] = [0x80, 0x3F, 0x00, 0xC0, 0x00, 0x00]
+  let expected : Array[Int32] = [0x80, 0x3F, 0x00, 0xC0, 0x00, 0x00]
   for i = 0; i < expected.length(); i = i + 1 {
     assert_eq(bytes[i].to_int(), expected[i])
   }

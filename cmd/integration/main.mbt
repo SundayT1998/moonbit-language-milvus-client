@@ -28,11 +28,11 @@
 let collection : String = "moonbit_ci_selfcheck"
 
 ///|
-let dim : Int = 4
+let dim : Int32 = 4
 
 ///|
 /// 写入的行数。
-let row_count : Int = 10
+let row_count : Int32 = 10
 
 ///|
 /// 每一步失败时的文本：带上是哪一步、为什么。
@@ -330,7 +330,10 @@ async fn check_steps(client : @client.Client) -> String {
     err => Err(err.to_string())
   }
   match iterator_outcome {
-    Ok(_) => println("[8b] 检索迭代器翻完并关闭（收尾请求被服务端受理）")
+    Ok(_) =>
+      println(
+        "[8b] 检索迭代器翻完并关闭（收尾请求被服务端受理）",
+      )
     Err(reason) => return step_failed("8b", "检索迭代器：" + reason)
   }
 
@@ -370,19 +373,14 @@ async fn search_iterator_screen(
   }
   let mut total = 0
   while true {
-    let batch : Result[@client.SearchResult, @client.IteratorError] = try {
-      Ok(exhausted.next())
-    } catch {
+    let batch : Result[@client.SearchResult, @client.IteratorError] = Ok(
+      exhausted.next(),
+    ) catch {
       err => Err(err)
     }
     match batch {
       Ok(page) => total = total + page.hits.length()
-      Err(err) =>
-        if err.is_end_of_iterator() {
-          break
-        } else {
-          raise err
-        }
+      Err(err) => if err.is_end_of_iterator() { break } else { raise err }
     }
   }
   if total != 3 {
@@ -403,15 +401,11 @@ async fn search_iterator_screen(
   ) catch {
     err => raise err
   }
-  let first = live.next() catch {
-    err => raise err
-  }
+  let first = live.next() catch { err => raise err }
   if first.hits.length() == 0 {
     raise @client.IteratorError::Setup("迭代器第一批是空的")
   }
-  let closed = live.close() catch {
-    _ => false
-  }
+  let closed = live.close() catch { _ => false }
   if !closed {
     raise @client.IteratorError::Setup(
       "close 返回了 false；收尾那一发多半没被服务端受理",

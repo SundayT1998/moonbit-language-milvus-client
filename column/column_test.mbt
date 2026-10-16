@@ -20,7 +20,7 @@
 fn scalar_field(
   type_ : @schema.DataType,
   data : @schema.ScalarField_Data,
-  valid? : Array[Bool] = [],
+  valid~ : Array[Bool] = [],
 ) -> @schema.FieldData {
   {
     type_,
@@ -38,7 +38,7 @@ fn vector_field(
   type_ : @schema.DataType,
   data : @schema.VectorField_Data,
   dim : Int64,
-  valid? : Array[Bool] = [],
+  valid~ : Array[Bool] = [],
 ) -> @schema.FieldData {
   {
     type_,

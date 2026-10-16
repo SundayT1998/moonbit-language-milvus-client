@@ -26,11 +26,11 @@ pub type Code = @transport.Code
 
 ///|
 /// Milvus 默认端口。
-pub let default_port : Int = @transport.default_port
+pub let default_port : Int32 = @transport.default_port
 
 ///|
 /// 默认调用超时。
-pub let default_timeout_millis : Int = @transport.default_timeout_millis
+pub let default_timeout_millis : Int32 = @transport.default_timeout_millis
 
 ///|
 /// 最小可用配置。
@@ -52,14 +52,14 @@ pub fn with_db_name(config : Config, db_name : String) -> Config {
 
 ///|
 /// 设定默认调用超时（毫秒）。
-pub fn with_timeout_millis(config : Config, timeout_millis : Int) -> Config {
+pub fn with_timeout_millis(config : Config, timeout_millis : Int32) -> Config {
   config.with_timeout_millis(timeout_millis)
 }
 
 ///|
 /// 开/关 gzip。开启后客户端会声明 `grpc-accept-encoding: gzip`，
 /// 允许服务端压响应。
-pub fn with_gzip(config : Config, enable? : Bool = true) -> Config {
+pub fn with_gzip(config : Config, enable~ : Bool = true) -> Config {
   config.with_gzip(enable~)
 }
 
@@ -123,7 +123,7 @@ pub fn is_client_error_deadline_exceeded(err : ClientError) -> Bool {
 
 ///|
 /// 服务端错误码；不是服务端拒绝就返回 `@errors.unexpected_code`。
-pub fn client_error_code(err : ClientError) -> Int {
+pub fn client_error_code(err : ClientError) -> Int32 {
   err.code()
 }
 

@@ -234,8 +234,8 @@ pub fn new_generic_index(
 /// 越界检查与 knowhere 的 `CheckAndAdjust` 对齐：`M ≥ 2`，`efConstruction ≥ 1`。
 pub fn new_hnsw_index(
   metric_type : MetricType,
-  m? : Int = 16,
-  ef_construction? : Int = 200,
+  m~ : Int32 = 16,
+  ef_construction~ : Int32 = 200,
 ) -> Index raise IndexParamError {
   if m < 2 {
     raise OutOfRange(key="M", value=m, expected=">= 2")
@@ -258,7 +258,7 @@ pub fn new_hnsw_index(
 /// 上游 `NewIvfFlatIndex` 不校验，服务端要求 `nlist ∈ [1, 65536]`。
 pub fn new_ivf_flat_index(
   metric_type : MetricType,
-  nlist? : Int = 128,
+  nlist~ : Int32 = 128,
 ) -> Index raise IndexParamError {
   if nlist < 1 || nlist > 65536 {
     raise OutOfRange(key="nlist", value=nlist, expected="[1, 65536]")

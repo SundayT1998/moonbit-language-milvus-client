@@ -153,7 +153,7 @@ fn decode_failure(message : String) -> IteratorError {
 ///|
 /// 批大小必须是正数。服务端收到 `limit = 0` 会回空，迭代器就此静默终止，
 /// 比少查几行更难查，所以在本地挡下。
-fn validate_batch_size(batch_size : Int) -> Unit raise IteratorError {
+fn validate_batch_size(batch_size : Int32) -> Unit raise IteratorError {
   if batch_size <= 0 {
     raise IteratorError::Setup(
       "batch size must be greater than 0, got " + batch_size.to_string(),
@@ -178,7 +178,7 @@ pub(all) struct QueryIteratorOption {
   partition_names : Array[String]
   expr : String
   output_fields : Array[String]
-  batch_size : Int
+  batch_size : Int32
   limit : Int64
   consistency_level : ConsistencyLevel?
 } derive(Debug)
@@ -202,7 +202,7 @@ pub fn new_query_iterator_option(
 ///|
 pub fn QueryIteratorOption::with_batch_size(
   self : QueryIteratorOption,
-  batch_size : Int,
+  batch_size : Int32,
 ) -> QueryIteratorOption {
   { ..self, batch_size, }
 }
@@ -283,7 +283,7 @@ pub struct QueryIterator {
   priv partition_names : Array[String]
   priv expr : String
   priv output_fields : Array[String]
-  priv batch_size : Int
+  priv batch_size : Int32
   priv consistency_level : ConsistencyLevel?
   priv mut remaining : Int64
   priv mut last : QueryCursor?
@@ -527,7 +527,7 @@ pub async fn QueryIterator::next(
 /// 再加批大小与上限），这里照着嵌一个 `SearchOption`。
 pub(all) struct SearchIteratorOption {
   base : SearchOption
-  batch_size : Int
+  batch_size : Int32
   limit : Int64
 }
 
@@ -542,7 +542,7 @@ pub(all) struct SearchIteratorOption {
 /// 这里直接不放那个数 —— 少一个会被改写的东西。
 pub fn new_search_iterator_option(
   collection_name : String,
-  limit : Int,
+  limit : Int32,
   vectors : Array[@column.ColumnValue],
 ) -> SearchIteratorOption {
   let base = new_search_option(collection_name, limit, vectors)
@@ -554,7 +554,7 @@ pub fn new_search_iterator_option(
 ///|
 pub fn SearchIteratorOption::with_batch_size(
   self : SearchIteratorOption,
-  batch_size : Int,
+  batch_size : Int32,
 ) -> SearchIteratorOption {
   { ..self, batch_size, }
 }
@@ -622,7 +622,7 @@ pub fn SearchIteratorOption::with_search_param(
 ///|
 pub fn SearchIteratorOption::with_ignore_growing(
   self : SearchIteratorOption,
-  ignore_growing? : Bool = true,
+  ignore_growing~ : Bool = true,
 ) -> SearchIteratorOption {
   { ..self, base: self.base.with_ignore_growing(ignore_growing~), }
 }
@@ -728,7 +728,7 @@ pub fn SearchIterator::is_closed(self : SearchIterator) -> Bool {
 /// `search_iter_id` / `search_iter_last_bound` 只有拿到游标之后才有。
 fn SearchIterator::search_params(
   iterator : SearchIterator,
-  batch_size : Int,
+  batch_size : Int32,
   collection_id : Int64,
   with_cursor : Bool,
 ) -> Array[(String, String)] {

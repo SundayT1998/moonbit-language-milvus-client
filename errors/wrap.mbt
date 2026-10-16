@@ -51,7 +51,7 @@ pub fn wrap_err_service_not_ready(
   role : String,
   session_id : Int64,
   state : String,
-  messages? : Array[String] = [],
+  messages~ : Array[String] = [],
 ) -> MerError {
   let base = err_service_not_ready()
   let detail = base_message(base) +
@@ -68,7 +68,7 @@ pub fn wrap_err_service_not_ready(
 /// `ErrServiceInternal` 带 reason 的包装。
 pub fn wrap_err_service_internal(
   reason : String,
-  messages? : Array[String] = [],
+  messages~ : Array[String] = [],
 ) -> MerError {
   let base = err_service_internal()
   with_context(base, base_message(base) + ": " + reason, messages)
@@ -77,7 +77,7 @@ pub fn wrap_err_service_internal(
 ///|
 pub fn wrap_err_collection_not_found(
   collection : String,
-  messages? : Array[String] = [],
+  messages~ : Array[String] = [],
 ) -> MerError {
   let base = err_collection_not_found()
   let out = with_details(base, "collection", collection)
@@ -87,7 +87,7 @@ pub fn wrap_err_collection_not_found(
 ///|
 pub fn wrap_err_collection_schema_mismatch(
   collection : String,
-  messages? : Array[String] = [],
+  messages~ : Array[String] = [],
 ) -> MerError {
   let base = err_collection_schema_mismatch()
   let out = with_details(base, "collection", collection)
@@ -97,7 +97,7 @@ pub fn wrap_err_collection_schema_mismatch(
 ///|
 pub fn wrap_err_index_not_found(
   index_name : String,
-  messages? : Array[String] = [],
+  messages~ : Array[String] = [],
 ) -> MerError {
   let base = err_index_not_found()
   let out = with_details(base, "indexName", index_name)
@@ -109,7 +109,7 @@ pub fn wrap_err_index_not_found(
 pub fn wrap_err_parameter_invalid(
   expected : String,
   actual : String,
-  messages? : Array[String] = [],
+  messages~ : Array[String] = [],
 ) -> MerError {
   let base = err_parameter_invalid()
   let detail = base_message(base) +

@@ -104,7 +104,7 @@ test "every legacy code maps to a modern code" {
 ///|
 /// 上游 `modernCodeFromLegacy` 的 12 条分支逐条锁定。
 test "modern_code_from_legacy matches upstream branches" {
-  let expected : Array[(@common.ErrorCode, Int)] = [
+  let expected : Array[(@common.ErrorCode, Int32)] = [
     (@common.ErrorCode::NotReadyServe, 1),
     (@common.ErrorCode::CollectionNotExists, 100),
     (@common.ErrorCode::IllegalArgument, 1100),
@@ -128,7 +128,7 @@ test "modern_code_from_legacy matches upstream branches" {
 ///|
 /// 上游 `legacyCodeFromModern` 的 16 条分支逐条锁定。
 test "legacy_code_from_modern matches upstream branches" {
-  let expected : Array[(Int, @common.ErrorCode)] = [
+  let expected : Array[(Int32, @common.ErrorCode)] = [
     (1, @common.ErrorCode::NotReadyServe),
     (110, @common.ErrorCode::NotReadyServe),
     (100, @common.ErrorCode::CollectionNotExists),

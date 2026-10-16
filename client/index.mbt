@@ -123,7 +123,7 @@ fn index_state_from_proto(state : @common.IndexState) -> @index.IndexState {
 }
 
 ///|
-fn index_state_to_int(state : @common.IndexState) -> Int {
+fn index_state_to_int(state : @common.IndexState) -> Int32 {
   match state {
     IndexStateNone => 0
     Unissued => 1
