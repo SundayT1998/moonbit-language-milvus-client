@@ -251,13 +251,6 @@ diff 单独成一个 commit 说明来源。详细判据与 10-12 版踩过的两
 与传参。生成器写 `Int32`、`moon info` 统一写回 `Int`，所以 `.mbt` 与
 `.mbti` 的拼写不一致属正常，别去「修」它。
 
-`gen-proto` 还有一处**非功能性**的不确定：`gen.sh` 走 `moonx` 拉生成器，
-冷缓存时要走网络，而这层等待发生在 protoc 内部 —— 没有输出，会表现为
-stage 十分钟后按「无输出」被掐掉（#63）。同 head 两次触发结果不一致时，
-先看第二次，别急着改代码。Dockerfile 里用 `ARG MOONBIT_TOOLCHAIN` 把版本
-写进层缓存键，就是为了让 `install` 在版本变化时一定重跑。细节见
-`docs/DEVELOPMENT.md` 的「`moonx` 的冷缓存」一节。
-
 `proto/upstream/` 与 `proto/trimmed/` 仍是**源码侧输入**，不参与编译；
 只有 `proto/milvus/` 是编译目标。
 
