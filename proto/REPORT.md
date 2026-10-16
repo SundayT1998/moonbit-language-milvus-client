@@ -8,6 +8,7 @@
 | 项 | 版本 |
 |---|---|
 | MoonBit CLI | `moon 0.1.20260920 (914d7da)` |
+| MoonBit CLI（生成时） | `moon 0.1.20261012 (748b63c)`（09-30 → 10-12 的漂移见 §14） |
 | 生成器 | `moonbitlang/protoc-gen-mbt@0.2.0`（经 `moonx` 调用） |
 | protoc | `libprotoc 3.21.12` |
 | 运行时 | `moonbitlang/protobuf@0.1.3` |
@@ -352,3 +353,39 @@ moon test  --target all  ->  193 passed（wasm / js），四目标全绿
 注：`trimmed/schema.proto` 的字段号一律照抄 `proto/upstream/schema.proto`；
 上一节里「裁剪掉的字段号原样保留空档」这条对 `SearchResultData` 依然成立 ——
 `search_iterator_v2_results = 11` 是补**回来**，不是新编号。
+
+---
+
+## 14. 追加：09-30 → 10-12 工具链漂移（生成物重对齐）
+
+`.cnb/Dockerfile` 装的是 `latest`，工具链从 09-30 版升到 10-12 版后，
+**同一份 `.proto`、同一个 `protoc-gen-mbt@0.2.0`** 生成了不同的 `.mbt`，
+仓库里入库的生成物还是旧版留下的，于是 CI 的 `git diff --exit-code` 飘红。
+
+差异两类，都是拼写层面的：
+
+| 类别 | 旧 | 新 |
+|---|---|---|
+| 32 位整数拼写 | `Int` / `UInt` | `Int32` / `UInt32` |
+| 可选命名参 | `name? : T = NotSet` | `name~ : T = NotSet` |
+
+第一类不影响语义：本工具链下 `Int32` 与 `Int` 是**同一个 32 位整型**，
+可互相赋值与传参，`moon info` 会把两者统一渲染成 `Int` —— 所以 `.mbti`
+一个字节都没变，公开 API 的形状没动。手写侧（`client/` `column/` `entity/`
+`errors/` `index/` `transport/`）的同名类型跟着走了一遍，纯拼写对齐。
+
+第二类是语义变更（`?` 是可选、`~` 是具名必填带默认值），但下游没有任何
+调用方用这八个构造函数传这些命名参，已 grep 确认。
+
+第 4 节「生成器缺陷」记的 Bug #1 / Bug #2 与本次漂移无关：那两个是
+生成器**逻辑**缺陷，`patch_repeated_bytes.py` 与裁剪集仍在按原样生效。
+
+对策与判据写进了 `docs/DEVELOPMENT.md`「工具链漂移」一节；
+对齐后的验证：
+
+```
+proto/tools/gen.sh trimmed   # 连跑两次，第二次零 diff
+moon fmt && moon info        # 之后再跑不再产生新 diff
+moon check --target all      # 0 error
+moon test  --target all      # 230 / 165 / 230 / 234 全绿
+```

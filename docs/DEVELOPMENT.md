@@ -105,6 +105,39 @@ proto/tools/gen.sh upstream  # 全量上游 proto（预期失败，见 proto/REP
 
 生成器的支持度探针结论在 `proto/REPORT.md`。
 
+#### 工具链漂移：生成物与格式化的隐形依赖
+
+生成物**不只是** `.proto` 的函数，还是**生成器 + MoonBit 工具链**的函数。
+`.cnb/Dockerfile` 装的是 `latest`，所以工具链一升，同一份 `.proto` 会生成出
+不同的 `.mbt`，`moon fmt` 的产出也会变。这时 CI 的
+`git diff --exit-code` 会指着一段谁也没改过的文件说「你对不上」。
+
+10-12 版相对 09-30 版就有两处这类差异，都踩过：
+
+- **整数类型的规范拼写** `Int` → `Int32`（`UInt` → `UInt32`）。
+  两者在当前工具链下是**同一个 32 位整型**，可互相赋值、传参，不需要转换 ——
+  所以 `moon info` 会把 `Int32` 统一写回 `Int`：`.mbt` 里看到的是 `Int32`，
+  `.mbti` 里看到的是 `Int`，两边不一致**不代表**接口分叉。
+- **可选命名参语法** `name?` → `name~`（字段声明与函数参数都受影响）。
+
+对策是「对齐 + 认账」，不是「把版本钉死」：中国站的镜像站只提供 `latest`，
+`binaries/<版本号>/` 全部 403，`MOONBIT_INSTALL_VERSION` 钉不住。所以
+工具链升级后要**显式**做一次全树对齐：
+
+```sh
+proto/tools/gen.sh trimmed   # 重生成，接受新的产物
+moon fmt                     # 全树格式化，接受新的排版
+moon info                    # 刷新 .mbti
+git diff                     # 这部分 diff 单独成一个 commit，说明是工具链漂移
+```
+
+这段 diff 通常很大但很机械。**review 时按「是不是纯拼写 / 纯排版」判断**，
+不要因为它大就跳过 —— 里面真混进过语义变更（`?` → `~` 那批）。
+
+顺带一提：这也是为什么生成物入库、CI 每次重跑 `gen.sh` 校验 ——
+入库让漂移可见，重跑让漂移可复现。少了任何一半，这个问题都会悄悄攒到
+某次不相干的 PR 上炸掉。
+
 ## 交付范围（P0）
 
 
@@ -213,6 +246,18 @@ README。写代码和查问题时从这里找。
 - `SearchIterator` 依赖服务端实现 SearchIterator V2。老服务端不给
   `search_iterator_v2_results`，`next` 会报 `Setup`（上游这里是
   `ErrServerVersionIncompatible`）。
+
+### 写入前的本地校验
+
+- 每列的**行数**要一致（`check_row_counts`），否则服务端只按第一列的长度算
+  `num_rows`，多出来的数据被静默丢掉。
+- 向量列的**每行宽度**要一致（`check_row_width`）。服务端按 `dim` 这个列级
+  宽度切值，看不见客户端的行边界，所以宽度对不上时它报的是从总数反推出来的
+  行数不匹配（`num_rows (2) ... num_rows (1)`），指不到病根上。
+  判据是「各行等宽」而不是「等于 `dim`」：`FloatVector(dim, rows)` 同时服务
+  查询向量，那里 `dim` 是冗余的，不能拿它卡。
+- 二进制向量的 `dim` 是 **bit** 数、一行一个字节管 8 个 bit；Int8 向量的
+  `dim` 就是 byte 数。校验要对齐到同一套单位，见 `column/vectors.mbt` 的回读侧。
 
 ### 请求编排
 

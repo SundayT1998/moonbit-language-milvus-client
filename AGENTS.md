@@ -240,6 +240,17 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 `git diff --exit-code -- proto/milvus/proto`，有 diff 就红。所以手改生成物
 一定会在 CI 上暴露，别手改。
 
+「可复现」的边界要说清：可复现的是**同一套工具链**下的重复生成。
+`.cnb/Dockerfile` 装的是 `latest`，工具链升级会同时改变生成器的产物与
+`moon fmt` 的排版 —— 这时 diff 不是「有人手改了」，是工具链换底。
+对策是显式对齐：重跑 `gen.sh` + 全树 `moon fmt` + `moon info`，把这段
+diff 单独成一个 commit 说明来源。详细判据与 10-12 版踩过的两类差异见
+`docs/DEVELOPMENT.md`「工具链漂移」一节。
+
+一并记住：本工具链下 **`Int32` 与 `Int` 是同一个 32 位整型**，可互相赋值
+与传参。生成器写 `Int32`、`moon info` 统一写回 `Int`，所以 `.mbt` 与
+`.mbti` 的拼写不一致属正常，别去「修」它。
+
 `proto/upstream/` 与 `proto/trimmed/` 仍是**源码侧输入**，不参与编译；
 只有 `proto/milvus/` 是编译目标。
 
@@ -315,6 +326,11 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   补一个 schema 缓存。
 - `WriteColumn` 用 `@column.ColumnValue` 而不是另造枚举，让回读的 `Column`
   能改个名字写回去。它推导不出 `Array` 列的元素类型，所以那一支直接报 `Encode`。
+- 向量列的**每行宽度要一致**，本地校验（`check_row_width`）。服务端是按
+  `dim` 这个列级宽度切值的，看不见客户端的行边界 —— 宽度对不上时它自己
+  从总数反推行数，报出来的错（`num_rows (2) ... not equal to passed
+  num_rows (1)`）跟「这一行有几列不对」毫无关系。判据是各行等宽，
+  **不是等于 `dim`**：查询向量的 `dim` 是冗余的，建表 8 维、按 4 维写合法。
 - `search_params` 的键集合与顺序照搬上游 `AnnRequest.searchRequest`：
   固定七个键写全，调用方的 `with_search_param` **就地覆盖**同名的键。
   这条曾经只写在注释里没兑现在代码里（`seen` 把调用方同名键全丢了，

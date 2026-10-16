@@ -154,6 +154,15 @@ async fn check_steps(client : @client.Client) -> String {
   // 来的，`id >= 5` 在 18 位的主键上等于全表通过。
   println("[4] 已写入 \{row_count} 行，首个主键=\{ids[0]}")
 
+  // 4b. 畸形向量列要被**本地**拦下，而不是发给服务端换一句指不到病根的报错。
+  //     服务端按 dim 这个列级宽度切值，看不见行边界：两行各 6 值、dim=4 时
+  //     它自己反推出 3 行，然后报 `num_rows (3) ... num_rows (2)`。
+  match malformed_vector_column() {
+    None => ()
+    Some(reason) => return step_failed("4b", reason)
+  }
+  println("[4b] 畸形向量列在本地被拦下")
+
   // 5. 建索引。必须在加载之前：Milvus 对没有索引的集合拒绝加载，
   //    报 `index not found`。这里用 FLAT 而不是 HNSW/IVF —— 10 行的
   //    自检集合上暴力检索就是最优解，也不需要等索引构建。
@@ -343,6 +352,47 @@ async fn check_steps(client : @client.Client) -> String {
   }
   println("[9] 集合已清理")
   ""
+}
+
+///|
+/// 两条畸形向量列：都是「行宽与 dim 对不上」，服务端给的报错都指不到病根。
+/// 客户端应当在 `to_field_data` 就报出来。
+///
+/// 就地拿 `WriteColumn::to_field_data` 编，不走 `insert` —— 这一层校验不
+/// 依赖服务端，也不需要先有个集合。返回 `None` 表示两条都被拦下了。
+fn malformed_vector_column() -> String? {
+  let cases : Array[(String, Array[Array[Float]])] = [
+    // 两行不等宽：服务端看不见行边界，会按 dim 从总数反推行数
+    (
+      "rows of 6 and 5 with dim 4",
+      [[0.1, 0.2, 0.3, 0.4, 0.5, 0.6], [0.7, 0.8, 0.9, 1.0, 1.1]],
+    ),
+    // 单行 3 值：总数除不尽 dim
+    ("one row of 3 with dim 4", [[0.1, 0.2, 0.3]]),
+  ]
+  for case in cases {
+    let outcome : Result[Unit, @client.ClientError] = try {
+      ignore(
+        @client.WriteColumn::new(
+          "vector",
+          @column.ColumnValue::FloatVector(dim, case.1),
+        ).to_field_data(),
+      )
+      Ok(())
+    } catch {
+      err => Err(err)
+    }
+    match outcome {
+      Ok(_) => return Some("\{case.0} 没有被拦下，直接编出去了")
+      Err(Encode(msg)) =>
+        if !msg.contains("dim") {
+          return Some("\{case.0} 报了别的错：\{msg}")
+        }
+      Err(other) =>
+        return Some("\{case.0} 报的不是 Encode：\{other.to_string()}")
+    }
+  }
+  None
 }
 
 ///|
