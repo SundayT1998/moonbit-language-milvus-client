@@ -83,6 +83,13 @@ You can browse and install extra skills here:
   也不用等索引构建。
 - `Client::load_collection` 返回只表示请求被受理，数据面就绪是异步的，
   所以集成测试接着轮询 `Client::get_load_state` 到 `Loaded` 才检索。
+- **`Loaded` 之后写进去的行还要再等一拍才可见**：第 6b 步显式轮询到自检索
+  命中为止。不等的话第 7 / 8 步（紧接着写入跑）会稳定拿到 0 命中 / 0 行，
+  报错文本与「过滤条件写错了」一模一样，指不到病根。`Loaded` 描述的是
+  加载那一刻的状态，不是之后每次写入的结果。
+  判据只能拿自己写的列：`auto_id` 的主键是 Snowflake 量级，没有可用起点。
+  这条在真 Milvus 上必现，在 mock 上永远看不到（mock 立刻可见）——
+  写这类「先写后读」的断言时，mock 通过不代表真服务端通过。
 
 ## entity 包
 
@@ -101,12 +108,20 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
   `.proto` 来自 `milvus-io/milvus-proto`，锚定 commit 见 `proto/upstream/PROVENANCE.md`。
 - 归属声明：来源仓库 + commit + 改写定性写明在 README「来源与许可」一节。
   归属相关事实变更时，同时更新这一节与 `proto/upstream/PROVENANCE.md`。
-- 移植文件保留来源声明头：
-  ```
-  // 移植自 github.com/milvus-io/milvus client/<path> (Apache-2.0)
-  // Copyright (c) LF AI & Data Foundation
-  ```
-  新增移植文件时必须带上；这是 Apache-2.0 §4(a)(b) 的要求，不是可选项。
+- **许可头按 Apache-2.0 §4(b) 的要求给足**（保留 NOTICE、标明改动），
+  这是硬性底线。写法有二，取其一即可：
+  - 上游许可头（ASF 模板全文，含 `Copyright (c) LF AI & Data Foundation`）；
+  - 或一份写明来源仓库 + commit + Apache-2.0 + 上游版权人的头，例如
+    `// 移植自 github.com/milvus-io/milvus client/internal/merr (Apache-2.0)`
+    加一行 `// Copyright (c) LF AI & Data Foundation`。
+- 有对应的上游文件时，**推荐**在许可头里把那两行来源声明也写上 —— 它比模板
+  全文多给一个「对着谁读」的坐标。没有对应上游文件时（本项目自己写的
+  `*_native` 传输、`transport/*` 的配置与 metadata 组装、根包门面等）就不写，
+  免得让读者去找一份并不存在的源文件。
+- 现状对得上这条：`client/`（除 `paths.mbt`）与 `index/` 走第一种，
+  `errors/` 走第二种，`column/`、`entity/`、`transport/`、`client/native/`
+  下未被改写的文件不加来源声明。**新增移植文件时二选一即可**，不必为了
+  统一格式去补文件头。
 - 商标：不得在文档里把本项目写成 official Milvus SDK。统一措辞是
   "community-driven MoonBit client for Milvus"。
 
@@ -120,6 +135,21 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 3. 受影响则在对应包内手动回移，PR 里注明对齐的上游 commit；
 4. 需要推进基线时，同步更新 README「来源与许可」、
    `proto/upstream/PROVENANCE.md` 与本文件。
+
+## README 的「快速上手」是被真编译的
+
+`moon fmt` 对 ```moonbit 代码块默认**只排版、不检查**，还会把围栏改写成
+```moonbit nocheck —— 带了 `nocheck` 的块连 `moon check` 都跳过。所以
+「示例能编过」这句话不靠围栏标记保证，靠 `cmd/quickstart`：
+
+- `cmd/quickstart/quickstart.mbt` 是 README 那段示例的**逐字副本**，
+  `supported_targets = "native"`（示例引了 native-only 的 `client/native`，
+  挂到根包上整棵依赖图会编不过，所以单开一个包）。
+  `moon check --target all` 会走到它，示例里的类型错误、函数名写错都跑不掉。
+- `scripts/readme-quickstart-check.sh` 校验两份逐字一致，
+  CI 的 `check-and-test` 与 GitHub Actions 都跑。改了一边就得改另一边。
+- README 的围栏标记保持 `nocheck` 就行 —— `moon fmt` 每次都会把它改回这个词，
+  跟它较劲没有意义。可编译性不走它这条路。
 
 ## 文档归属
 
@@ -340,6 +370,10 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   （`index not found`），也拒绝对未加载的集合检索（`collection not loaded`）。
   加载是异步的，`load_collection` 返回不代表就绪，调用方要用 `LoadTask::wait`
   或 `get_load_state` 轮询到 `Loaded`。
+- **`Loaded` 不等于「刚写的行可查」**：集合是第 4 步加载的，可第 5 步写进去
+  的行要到第 5 步之后才进数据面。紧接着写完就检索 / 查询，会拿到 0 命中 /
+  0 行，症状与「过滤条件被忽略」完全一样。写完要读就得自己轮询到看得见
+  （如 `cmd/integration` 的第 6b 步），别把这次空结果当成表达式写错了。
 - 状态枚举都保留生成物的 `Unknown` 岔路：`CollectionLoadState::Unknown` /
   `@index.IndexState::Unknown`。别把它们并进 `NotLoad` / `None`，那会把
   「没见过的状态」当成「什么都没发生」，然后无限等下去。

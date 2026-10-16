@@ -37,6 +37,21 @@ proto/tools/gen.sh trimmed
 README 面向使用者；本文件放过程与归档；`docs/ROADMAP.md` 放已规划未实现的能力；
 Issue / PR 是对话现场，不是档案室。
 
+### README 示例的编译门禁
+
+`moon fmt` 对 ```moonbit 代码块只排版、不检查，还会把围栏改写成
+```moonbit nocheck —— 带了它 `moon check` 也跳过。所以 README 的「快速上手」
+能编过这句话，不能靠围栏标记撑：
+
+- `cmd/quickstart/quickstart.mbt` 是 README 那段示例的**逐字副本**，
+  `supported_targets = "native"`。单开一个包是因为示例引了 native-only 的
+  `client/native`，挂到 `preferred_target = "wasm"` 的根包上整棵依赖图会编不过。
+  `moon check --target all` 会走到它，示例里的类型错误、函数名写错都会报出来。
+- `scripts/readme-quickstart-check.sh` 校验两份逐字一致，CI 里跑。
+  改了一边就得改另一边，否则 CI 红。
+- README 的围栏保持 `nocheck` 就好：`moon fmt` 每次都会把它改回这个词，
+  跟它较劲没意义 —— 可编译性走的是上面那条路，不是围栏标记。
+
 ### 连真实 Milvus 跑集成测试
 
 单测用假传输跑，不碰网络；要验「协议编排在真服务端上成立」，用容器起一个
@@ -65,6 +80,13 @@ create_collection → create_index → load_collection →（轮询到 Loaded）
 - `load_collection` 返回只代表请求被受理，数据面就绪是异步的，所以要么
   `LoadTask::wait` 等进度到 100%，要么轮询 `get_load_state` 到 `Loaded`；
   直接接着检索会偶发失败。
+- **`Loaded` 之后写进去的行还要再等一拍才可见**。上面的顺序图描述的是加载
+  那一刻的状态：加载完成后再写入，新行不会立刻进查询/检索的可见集。
+  写完马上读，会稳定拿到 0 命中 / 0 行 —— 报错文本与「过滤条件写错了」
+  一模一样，容易查错方向。`cmd/integration` 的第 6b 步专门轮询到可见为止
+  （拿自己写的向量做自检索，`auto_id` 的主键量级不确定，当不了判据）。
+  这一条在 mock 上永远看不到：mock 立刻可见 —— 「先写后读」的断言只在
+  真服务端上才验得出问题。
 - `Query` 的 `limit` 不预置，交给服务端默认；要确定行数就显式
   `with_limit(n)`。另外别拿主键当行号筛数据：`auto_id` 发的是 Snowflake ID，
   `id >= 5` 在 18 位的主键上等于全表通过。
@@ -169,7 +191,7 @@ git diff                     # 这部分 diff 单独成一个 commit，说明是
 | 6 | 至少一个可运行示例 | 满足（`cmd/main`、`cmd/integration`） |
 | 7 | 测试覆盖核心路径 | 满足，四 target 全绿 |
 | 8 | 发布到 mooncakes.io | 见下节「发布」 |
-| 9 | OSI 认可许可证，移植合规 | 满足，Apache-2.0 + 来源声明头 |
+| 9 | OSI 认可许可证，移植合规 | 满足，Apache-2.0；移植文件带许可头，来源仓库 + 基线 commit + 版权写在 README「来源与许可」 |
 
 ## 发布
 

@@ -56,6 +56,12 @@ jobs:
       - name: moon check
         run: moon check --target all
 
+      - name: readme quickstart in sync
+        # README 的「快速上手」必须与 cmd/quickstart 逐字一致 —— 那份拷贝才是
+        # 真被 `moon check` 编的东西，README 正文只是给人看的。
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: bash scripts/readme-quickstart-check.sh
+
       - name: moon test
         run: moon test --target all
 
