@@ -564,6 +564,8 @@ async test "search 编出占位符与 search_params" {
   assert_eq(params[@client.search_param_round_decimal], "-1")
   assert_eq(params[@client.search_param_ignore_growing], "false")
   assert_eq(params[@client.search_param_params], "{}")
+  // 每个键只出现一次 —— 覆盖是「就地改写」而不是「再追一条」
+  assert_eq(request.search_params.length(), 7)
   // 占位符解出来是 float32 的四行一组的形态
   match request.search_input {
     PlaceholderGroup(bytes) => {
@@ -582,6 +584,76 @@ async test "search 编出占位符与 search_params" {
     }
     _ => fail("expected PlaceholderGroup")
   }
+}
+
+///|
+/// 调用方的 `with_search_param` 必须最后覆盖固定键。上游 `WithSearchParam`
+/// 就是这个语义，而 `search_params_of` 早先用 `seen` 把调用方同名键全丢掉，
+/// 于是 `with_search_param(\"topk\", ...)` 静默无效 —— 上面那条用例的注释
+/// 写着「调用方覆盖」，但从来没有真的传过调用方参数，所以两边分叉了很久。
+async test "search 的调用方参数覆盖固定七个键" {
+  let data = @schema.SearchResultData::{
+    num_queries: 1L,
+    top_k: 3L,
+    fields_data: [],
+    scores: [0.9],
+    ids: Some(@schema.IDs::{
+      id_field: @schema.IDs_IdField::IntId(@schema.LongArray::LongArray([7L])),
+    }),
+    topks: [1L],
+    output_fields: ["id"],
+    group_by_field_value: None,
+    all_search_count: 0L,
+    distances: [],
+    search_iterator_v2_results: None,
+    recalls: [],
+    primary_field_name: "id",
+    element_indices: None,
+    group_by_field_values: [],
+  }
+  let response = @milvus.SearchResults::{
+    status: Some(ok_status()),
+    results: Some(data),
+    collection_name: "demo",
+    session_ts: 0UL,
+  }
+  let client = test_client([(@client.search_path, encode(response))])
+  let (client, recorded) = client
+  ignore(
+    client.search(
+      @client.new_search_option("demo", 10, [
+        @column.ColumnValue::FloatVector(4, [[0.1, 0.2, 0.3, 0.4]]),
+      ])
+      .with_anns_field("vector")
+      .with_metric_type(@index.MetricType::L2)
+      .with_search_param(@client.search_param_topk, "3")
+      .with_search_param(@client.search_param_anns_field, "other_vector")
+      .with_search_param("ef", "64"),
+    ),
+  ) catch {
+    _ => fail("search should succeed")
+  }
+  let request : @milvus.SearchRequest = @lib.Read::read_with_limit(
+    @lib.LimitedReader::LimitedReader(
+      @lib.BytesReader::from_bytes(recorded.val[0].body),
+    ),
+  )
+  let params : Map[String, String] = Map([])
+  let order : Array[String] = []
+  for pair in request.search_params {
+    params[pair.key] = pair.value
+    order.push(pair.key)
+  }
+  // 覆盖掉的是字段推导出来的值（limit=10、anns_field=vector）
+  assert_eq(params[@client.search_param_topk], "3")
+  assert_eq(params[@client.search_param_anns_field], "other_vector")
+  // 不在固定七个键里的照旧追加
+  assert_eq(params["ef"], "64")
+  // 覆盖是就地改写：键还是七个固定键的位置 + 追加的一个
+  assert_eq(request.search_params.length(), 8)
+  assert_eq(order[1], @client.search_param_topk)
+  assert_eq(order[0], @client.search_param_anns_field)
+  assert_eq(order[7], "ef")
 }
 
 ///|
