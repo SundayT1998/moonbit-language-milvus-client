@@ -327,7 +327,10 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - `WriteColumn` 用 `@column.ColumnValue` 而不是另造枚举，让回读的 `Column`
   能改个名字写回去。它推导不出 `Array` 列的元素类型，所以那一支直接报 `Encode`。
 - `search_params` 的键集合与顺序照搬上游 `AnnRequest.searchRequest`：
-  固定七个键写全，调用方的 `with_search_param` 最后覆盖。
+  固定七个键写全，调用方的 `with_search_param` **就地覆盖**同名的键。
+  这条曾经只写在注释里没兑现在代码里（`seen` 把调用方同名键全丢了，
+  `with_search_param("topk", ...)` 静默无效），改动前先看 `search_params_of`
+  的注释。
 - **建索引 → 加载 → 检索的顺序不能倒**：Milvus 拒绝加载没有索引的集合
   （`index not found`），也拒绝对未加载的集合检索（`collection not loaded`）。
   加载是异步的，`load_collection` 返回不代表就绪，调用方要用 `LoadTask::wait`
@@ -363,9 +366,11 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - 搜索迭代器的响应要拿整个 `SearchResultData`，`SearchResult` 装不下凭据，
   所以 `Client::search_call` 是共用的编排（校验 / 占位符 / 七个键 / status），
   `search` 与 `search_raw` 都从它过。改 `search_params` 的键集合只改这一处。
-- 收尾走 `Client::cancel_search`：`nq = 0` + `search_input = NotSet`。
-  走不了 `Client::search`，那条路要求至少一个查询向量、会用占位符填
-  `search_input`。
+- 收尾走 `Client::cancel_search`：带续页凭据再发一发检索，
+  `search_input` 用**一个真实维度的占位符**、`topk = 1`。
+  **不能**发 `nq = 0` + `NotSet` —— v3.0.2 会拒（`nq [0] is invalid`），
+  上游 v2.6 才收。走不了 `Client::search`：那条路要求至少一个查询向量、
+  还会用 `search_params_of` 覆盖整套键。
 - `SearchIterator` 走到末尾会自己发一次收尾请求。服务端侧游标不会自己过期，
   「不泄漏服务端资源」是 #18 的验收标准之一。
 - `limit` 的判定是 `remaining <= 0` 而不是 `== 0`，而且越界的那一批**要切短**

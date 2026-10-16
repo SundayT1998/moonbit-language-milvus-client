@@ -230,8 +230,15 @@ README。写代码和查问题时从这里找。
 
 - 走到末尾报 `IteratorError::EndOfIterator`，不是故障；`is_end_of_iterator`
   用来把它从 `while` 里放出来。`IteratorError::Closed` 才是「迭代器已经关了」。
-- `SearchIterator::close` 会真的发一次空检索收掉服务端会话（服务端侧游标不会
-  自己过期），翻到末尾时也自动收一次。失败不往上抛。
+- `SearchIterator::close` 会真的发一发检索收掉服务端会话（服务端侧游标不会
+  自己过期），翻到末尾时也自动收一次。**收尾是 best-effort**：失败不抛、
+  也不改变 `close` 的返回值 —— `true` 只表示「本地已关」。调用方多半把
+  `close` 挂在 `defer` 里，拿到 `false` 除了以为自己用错了没有别的用处。
+- 收尾那一发**不能**是 `nq = 0` + `search_input = NotSet`。上游 v2.6 的
+  querynode 走 `searchInput` 解析，nil 时按默认参数构造，`nq = 0` 能满足
+  「不是翻页请求」的判定；v3.0.2 走另一套校验，直接判非法（`nq [0] is
+  invalid ... should be in range [1, 16384]`）。现在发的是「一个占位符、
+  `topk = 1`」，服务端认，会话真能收掉。
 - `QueryIterator` 在服务端没有会话，`close` 只是本地标记。
 - `with_limit` 是整体上限，服务端按批大小回整批，**超出上限的那一批本地切短**
   再返回，两条迭代器一致：`with_limit(4)` 配 `with_batch_size(3)` 拿到的是
@@ -246,7 +253,10 @@ README。写代码和查问题时从这里找。
 
 - `search_params` 固定写全 `anns_field` / `topk` / `offset` / `metric_type` /
   `round_decimal` / `ignore_growing` / `params` 七个键，调用方的
-  `with_search_param` 最后覆盖，与上游的键集合和顺序一致。
+  `with_search_param` **最后覆盖** —— 与上游的键集合、顺序、语义都一致。
+  覆盖是「就地改写同名键」，不是「追加一条重复键」，所以键不会出现两次。
+  注意这里曾经不对：`search_params_of` 用 `seen` 把调用方同名的七个键全丢掉，
+  `with_search_param("topk", ...)` 静默无效；现在两边一致。
 - `has_collection` 走 `DescribeCollection`，把 `CollectionNotExists` 当 `false`
   而不是失败；`has_partition` 走真 `HasPartition` RPC。两处不同是上游的选择。
 - 未显式设一致性等级时，请求里 `use_default_consistency` 为真、等级填

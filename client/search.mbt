@@ -342,29 +342,43 @@ fn placeholder_group_bytes(
 /// `search_params`。上游总是把 `anns_field` / `topk` / `offset` /
 /// `metric_type` / `round_decimal` / `ignore_growing` / `params` 这七个键
 /// 写全（`metric_type` 为空时写空串），调用方的 `WithSearchParam`
-/// 最后覆盖。这里保持同样的顺序与键集合，方便与服务端的行为对照。
+/// 最后覆盖 —— 这里的顺序照搬，覆盖也照搬。
+///
+/// 覆盖是**无条件**的：七个固定键先按字段推导的值入表，随后 `search_params`
+/// 里同名的键就地改写。早先这里是「同名的直接丢弃」，与 `with_search_param`
+/// 的「有则替换、无则追加」语义正相反 —— 调用方传 `topk` / `anns_field`
+/// 会被静默丢掉，生效的始终是字段推导出来的值，而 `client_test.mbt` 的注释
+/// 却写着「调用方覆盖」。现在两边一致：后写的赢。
+///
+/// 顺序也要留意：`with_search_param` 是追加语义，所以迭代器那一路塞进
+/// `SearchOption.search_params` 的 `iterator` / `search_iter_v2` 等键不受
+/// 影响 —— 它们不在固定七个键里，原样留在表尾。
 fn search_params_of(option : SearchOption) -> Array[(String, String)] {
-  let params : Array[(String, String)] = []
-  let seen : Array[String] = []
-  let push = (key : String, value : String) => {
-    params.push((key, value))
-    seen.push(key)
-  }
-  push(search_param_anns_field, option.anns_field)
-  push(search_param_topk, option.limit.to_string())
-  push(search_param_offset, option.offset.to_string())
-  push(
-    search_param_metric_type,
-    match option.metric_type {
-      Some(m) => m.to_string()
-      None => ""
-    },
-  )
-  push(search_param_round_decimal, option.round_decimal.to_string())
-  push(search_param_ignore_growing, option.ignore_growing.to_string())
-  push(search_param_params, "{}")
+  let params : Array[(String, String)] = [
+    (search_param_anns_field, option.anns_field),
+    (search_param_topk, option.limit.to_string()),
+    (search_param_offset, option.offset.to_string()),
+    (
+      search_param_metric_type,
+      match option.metric_type {
+        Some(m) => m.to_string()
+        None => ""
+      },
+    ),
+    (search_param_round_decimal, option.round_decimal.to_string()),
+    (search_param_ignore_growing, option.ignore_growing.to_string()),
+    (search_param_params, "{}"),
+  ]
+  // 调用方最后覆盖：同名的就地改写，保证每个键只出现一次。
   for pair in option.search_params {
-    if !seen.contains(pair.0) {
+    let mut replaced = false
+    for i = 0; i < params.length(); i = i + 1 {
+      if params[i].0 == pair.0 {
+        params[i] = pair
+        replaced = true
+      }
+    }
+    if !replaced {
       params.push(pair)
     }
   }
@@ -394,8 +408,8 @@ async fn Client::search_call(
     raise ClientError::Encode("search requires at least one query vector")
   }
   // `nq` 是 `vectors` 的长度，服务端不接受「nq = 0」。迭代器收尾要发的
-  // 那个空检索走下面的 `cancel_search` —— 它另开一个入口，因为它的
-  // `search_input` 不是占位符。
+  // 那一发走下面的 `cancel_search` —— 它另开一个入口，因为它的 `topk`
+  // 与 `params` 得在那一层补（迭代器给的 `search_params` 里没有）。
   let placeholder = placeholder_group_bytes(option.vectors)
   let search_params = search_params_of(option).map(pair => {
     @common.KeyValuePair::KeyValuePair(pair.0, pair.1)
@@ -432,20 +446,35 @@ async fn Client::search_call(
 }
 
 ///|
-/// 迭代器收尾用的空检索：`nq = 0`，`search_input` 显式留空（`NotSet`）。
+/// 迭代器收尾：带着续页凭据再发一发检索，让服务端把那个游标会话收掉。
 ///
-/// 服务端据 `search_iter_id` 找到那个游标会话，`nq = 0` 就表示「这批不要
-/// 结果，把会话收掉」。走不了 `Client::search`：那条路要求至少一个查询向量，
-/// 会用占位符填 `search_input`。
+/// 服务端据 `search_iter_id` 找到会话。这一发不是「要结果」，而是
+/// 「这批读完了」——`topk = 1` 只为了过服务端的参数校验，命中数不关心。
 ///
-/// `search_params` 由调用方拼好传进来 —— 迭代器比这一层更清楚要带哪些凭据。
+/// **不能发 `nq = 0` + `search_input = NotSet`**。上游 v2.6 的 querynode
+/// 走 `searchInput` 解析，nil 时按默认参数构造，`nq = 0` 能满足「不是翻页
+/// 请求」的判定；v3.0.2 走另一套 `searchShard` 校验，`NotSet` 直接判非法：
+///
+/// ```
+/// nq [0] is invalid, nq (number of search vector per search request)
+/// should be in range [1, 16384], but got 0: invalid parameter
+/// ```
+///
+/// 所以这里改发「一个占位符、一维匹配的向量」，服务端认；`close` 于是能
+/// 真的把会话关掉，而不是每次都报一次假失败。
+///
+/// `topk` 与 `params` 两个键必须补上：`search_params` 由调用方（迭代器）
+/// 拼好传进来，它只带迭代器自己的那几个键，不含 `search_params_of` 里那七个
+/// 固定键的推导值。少了 `topk` 服务端报 `topk is required`，`params` 为空串
+/// 则会在 querynode 里挂成 JSON 解析错。
 ///
 /// 包内可见：`SearchIterator` 的收尾用它，不属于门面 API。
 async fn Client::cancel_search(
   self : Client,
   option : SearchOption,
 ) -> Unit raise ClientError {
-  let search_params = option.search_params.map(pair => {
+  let search_params = (option.search_params +
+  [(search_param_topk, "1"), (search_param_params, "{}")]).map(pair => {
     @common.KeyValuePair::KeyValuePair(pair.0, pair.1)
   })
   let consistency = match option.consistency_level {
@@ -458,13 +487,15 @@ async fn Client::cancel_search(
     collection_name: option.collection_name,
     partition_names: option.partition_names,
     dsl: option.expr,
-    search_input: @milvus.SearchRequest_SearchInput::NotSet,
+    search_input: @milvus.SearchRequest_SearchInput::PlaceholderGroup(
+      placeholder_group_bytes(option.vectors),
+    ),
     dsl_type: @common.DslType::BoolExprV1,
     output_fields: [],
     search_params,
     travel_timestamp: 0UL,
     guarantee_timestamp: 0UL,
-    nq: 0L,
+    nq: option.vectors.length().to_int64(),
     not_return_all_meta: false,
     consistency_level: consistency,
     use_default_consistency: option.consistency_level is None,

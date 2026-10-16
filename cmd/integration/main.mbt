@@ -318,12 +318,100 @@ async fn check_steps(client : @client.Client) -> String {
     "[8] 查询按表达式返回 \{queried.len()} 行，title 集合正确（id 列已回读）",
   )
 
+  // 8b. 检索迭代器：翻到末尾 + 显式 `close` 把服务端会话收掉。
+  //
+  //     这一屏是为了两条踩过的坑：`nq = 0` 的收尾被 v3.0.2 拒（`close`
+  //     于是每次都报假失败），以及非整数倍 `limit` 让迭代器跑满全表。
+  //     两条都不会在 mock 上暴露 —— mock 永远回整批、也永远“成功”。
+  let iterator_outcome : Result[Unit, String] = try {
+    search_iterator_screen(client, vectors[row_count - 1])
+    Ok(())
+  } catch {
+    err => Err(err.to_string())
+  }
+  match iterator_outcome {
+    Ok(_) =>
+      println(
+        "[8b] 检索迭代器翻完并关闭（收尾请求被服务端受理）",
+      )
+    Err(reason) => return step_failed("8b", "检索迭代器：" + reason)
+  }
+
   // 9. 收尾：把自检集合删掉，下次跑还是干净的。
   client.drop_collection(@client.new_drop_collection_option(collection)) catch {
     err => return step_failed("9", "删除集合失败：" + err.to_string())
   }
   println("[9] 集合已清理")
   ""
+}
+
+///|
+/// 检索迭代器那一屏，两段：
+///
+/// 1. **翻到末尾**：上限 `with_limit(3)`、批大小 3（整数倍，与 `limit` 的
+///    零点判定无关 —— 那一处回归在 `client/iterator_test.mbt` 里按非整数倍
+///    钉住）。走到 `EndOfIterator` 时会自动补一发收尾。
+/// 2. **显式 `close`**：建一个新迭代器，只取一批就直接关 —— 这一发**不能**
+///    是 `nq = 0` / `NotSet`，v3.0.2 会拒（`nq [0] is invalid`）。第一段里
+///    `close` 是在 `exhausted` 之后调的，根本没发请求，所以只有这第二段才
+///    真的走 `Client::cancel_search`。
+async fn search_iterator_screen(
+  client : @client.Client,
+  vector : Array[Float],
+) -> Unit raise @client.IteratorError {
+  let exhausted = client.search_iterator(
+    @client.new_search_iterator_option(collection, 3, [
+      @column.ColumnValue::FloatVector(dim, [vector]),
+    ])
+    .with_anns_field("vector")
+    .with_metric_type(@index.MetricType::L2)
+    .with_output_fields(["title"])
+    .with_batch_size(3)
+    .with_limit(3L),
+  ) catch {
+    err => raise err
+  }
+  let mut total = 0
+  while true {
+    let batch : Result[@client.SearchResult, @client.IteratorError] = Ok(
+      exhausted.next(),
+    ) catch {
+      err => Err(err)
+    }
+    match batch {
+      Ok(page) => total = total + page.hits.length()
+      Err(err) => if err.is_end_of_iterator() { break } else { raise err }
+    }
+  }
+  if total != 3 {
+    raise @client.IteratorError::Setup(
+      "检索迭代器上限失效：limit = 3、batch = 3，实际取了 \{total} 行",
+    )
+  }
+
+  // 第二段：取一批就关，收尾那一发真的发出去。
+  let live = client.search_iterator(
+    @client.new_search_iterator_option(collection, 100, [
+      @column.ColumnValue::FloatVector(dim, [vector]),
+    ])
+    .with_anns_field("vector")
+    .with_metric_type(@index.MetricType::L2)
+    .with_output_fields(["title"])
+    .with_batch_size(2),
+  ) catch {
+    err => raise err
+  }
+  let first = live.next() catch { err => raise err }
+  if first.hits.length() == 0 {
+    raise @client.IteratorError::Setup("迭代器第一批是空的")
+  }
+  let closed = live.close() catch { _ => false }
+  if !closed {
+    raise @client.IteratorError::Setup(
+      "close 返回了 false；收尾那一发多半没被服务端受理",
+    )
+  }
+  ()
 }
 
 ///|
