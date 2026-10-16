@@ -22,6 +22,12 @@
 // 留空。服务端在返回全部字段时不填 `FieldData.field_name`（只给 `field_id`），
 // 列名会全空 —— 按名取列取不到、`QueryResult::len` 读成 0，症状酷似
 // 「过滤条件没生效、全量返回」。第 8 步的报错就长这样。
+//
+// 最新的一条：`LoadCollection` 返回、`GetLoadState` 报 `Loaded`，都**不等于**
+// 写进去的行已经可查。第 7 / 8 步紧跟着写入跑，会稳定拿到 0 命中 / 0 行，
+// 而报错文本与「过滤条件没生效」一模一样，指不到病根。写后可见性还要再等
+// 一拍，所以第 6b 步显式轮询到检索能命中为止（真连 Milvus 才暴露，mock 上
+// 永远立刻可见 —— 这也是它一直没被集成测试抓到的原因）。
 
 ///|
 /// 自检用的集合名与向量维度。固定值，便于失败时人工复现。
@@ -198,6 +204,17 @@ async fn check_steps(client : @client.Client) -> String {
     Err(err) => return step_failed("6", err)
   }
   println("[6] 集合已加载")
+
+  // 6b. 等写入的行真的可查。`Loaded` 只说明集合被加载了，写侧的行是之后才
+  //     进的（第 7 步）—— 第 7 / 8 步紧跟着跑就会踩到「刚写完看不见」，
+  //     表现为检索 0 命中、查询 0 行，跟「过滤条件写错了」长得一样。
+  //     判据用**本测试自己写进去的列**：拿最后一行的向量去检索，命中即
+  //     数据面已经可见；`auto_id` 发的主键量级不确定，不能拿来判。
+  match wait_rows_visible(client, vectors[row_count - 1]) {
+    Ok(_) => ()
+    Err(err) => return step_failed("6b", err)
+  }
+  println("[6b] 写入的行已可见")
 
   // 7. 检索：拿最后一行的向量当查询，L2 距离最近的一定是它自己。
   let query_vector = vectors[row_count - 1]
@@ -528,6 +545,42 @@ async fn wait_loaded(
     @async.sleep(500)
   }
   Err("等集合加载超时（60s 内没到 Loaded）")
+}
+
+///|
+/// 等刚写进去的行真的可查。
+///
+/// `LoadCollection` 返回、`get_load_state` 报 `Loaded`，都不代表**之后**写入
+/// 的行已可见。第 4 步写完、第 7 步就检索，只差几十毫秒，真连 Milvus 时会
+/// 稳定拿到 0 命中 / 0 行 —— 这与「过滤条件写错了」表现完全一样，读日志的人
+/// 会往错的方向查。所以这里显式轮询到看得见为止。
+///
+/// 判据用最后一行的向量做自检索：命中说明整批行都已可见。不用主键判 ——
+/// `auto_id` 发的是 Snowflake 量级的大整数，没有可依赖的起点。
+///
+/// 上限 60s，与 `wait_loaded` 同口径：10 行的小集合在 CI 上是毫秒级的等待，
+/// 真走到超时说明服务端出问题，该报错而不是让下一步去撞一个指不到病根的错。
+async fn wait_rows_visible(
+  client : @client.Client,
+  query_vector : Array[Float],
+) -> Result[Unit, String] {
+  let probe = @client.new_search_option(collection, 1, [
+      @column.ColumnValue::FloatVector(dim, [query_vector]),
+    ])
+    .with_anns_field("vector")
+    .with_metric_type(@index.MetricType::L2)
+  let limit = 120
+  for i = 0; i < limit; i = i + 1 {
+    let searched = client.search(probe) catch {
+      err => return Err("等可见性时检索失败：" + err.to_string())
+    }
+    if searched.hits.length() > 0 {
+      return Ok(())
+    }
+    // 每半秒问一次；120 次即最长等 60s。
+    @async.sleep(500)
+  }
+  Err("写入的行在 60s 内仍不可见（写到可见的延迟异常）")
 }
 
 ///|

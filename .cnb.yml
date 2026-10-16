@@ -27,6 +27,11 @@
         git diff --exit-code
     - name: check
       script: moon check --target all
+    - name: readme-quickstart
+      # README 的「快速上手」必须与 cmd/quickstart 逐字一致：那份拷贝才是真被
+      # `moon check` 编的东西，README 正文只是给人看的。少了这一步，两份一漂，
+      # 示例就又回到「编译不过也没人知道」的状态。
+      script: scripts/readme-quickstart-check.sh
     - name: test
       script: moon test --target all
 

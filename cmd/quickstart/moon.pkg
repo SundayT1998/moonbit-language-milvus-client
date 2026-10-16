@@ -1,0 +1,23 @@
+// README「快速上手」的那段示例就是这个包。
+//
+// 放在这里而不是放进根包：示例要引 `client/native`（native-only），
+// 根包 `preferred_target` 是 wasm，把 native 包挂上去整棵依赖图都编不过。
+// 单开一个 `supported_targets = "native"` 的包，示例才既被真编译、
+// 又不拖垮别的 target。
+//
+// 只负责被编译，不负责被运行：`moon check --target all` 会走到它。
+import {
+  "SundayT1998/milvus-client/client",
+  "SundayT1998/milvus-client/client/native",
+  "SundayT1998/milvus-client/column",
+  "SundayT1998/milvus-client/entity",
+  "SundayT1998/milvus-client/index",
+  "SundayT1998/milvus-client/transport",
+  "moonbitlang/async",
+}
+
+pkgtype(kind: "executable")
+
+options(
+  supported_targets: "native",
+)
