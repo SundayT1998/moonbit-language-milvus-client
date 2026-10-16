@@ -13,17 +13,17 @@ pub(all) struct Config {
   address : String
   token : String?
   db_name : String?
-  timeout_millis : Int
+  timeout_millis : Int32
   enable_gzip : Bool
 }
 
 ///|
 /// Milvus 默认端口。上游 `client` 用的也是它。
-pub let default_port : Int = 19530
+pub let default_port : Int32 = 19530
 
 ///|
 /// 默认调用超时：Milvus 上游 Go 客户端默认不限，这里取 30s 作为有界默认。
-pub let default_timeout_millis : Int = 30_000
+pub let default_timeout_millis : Int32 = 30_000
 
 ///|
 /// 只给地址的最小配置。
@@ -50,7 +50,7 @@ pub fn Config::with_db_name(self : Config, db_name : String) -> Config {
 ///|
 pub fn Config::with_timeout_millis(
   self : Config,
-  timeout_millis : Int,
+  timeout_millis : Int32,
 ) -> Config {
   { ..self, timeout_millis, }
 }
@@ -59,6 +59,6 @@ pub fn Config::with_timeout_millis(
 /// 打开 gzip。注意当前 `moonrpc` 会把调用方给的 `grpc-encoding`
 /// 当成保留头吞掉（只在响应侧读它），所以这里为真时得换一条路：
 /// 见 `request_metadata` 的注释。
-pub fn Config::with_gzip(self : Config, enable? : Bool = true) -> Config {
+pub fn Config::with_gzip(self : Config, enable~ : Bool = true) -> Config {
   { ..self, enable_gzip: enable, }
 }

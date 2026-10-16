@@ -22,8 +22,8 @@
 /// `Array` 列的每一行。
 fn array_rows(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
 ) -> Array[ArrayValue] raise ColumnError {
   let s = scalar_payload(field, "array_data")

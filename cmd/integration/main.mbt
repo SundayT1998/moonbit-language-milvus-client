@@ -28,11 +28,11 @@
 let collection : String = "moonbit_ci_selfcheck"
 
 ///|
-let dim : Int = 4
+let dim : Int32 = 4
 
 ///|
 /// 写入的行数。
-let row_count : Int = 10
+let row_count : Int32 = 10
 
 ///|
 /// 每一步失败时的文本：带上是哪一步、为什么。

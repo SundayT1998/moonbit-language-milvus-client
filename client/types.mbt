@@ -83,7 +83,7 @@ pub fn ClientError::is_deadline_exceeded(self : ClientError) -> Bool {
 
 ///|
 /// 拿服务端错误码；不是服务端拒绝就返回 `@errors.unexpected_code`。
-pub fn ClientError::code(self : ClientError) -> Int {
+pub fn ClientError::code(self : ClientError) -> Int32 {
   match self {
     Server(err) => @errors.error_code(Some(err))
     _ => @errors.unexpected_code

@@ -40,7 +40,7 @@ pub(all) struct QueryResult {
 
 ///|
 /// 结果行数。没有列时是 0。
-pub fn QueryResult::len(self : QueryResult) -> Int {
+pub fn QueryResult::len(self : QueryResult) -> Int32 {
   if self.columns.length() == 0 {
     0
   } else {
@@ -132,14 +132,17 @@ pub fn QueryOption::with_consistency_level(
 }
 
 ///|
-pub fn QueryOption::with_limit(self : QueryOption, limit : Int) -> QueryOption {
+pub fn QueryOption::with_limit(
+  self : QueryOption,
+  limit : Int32,
+) -> QueryOption {
   set_query_param(self, query_param_limit, limit.to_string())
 }
 
 ///|
 pub fn QueryOption::with_offset(
   self : QueryOption,
-  offset : Int,
+  offset : Int32,
 ) -> QueryOption {
   set_query_param(self, query_param_offset, offset.to_string())
 }

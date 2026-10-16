@@ -23,7 +23,7 @@
 
 ///|
 /// 上游 `NewFlushOption` 的默认轮询间隔。
-pub let default_flush_check_interval_millis : Int = 200
+pub let default_flush_check_interval_millis : Int32 = 200
 
 ///|
 /// flush 的入参。对应上游 `flushOption`：一次只 flush 一个集合
@@ -31,7 +31,7 @@ pub let default_flush_check_interval_millis : Int = 200
 pub(all) struct FlushOption {
   collection_name : String
   /// `Await` 的轮询间隔。
-  check_interval_millis : Int
+  check_interval_millis : Int32
 }
 
 ///|
@@ -45,7 +45,7 @@ pub fn new_flush_option(collection_name : String) -> FlushOption {
 ///|
 pub fn FlushOption::with_check_interval_millis(
   self : FlushOption,
-  millis : Int,
+  millis : Int32,
 ) -> FlushOption {
   { ..self, check_interval_millis: millis, }
 }
@@ -62,7 +62,7 @@ pub struct FlushTask {
   flushed_segment_ids : Array[Int64]
   /// 本次 flush 的混合时间戳，`GetFlushState` 用它对账。
   flush_timestamp : UInt64
-  interval_millis : Int
+  interval_millis : Int32
 }
 
 ///|

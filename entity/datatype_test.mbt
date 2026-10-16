@@ -3,7 +3,7 @@
 /// `milvus.proto.schema.DataType`. The values are wire protocol: a server
 /// reads them, so a reordering of the enum is a breaking change and this table
 /// is where it shows up.
-let data_type_values : Array[(String, Int)] = [
+let data_type_values : Array[(String, Int32)] = [
   ("None", 0),
   ("Bool", 1),
   ("Int8", 2),

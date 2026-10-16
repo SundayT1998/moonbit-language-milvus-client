@@ -30,7 +30,7 @@
 pub suberror MerError {
   /// Milvus modern 数值错误码（`Status.code`），未知码按原值保留。
   RpcError(
-    code~ : Int,
+    code~ : Int32,
     /// 已废弃的 legacy 错误码（`Status.error_code`）。
     legacy_code~ : @common.ErrorCode,
     /// 面向用户的错误摘要，等价于上游 `RPCError.Error()`。
@@ -54,7 +54,7 @@ pub impl Show for MerError with fn to_string(self) {
 
 ///|
 /// 取错误码。与上游 `merr.Code` 一致；`None` 等价于上游的 `err == nil`。
-pub fn MerError::code(self : MerError?) -> Int {
+pub fn MerError::code(self : MerError?) -> Int32 {
   match self {
     None => 0
     Some(RpcError(code~, ..)) => code
@@ -109,7 +109,7 @@ pub fn MerError::same_code(self : MerError, other : MerError) -> Bool {
 
 ///|
 /// 取错误码。与上游 `merr.Code` 一致；`None` 等价于上游的 `err == nil`。
-pub fn error_code(err : MerError?) -> Int {
+pub fn error_code(err : MerError?) -> Int32 {
   MerError::code(err)
 }
 

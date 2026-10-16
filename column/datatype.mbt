@@ -69,7 +69,7 @@ fn data_type_name(t : @schema.DataType) -> String {
 ///|
 /// 把服务端放在 `int32` 数组里的 `Int8` 收窄回有符号字节。
 /// 上游用 Go 的 `int8(i32)`，就是二进制补码截断加符号扩展；这里显式写出来。
-fn narrow_int8(v : Int) -> Int {
+fn narrow_int8(v : Int32) -> Int32 {
   let byte = v & 0xFF
   if byte >= 0x80 {
     byte - 0x100
@@ -80,7 +80,7 @@ fn narrow_int8(v : Int) -> Int {
 
 ///|
 /// `Int16` 同理。
-fn narrow_int16(v : Int) -> Int {
+fn narrow_int16(v : Int32) -> Int32 {
   let half = v & 0xFFFF
   if half >= 0x8000 {
     half - 0x10000

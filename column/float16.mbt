@@ -51,7 +51,7 @@ fn float16_bytes_to_floats(
 /// - 指数全 0：0 或次正规数，尾数要按 2^-14 的标度展开；
 /// - 指数全 1：正负无穷或 NaN，保留 NaN 的尾数位（不静默变成 0）；
 /// - 其余：正规数，指数偏置从 15 换到 127。
-fn float16_to_float(bits : UInt) -> Float {
+fn float16_to_float(bits : UInt32) -> Float {
   let sign = (bits >> 15) & 1U
   let exponent = (bits >> 10) & 0x1FU
   let mantissa = bits & 0x3FFU

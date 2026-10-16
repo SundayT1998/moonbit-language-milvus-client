@@ -69,15 +69,15 @@ pub(all) struct SearchOption {
   collection_name : String
   partition_names : Array[String]
   anns_field : String
-  limit : Int
+  limit : Int32
   vectors : Array[@column.ColumnValue]
   expr : String
   output_fields : Array[String]
   metric_type : @index.MetricType?
   search_params : Array[(String, String)]
-  offset : Int
+  offset : Int32
   ignore_growing : Bool
-  round_decimal : Int
+  round_decimal : Int32
   consistency_level : ConsistencyLevel?
 }
 
@@ -86,7 +86,7 @@ pub(all) struct SearchOption {
 /// `FloatVector(dim, [v1, v2])` 表示 nq = 2、每行 dim 维。
 pub fn new_search_option(
   collection_name : String,
-  limit : Int,
+  limit : Int32,
   vectors : Array[@column.ColumnValue],
 ) -> SearchOption {
   {
@@ -171,7 +171,7 @@ pub fn SearchOption::with_search_param(
 ///|
 pub fn SearchOption::with_offset(
   self : SearchOption,
-  offset : Int,
+  offset : Int32,
 ) -> SearchOption {
   { ..self, offset, }
 }
@@ -179,7 +179,7 @@ pub fn SearchOption::with_offset(
 ///|
 pub fn SearchOption::with_ignore_growing(
   self : SearchOption,
-  ignore_growing? : Bool = true,
+  ignore_growing~ : Bool = true,
 ) -> SearchOption {
   { ..self, ignore_growing, }
 }
@@ -187,7 +187,7 @@ pub fn SearchOption::with_ignore_growing(
 ///|
 pub fn SearchOption::with_round_decimal(
   self : SearchOption,
-  round_decimal : Int,
+  round_decimal : Int32,
 ) -> SearchOption {
   { ..self, round_decimal, }
 }
@@ -232,7 +232,7 @@ fn placeholder_type(
 /// 行内不定长，`to_bytes` 已经是行编码。
 fn serialize_row(
   column : @column.ColumnValue,
-  index : Int,
+  index : Int32,
 ) -> Bytes raise ClientError {
   match column {
     FloatVector(dim, rows) =>
@@ -267,9 +267,9 @@ fn serialize_row(
 ///|
 fn floats_row(
   name : String,
-  dim : Int,
+  dim : Int32,
   rows : Array[Array[Float]],
-  index : Int,
+  index : Int32,
   encode : (Array[Float]) -> Bytes,
 ) -> Bytes raise ClientError {
   if index >= rows.length() {
@@ -290,9 +290,9 @@ fn floats_row(
 /// 定长字节行：逐行取一段。
 fn bytes_row(
   name : String,
-  row_bytes : Int,
+  row_bytes : Int32,
   rows : Array[Bytes],
-  index : Int,
+  index : Int32,
 ) -> Bytes raise ClientError {
   if index >= rows.length() {
     raise ClientError::Encode(
@@ -555,7 +555,7 @@ fn decode_search_results(
 /// 字符串主键的 `string_id` 为真，好让调用方区分 `"12"` 与 `12`。
 fn id_strings(
   ids : @schema.IDs?,
-  total : Int,
+  total : Int32,
 ) -> Array[(String, Bool)] raise ClientError {
   let out : Array[(String, Bool)] = []
   match ids {

@@ -81,13 +81,13 @@ fn redact_all_occurrences(input : String, key : String) -> String {
 
 ///|
 /// 取 `[start, end)` 子串，规避已废弃的 `String::substring`。
-fn slice(s : String, start : Int, end : Int) -> String {
+fn slice(s : String, start : Int32, end : Int32) -> String {
   s.view(start_offset=start, end_offset=end).to_owned()
 }
 
 ///|
 /// 从 `from` 起找 `needle`（要求 `haystack` 与 `needle` 同为小写），返回下标或 `-1`。
-fn find_from(haystack : String, needle : String, from : Int) -> Int {
+fn find_from(haystack : String, needle : String, from : Int32) -> Int32 {
   let h_len = haystack.length()
   let n_len = needle.length()
   if n_len == 0 || from >= h_len {
