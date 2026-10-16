@@ -316,7 +316,10 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - `WriteColumn` 用 `@column.ColumnValue` 而不是另造枚举，让回读的 `Column`
   能改个名字写回去。它推导不出 `Array` 列的元素类型，所以那一支直接报 `Encode`。
 - `search_params` 的键集合与顺序照搬上游 `AnnRequest.searchRequest`：
-  固定七个键写全，调用方的 `with_search_param` 最后覆盖。
+  固定七个键写全，调用方的 `with_search_param` **就地覆盖**同名的键。
+  这条曾经只写在注释里没兑现在代码里（`seen` 把调用方同名键全丢了，
+  `with_search_param("topk", ...)` 静默无效），改动前先看 `search_params_of`
+  的注释。
 - **建索引 → 加载 → 检索的顺序不能倒**：Milvus 拒绝加载没有索引的集合
   （`index not found`），也拒绝对未加载的集合检索（`collection not loaded`）。
   加载是异步的，`load_collection` 返回不代表就绪，调用方要用 `LoadTask::wait`
