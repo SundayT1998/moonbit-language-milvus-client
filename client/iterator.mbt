@@ -37,9 +37,15 @@
 //    可能越过上限，多出来的行由本地切掉再返回。早先这里写的是「不截断，
 //    上限只决定还发不发下一次请求」，那条取舍配着一个 `remaining == 0`
 //    的判定就是无界溢出 —— 上限不是批大小的整数倍时 `remaining` 会跳过
-//    0（4 → 1 → -2），判定永不成立，迭代器一路翻到全表。现在判定改成
-//    `remaining <= 0`，并且真的把越界的那一批切短。两条缺一不可：
-//    只改判定会收敛成「最多超出一批」，仍不满足上限契约。
+//    0（4 → 1 → -2），判定永不成立，迭代器一路翻到全表。
+//
+//    现在判定有两半，缺一不可：
+//    - `remaining != iterator_unlimited` —— 「无限」的写法正是 `-1`，
+//      单看 `<= 0` 会把无限上限也判成用完，新的迭代器一发都不发；
+//    - `remaining <= 0` —— 跨过零点也算用完。
+//
+//    并且真的把越界的那一批切短（`keep_within_limit`）。只改判定会收敛
+//    成「最多超出一批」，仍不满足上限契约。
 // 3. **收尾会真去关服务端会话，但是 best-effort**。服务端侧游标不会自己
 //    过期，所以 `SearchIterator` 翻到空、以及调用方显式 `close` 时，都补
 //    一发检索把 session 收掉，而不是只打个本地标记。这条是 #18 验收标准
@@ -510,9 +516,11 @@ pub async fn QueryIterator::next(
   if iterator.exhausted {
     raise IteratorError::EndOfIterator
   }
-  // 上限用完（`<= 0` 而不是 `== 0`）：`remaining` 按整批扣减，最后一小段
-  // 会直接跨过 0 落到负数，用等号就永远等不到。
-  if iterator.remaining <= 0L {
+  // 上限用完：判定是 `!= iterator_unlimited && <= 0`，两个都不能省。
+  // `remaining` 按整批扣减，上限不是批大小整数倍时最后一小段会跨过 0
+  // 落到负数，用等号就永远等不到；而「无限」的写法正是 `-1`，单看
+  // `<= 0` 会把无限上限也判成用完 —— 新的迭代器一发都不发。
+  if iterator.remaining != iterator_unlimited && iterator.remaining <= 0L {
     iterator.exhausted = true
     raise IteratorError::EndOfIterator
   }
@@ -803,9 +811,11 @@ pub async fn SearchIterator::next(
   if iterator.exhausted {
     raise IteratorError::EndOfIterator
   }
-  // 上限用完（`<= 0` 而不是 `== 0`）：`remaining` 按整批扣减，最后一小段
-  // 会直接跨过 0 落到负数，用等号就永远等不到。
-  if iterator.remaining <= 0L {
+  // 上限用完：判定是 `!= iterator_unlimited && <= 0`，两个都不能省。
+  // `remaining` 按整批扣减，上限不是批大小整数倍时最后一小段会跨过 0
+  // 落到负数，用等号就永远等不到；而「无限」的写法正是 `-1`，单看
+  // `<= 0` 会把无限上限也判成用完 —— 新的迭代器一发都不发。
+  if iterator.remaining != iterator_unlimited && iterator.remaining <= 0L {
     iterator.exhausted = true
     // 收尾失败不盖掉 `EndOfIterator`：调用方要的是「没有下一批了」，
     // 而不是「服务端会话没关掉」。

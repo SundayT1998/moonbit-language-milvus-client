@@ -507,6 +507,82 @@ async test "query_iterator 上限到了就不再发请求" {
 }
 
 ///|
+/// 不设上限（默认 `iterator_unlimited = -1`）时，`next` 第一发就必须真的
+/// 去问服务端。曾经把「上限用完」写成 `remaining <= 0`，而「无限」的写法
+/// 正是 `-1` —— 新的迭代器一发都不发，第一次 `next` 就报 `EndOfIterator`。
+/// 单测原先每条都显式 `with_limit`，所以只有真 Milvus 上的集成自检踩到。
+async test "query_iterator 不设上限时照常取数" {
+  let (client, _, recorded) = iter_client([
+    (
+      @client.describe_collection_path,
+      describe_response(@schema.DataType::Int64),
+    ),
+    (@client.query_path, query_results([1L, 2L], ["a", "b"])),
+    (@client.query_path, query_results([3L], ["c"])),
+    (@client.query_path, empty_query_results()),
+  ])
+  let iterator = client.query_iterator(
+    @client.new_query_iterator_option("demo")
+    .with_output_fields(["name"])
+    .with_batch_size(2),
+  ) catch {
+    _ => fail("query_iterator should succeed")
+  }
+  let first = iterator.next() catch { _ => fail("first batch expected") }
+  assert_eq(ids_of(first), [1L, 2L])
+  let second = iterator.next() catch { _ => fail("second batch expected") }
+  assert_eq(ids_of(second), [3L])
+  let outcome : Result[Unit, @client.IteratorError] = try {
+    ignore(iterator.next())
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected EndOfIterator")
+    Err(err) => assert_true(err.is_end_of_iterator())
+  }
+  // DescribeCollection + 两批 + 取空那一发
+  assert_eq(recorded.val.length(), 4)
+}
+
+///|
+/// `SearchIterator` 的同一处回归：不设上限时第一发要真发出去。
+async test "search_iterator 不设上限时照常取数" {
+  let (client, _, recorded) = iter_client([
+    (
+      @client.describe_collection_path,
+      describe_response(@schema.DataType::Int64),
+    ),
+    (@client.search_path, search_results([7L, 8L], [0.9, 0.8], "tok-1", 0.8)),
+    (@client.search_path, search_results([], [], "tok-2", 0.0)),
+    // 翻到空之后迭代器自己补的那一发收尾
+    (@client.search_path, search_results([], [], "tok-2", 0.0)),
+  ])
+  let iterator = client.search_iterator(
+    @client.new_search_iterator_option("demo", 10, [
+      @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
+    ]).with_batch_size(2),
+  ) catch {
+    _ => fail("search_iterator should succeed")
+  }
+  let first = iterator.next() catch { _ => fail("first batch expected") }
+  assert_eq(first.hits.length(), 2)
+  let outcome : Result[Unit, @client.IteratorError] = try {
+    ignore(iterator.next())
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected EndOfIterator")
+    Err(err) => assert_true(err.is_end_of_iterator())
+  }
+  // DescribeCollection + 两批 + 收尾
+  assert_eq(recorded.val.length(), 4)
+}
+
+///|
 async test "query_iterator 上限跨批截断" {
   let (client, _, recorded) = iter_client([
     (
