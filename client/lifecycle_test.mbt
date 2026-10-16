@@ -340,7 +340,7 @@ async test "分区 RPC 遇服务端拒绝抛 Server 错误" {
 /// 按调用次数变响应的假传输：同一个路径第一次回 `false`，第二次回 `true`。
 /// 用来证明轮询确实会重试，而不是只查一次就返回。
 fn sequence_transport(
-  seq : Ref[Int],
+  seq : Ref[Int32],
   responses : Array[Bytes],
 ) -> @client.Unary {
   (path, body) => {
@@ -375,7 +375,7 @@ async test "flush 轮询：未完成时继续查，完成后停下" {
     flushed: true,
   }
   // 响应序列按「调用顺序」发：Flush → 未完成 → 完成
-  let seq : Ref[Int] = Ref(0)
+  let seq : Ref[Int32] = Ref(0)
   let config = @transport.Config::new("127.0.0.1:19530")
   let client = @client.Client::new(
     config,

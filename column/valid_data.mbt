@@ -55,7 +55,7 @@ fn valid_data_conflicts(field : @schema.FieldData) -> Bool {
 ///|
 /// 圈出 `valid` 的 `[begin, end)` 段。`end` 为负表示到末尾。
 /// 区间按逻辑行算，所以这里只处理 `valid`；数据段的位置另算。
-fn valid_slice(valid : Array[Bool], begin : Int, end : Int) -> Array[Bool] {
+fn valid_slice(valid : Array[Bool], begin : Int32, end : Int32) -> Array[Bool] {
   if valid.is_empty() {
     return []
   }
@@ -72,7 +72,7 @@ fn valid_slice(valid : Array[Bool], begin : Int, end : Int) -> Array[Bool] {
 /// 把 `begin` 夹到 `[0, n]`。上游对越界的 `begin` 直接报错，这里做成
 /// 夹取是因为调用方通常传的是「我已经知道要哪几行」；越界即空，不静默
 /// 取错行。真正的区间校验在 `rows_in_range` 里，只有明确要整列时才用。
-fn clamp_begin(begin : Int, n : Int) -> Int {
+fn clamp_begin(begin : Int32, n : Int32) -> Int32 {
   if begin < 0 {
     0
   } else if begin > n {
@@ -84,7 +84,7 @@ fn clamp_begin(begin : Int, n : Int) -> Int {
 
 ///|
 /// `end` 归一：负数表示到末尾，超过 `n` 夹到 `n`。
-fn normalize_end(end : Int, n : Int) -> Int {
+fn normalize_end(end : Int32, n : Int32) -> Int32 {
   if end < 0 {
     n
   } else if end > n {
@@ -100,9 +100,9 @@ fn normalize_end(end : Int, n : Int) -> Int {
 /// 「调用方要了不存在的行」和「数据就这么长」。本模块沿用同一条线。
 fn check_range(
   field_name : String,
-  begin : Int,
-  end : Int,
-  n : Int,
+  begin : Int32,
+  end : Int32,
+  n : Int32,
 ) -> Unit raise ColumnError {
   if begin < 0 || begin > n {
     raise IndexOutOfRange(
@@ -120,7 +120,7 @@ fn check_range(
 ///|
 /// 逻辑行数：有 `valid_data` 就是它的长度，否则是数据数组的长度。
 /// 上游 `parseScalarData` 里 `logicalLen` 的取法。
-fn logical_len(data_len : Int, valid : Array[Bool]) -> Int {
+fn logical_len(data_len : Int32, valid : Array[Bool]) -> Int32 {
   if valid.is_empty() {
     data_len
   } else {
@@ -137,9 +137,9 @@ fn logical_len(data_len : Int, valid : Array[Bool]) -> Int {
 /// 由调用方先行判断，不走这里。
 fn count_valid_bounds(
   valid : Array[Bool],
-  begin : Int,
-  end : Int,
-) -> (Int, Int, Int) {
+  begin : Int32,
+  end : Int32,
+) -> (Int32, Int32, Int32) {
   let mut value_begin = 0
   let mut value_end = 0
   let mut count = 0
@@ -170,8 +170,8 @@ fn[T] slice_scalar_data(
   field_name : String,
   data : Array[T],
   valid : Array[Bool],
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
 ) -> Array[T] raise ColumnError {
   let n = logical_len(data.length(), valid)
   check_range(field_name, begin, end, n)

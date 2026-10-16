@@ -28,9 +28,9 @@
 /// 以 JSON 字符串形式取回，路径查询留给调用方。
 pub(all) enum ColumnValue {
   Bool(Array[Bool])
-  Int8(Array[Int])
-  Int16(Array[Int])
-  Int32(Array[Int])
+  Int8(Array[Int32])
+  Int16(Array[Int32])
+  Int32(Array[Int32])
   Int64(Array[Int64])
   Float(Array[Float])
   Double(Array[Double])
@@ -41,11 +41,11 @@ pub(all) enum ColumnValue {
   Json(Array[Bytes])
   Geometry(Array[String])
   Array(Array[ArrayValue])
-  FloatVector(Int, Array[Array[Float]])
-  Float16Vector(Int, Array[Array[Float]])
-  BFloat16Vector(Int, Array[Array[Float]])
-  BinaryVector(Int, Array[Bytes])
-  Int8Vector(Int, Array[Bytes])
+  FloatVector(Int32, Array[Array[Float]])
+  Float16Vector(Int32, Array[Array[Float]])
+  BFloat16Vector(Int32, Array[Array[Float]])
+  BinaryVector(Int32, Array[Bytes])
+  Int8Vector(Int32, Array[Bytes])
   SparseFloatVector(Array[@entity.SparseFloatVector])
 } derive(Eq, Debug)
 
@@ -54,9 +54,9 @@ pub(all) enum ColumnValue {
 /// 所以比 `ColumnValue` 窄。
 pub(all) enum ArrayValue {
   Bool(Array[Bool])
-  Int8(Array[Int])
-  Int16(Array[Int])
-  Int32(Array[Int])
+  Int8(Array[Int32])
+  Int16(Array[Int32])
+  Int32(Array[Int32])
   Int64(Array[Int64])
   Float(Array[Float])
   Double(Array[Double])

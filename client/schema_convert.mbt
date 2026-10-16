@@ -198,7 +198,7 @@ pub fn serialize_collection_schema(
 ///
 /// 上游 `entity.ReadProto` 用 `strconv.ParseInt` 并吞掉错误，
 /// 这里同样不报错：`type_params` 是自由格式，服务端可能塞进任意键。
-fn type_param_int(params : Array[@common.KeyValuePair], key : String) -> Int {
+fn type_param_int(params : Array[@common.KeyValuePair], key : String) -> Int32 {
   for pair in params {
     if pair.key == key {
       return @string.parse_int(pair.value[:]) catch { _ => 0 }

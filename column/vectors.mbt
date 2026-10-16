@@ -30,10 +30,10 @@
 fn[T] split_rows(
   field_name : String,
   payload : Array[T],
-  width : Int,
+  width : Int32,
   valid : Array[Bool],
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
 ) -> Array[Array[T]] raise ColumnError {
   if width <= 0 {
     raise MalformedPayload(
@@ -67,7 +67,7 @@ fn[T] split_rows(
   }
   // 紧凑：把逻辑行映射到物理行。null 行给一个空数组占位，长度在
   // `Column::get` 里由 valid 挡住，不会读到。
-  let physical : Array[Int] = []
+  let physical : Array[Int32] = []
   let mut next = 0
   for is_valid in valid {
     if is_valid {
@@ -93,10 +93,10 @@ fn[T] split_rows(
 /// `FloatVector`：`float32` 数组，行宽就是 `dim`。
 fn vector_float_rows(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
-) -> (Int, Array[Array[Float]]) raise ColumnError {
+) -> (Int32, Array[Array[Float]]) raise ColumnError {
   let v = vector_payload(field, "float_vector")
   let dim = v.dim.to_int()
   match v.data {
@@ -111,10 +111,10 @@ fn vector_float_rows(
 /// 解回 `Float`。行宽是 `dim * 2` 字节。
 fn vector_float16_rows(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
-) -> (Int, Array[Array[Float]]) raise ColumnError {
+) -> (Int32, Array[Array[Float]]) raise ColumnError {
   let v = vector_payload(field, "float16_vector")
   let dim = v.dim.to_int()
   match v.data {
@@ -130,10 +130,10 @@ fn vector_float16_rows(
 /// `BFloat16Vector`：每维 2 字节小端。
 fn vector_bfloat16_rows(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
-) -> (Int, Array[Array[Float]]) raise ColumnError {
+) -> (Int32, Array[Array[Float]]) raise ColumnError {
   let v = vector_payload(field, "bfloat16_vector")
   let dim = v.dim.to_int()
   match v.data {
@@ -150,10 +150,10 @@ fn vector_bfloat16_rows(
 /// 倍数，不是就是坏负载——上游 `parseVectorArrayData` 同样检查。
 fn vector_binary_rows(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
-) -> (Int, Array[Bytes]) raise ColumnError {
+) -> (Int32, Array[Bytes]) raise ColumnError {
   let v = vector_payload(field, "binary_vector")
   let dim = v.dim.to_int()
   if dim % 8 != 0 {
@@ -172,10 +172,10 @@ fn vector_binary_rows(
 /// `Int8Vector`：有符号字节，行宽就是 `dim`。
 fn vector_int8_rows(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
-) -> (Int, Array[Bytes]) raise ColumnError {
+) -> (Int32, Array[Bytes]) raise ColumnError {
   let v = vector_payload(field, "int8_vector")
   let dim = v.dim.to_int()
   match v.data {
@@ -194,12 +194,12 @@ fn vector_int8_rows(
 fn split_bytes(
   field_name : String,
   bytes : Bytes,
-  width : Int,
+  width : Int32,
   valid : Array[Bool],
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
 ) -> Array[Bytes] raise ColumnError {
-  let flat : Array[Int] = []
+  let flat : Array[Int32] = []
   for i = 0; i < bytes.length(); i = i + 1 {
     flat.push(bytes[i].to_int())
   }
@@ -212,8 +212,8 @@ fn split_bytes(
 /// 的小端字节。解回 `@entity.SparseFloatVector` 后交给列。
 fn sparse_rows(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
 ) -> Array[@entity.SparseFloatVector] raise ColumnError {
   let v = vector_payload(field, "sparse_float_vector")

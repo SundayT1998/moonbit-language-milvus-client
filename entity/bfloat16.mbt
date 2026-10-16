@@ -12,7 +12,7 @@
 /// The result is compared against upstream `ml_dtypes.bfloat16` over the whole
 /// 32-bit space in the report that accompanies this module; see
 /// `proto/REPORT.md` for the tooling it was checked with.
-pub fn bfloat16_from_float(value : Float) -> UInt {
+pub fn bfloat16_from_float(value : Float) -> UInt32 {
   let bits = value.reinterpret_as_uint()
   let low_bit = (bits >> 16) & 1U
   (bits + 0x7FFFU + low_bit) >> 16
@@ -20,14 +20,14 @@ pub fn bfloat16_from_float(value : Float) -> UInt {
 
 ///|
 /// The BFloat16 bit pattern of each float, in input order.
-pub fn bfloat16_from_floats(values : Array[Float]) -> Array[UInt] {
+pub fn bfloat16_from_floats(values : Array[Float]) -> Array[UInt32] {
   values.map(bfloat16_from_float)
 }
 
 ///|
 /// The float that a BFloat16 bit pattern stands for. Exact: every bfloat16
 /// value is a float32 value, so the widening is a shift with no rounding.
-pub fn bfloat16_to_float(bits : UInt) -> Float {
+pub fn bfloat16_to_float(bits : UInt32) -> Float {
   Float::reinterpret_from_uint(bits << 16)
 }
 

@@ -43,7 +43,7 @@ pub fn WriteColumn::new(
 
 ///|
 /// 这一列的行数。
-pub fn WriteColumn::len(self : WriteColumn) -> Int {
+pub fn WriteColumn::len(self : WriteColumn) -> Int32 {
   match self.value {
     Bool(v) => v.length()
     Int8(v) | Int16(v) | Int32(v) => v.length()
@@ -101,7 +101,7 @@ pub fn WriteColumn::data_type(self : WriteColumn) -> @entity.DataType {
 /// 但显式声明可空位图后服务端不会把空列当坏数据。
 pub fn WriteColumn::to_field_data(
   self : WriteColumn,
-  is_dynamic? : Bool = false,
+  is_dynamic~ : Bool = false,
 ) -> @schema.FieldData raise ClientError {
   let rows = self.len()
   let field = match self.value {
@@ -271,7 +271,7 @@ pub fn WriteColumn::to_field_data(
 /// 服务端拿到空 `FieldData` 会把整批算成 0 行，调用方多半是搞错了。
 fn ignore_row_count(
   field : @schema.FieldData,
-  rows : Int,
+  rows : Int32,
 ) -> @schema.FieldData raise ClientError {
   if rows == 0 {
     raise ClientError::Encode(
@@ -297,8 +297,8 @@ fn scalar(data : @schema.ScalarField_Data) -> @schema.ScalarField {
 /// 一个 byte 管 8 个 bit，`dim` 说的是 bit 数，两边得换算到同一套单位上。
 fn vector_row_payload(
   name : String,
-  dim : Int,
-  widths : Array[Int],
+  dim : Int32,
+  widths : Array[Int32],
   kind : String,
   build : () -> @schema.VectorField_Data raise ClientError,
 ) -> @schema.FieldData_Field raise ClientError {
@@ -348,8 +348,8 @@ fn vector_row_payload(
 fn check_row_width(
   name : String,
   kind : String,
-  dim : Int,
-  widths : Array[Int],
+  dim : Int32,
+  widths : Array[Int32],
 ) -> Unit raise ClientError {
   let first = widths[0]
   let mut uniform = true
@@ -423,8 +423,8 @@ fn flatten(rows : Array[Array[Float]]) -> Array[Float] {
 ///|
 /// 稀疏向量那一列的 `dim` 是「本批次里最大的下标 + 1」，
 /// 与上游 `SparseFloatArray.dim` 的语义一致（注释写明是最大维度）。
-fn max_sparse_dim(rows : Array[@entity.SparseFloatVector]) -> UInt {
-  let mut max : UInt = 0
+fn max_sparse_dim(rows : Array[@entity.SparseFloatVector]) -> UInt32 {
+  let mut max : UInt32 = 0
   for row in rows {
     for index in row.indices {
       if index >= max {
@@ -438,7 +438,7 @@ fn max_sparse_dim(rows : Array[@entity.SparseFloatVector]) -> UInt {
 ///|
 /// `Int` → `Int32` 的窄化。越界的值直接报错，
 /// 不静默按低位截断 —— 写进去一个错的值比写失败更难查。
-fn narrow_int(value : Int) -> Int raise ClientError {
+fn narrow_int(value : Int32) -> Int32 raise ClientError {
   if value < -2147483648 || value > 2147483647 {
     raise ClientError::Encode(
       "value \{value} does not fit in a 32-bit integer field",

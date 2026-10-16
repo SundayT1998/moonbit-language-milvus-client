@@ -29,15 +29,15 @@
 /// `SimpleCreateCollectionOptions` 一致（`id` / `vector`）。
 pub(all) struct CreateCollectionOption {
   name : String
-  shard_num : Int
+  shard_num : Int32
   schema : @entity.CollectionSchema?
-  dim : Int
+  dim : Int32
   auto_id : Bool
   enable_dynamic_schema : Bool
   pk_field_name : String
   vector_field_name : String
   varchar_pk : Bool
-  varchar_pk_max_length : Int
+  varchar_pk_max_length : Int32
   consistency_level : ConsistencyLevel
   properties : Array[(String, String)]
   num_partitions : Int64
@@ -71,7 +71,7 @@ pub fn new_create_collection_option(
 /// 上游 `SimpleCreateCollectionOptions`：只给名字和维度，其余按默认。
 pub fn simple_create_collection_option(
   name : String,
-  dim : Int,
+  dim : Int32,
 ) -> CreateCollectionOption {
   {
     name,
@@ -101,7 +101,7 @@ pub fn CreateCollectionOption::with_auto_id(
 ///|
 pub fn CreateCollectionOption::with_shard_num(
   self : CreateCollectionOption,
-  shard_num : Int,
+  shard_num : Int32,
 ) -> CreateCollectionOption {
   { ..self, shard_num, }
 }
@@ -109,7 +109,7 @@ pub fn CreateCollectionOption::with_shard_num(
 ///|
 pub fn CreateCollectionOption::with_dynamic_schema(
   self : CreateCollectionOption,
-  enable? : Bool = true,
+  enable~ : Bool = true,
 ) -> CreateCollectionOption {
   { ..self, enable_dynamic_schema: enable, }
 }
@@ -118,7 +118,7 @@ pub fn CreateCollectionOption::with_dynamic_schema(
 pub fn CreateCollectionOption::with_varchar_pk(
   self : CreateCollectionOption,
   varchar_pk : Bool,
-  max_length : Int,
+  max_length : Int32,
 ) -> CreateCollectionOption {
   { ..self, varchar_pk, varchar_pk_max_length: max_length, }
 }
@@ -281,7 +281,7 @@ pub(all) struct CollectionDescription {
   physical_channels : Array[String]
   virtual_channels : Array[String]
   consistency_level : ConsistencyLevel
-  shard_num : Int
+  shard_num : Int32
   properties : Array[(String, String)]
   update_timestamp : UInt64
 } derive(Debug)

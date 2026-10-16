@@ -39,7 +39,7 @@ pub(all) enum DataType {
 
 ///|
 /// The `DataType` enum value from `schema.proto`.
-pub fn DataType::to_int(self : DataType) -> Int {
+pub fn DataType::to_int(self : DataType) -> Int32 {
   match self {
     None => 0
     Bool => 1
@@ -75,7 +75,7 @@ pub fn DataType::to_int(self : DataType) -> Int {
 
 ///|
 /// Inverse of `DataType::to_int`; `None` for values this client does not know.
-pub fn DataType::from_int(value : Int) -> DataType? {
+pub fn DataType::from_int(value : Int32) -> DataType? {
   match value {
     0 => Some(None)
     1 => Some(Bool)
@@ -176,7 +176,7 @@ pub fn DataType::is_dense_vector_type(self : DataType) -> Bool {
 /// Bytes each dimension takes for dense, non-packed vector types.
 /// `None` for binary vectors (packed, 8 dimensions per byte) and for every
 /// non-vector type.
-pub fn DataType::vector_bytes_per_dim(self : DataType) -> Int? {
+pub fn DataType::vector_bytes_per_dim(self : DataType) -> Int32? {
   match self {
     FloatVector => Some(4)
     Float16Vector | BFloat16Vector => Some(2)

@@ -34,8 +34,8 @@ pub(all) struct Field {
   is_clustering_key : Bool
   nullable : Bool
   element_type : DataType?
-  dim : Int?
-  max_length : Int?
+  dim : Int32?
+  max_length : Int32?
   type_params : Array[(String, String)]
 } derive(Debug)
 
@@ -64,7 +64,7 @@ pub fn Field::new(name : String, data_type : DataType) -> Field {
 ///|
 /// Rejects a dimension the server would reject, so that a bad schema fails
 /// locally instead of coming back as an opaque gRPC error.
-fn check_dim(data_type : DataType, dim : Int) -> Unit raise SchemaError {
+fn check_dim(data_type : DataType, dim : Int32) -> Unit raise SchemaError {
   if dim <= 0 {
     raise SchemaError("dimension must be positive, got \{dim}")
   }
@@ -85,7 +85,7 @@ fn check_dim(data_type : DataType, dim : Int) -> Unit raise SchemaError {
 
 ///|
 /// Sets the dimension of a vector field.
-pub fn Field::with_dim(self : Field, dim : Int) -> Field raise SchemaError {
+pub fn Field::with_dim(self : Field, dim : Int32) -> Field raise SchemaError {
   check_dim(self.data_type, dim)
   { ..self, dim: Some(dim), }
 }
@@ -94,7 +94,7 @@ pub fn Field::with_dim(self : Field, dim : Int) -> Field raise SchemaError {
 /// Sets the maximum length of a `VarChar` (or `Text`) field.
 pub fn Field::with_max_length(
   self : Field,
-  max_length : Int,
+  max_length : Int32,
 ) -> Field raise SchemaError {
   if max_length <= 0 {
     raise SchemaError("max_length must be positive, got \{max_length}")

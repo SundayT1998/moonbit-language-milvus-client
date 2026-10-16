@@ -5,7 +5,7 @@
 /// legacy `ErrorCode` → modern 数值码，逐条照搬上游 `modernCodeFromLegacy`。
 ///
 /// 未命中的 legacy 码落到 `unexpected_code`。
-pub fn modern_code_from_legacy(legacy : @common.ErrorCode) -> Int {
+pub fn modern_code_from_legacy(legacy : @common.ErrorCode) -> Int32 {
   match legacy {
     @common.ErrorCode::NotReadyServe => 1
     @common.ErrorCode::CollectionNotExists => 100
@@ -28,7 +28,7 @@ pub fn modern_code_from_legacy(legacy : @common.ErrorCode) -> Int {
 /// modern 数值码 → legacy `ErrorCode`，逐条照搬上游 `legacyCodeFromModern`。
 ///
 /// 未命中的数值码落到 `UnexpectedError`。
-pub fn legacy_code_from_modern(code : Int) -> @common.ErrorCode {
+pub fn legacy_code_from_modern(code : Int32) -> @common.ErrorCode {
   match code {
     1 | 110 => @common.ErrorCode::NotReadyServe
     100 => @common.ErrorCode::CollectionNotExists

@@ -19,7 +19,7 @@ pub struct Client {
 ///
 /// 从右往左找最后一个 `:`，这样裸 IPv6（`::1`）不会被误当成 host:port ——
 /// 它没有端口，只能落回默认端口。
-pub fn parse_address(address : String) -> (String, Int) {
+pub fn parse_address(address : String) -> (String, Int32) {
   if address == "" {
     return ("", @transport.default_port)
   }
@@ -53,7 +53,7 @@ pub fn parse_address(address : String) -> (String, Int) {
 ///|
 /// 端口解析失败就退回默认端口：Milvus 的地址是用户手写的配置，
 /// 报错不如按缺省处理来得省事，真正的连接失败会在 dial 时报出来。
-fn parse_port(s : String) -> Int {
+fn parse_port(s : String) -> Int32 {
   let n = @string.parse_int(s[:]) catch { _ => -1 }
   if n > 0 && n <= 65535 {
     n
@@ -88,7 +88,7 @@ pub async fn Client::unary(
   self : Client,
   path : String,
   request : Bytes,
-  timeout_millis? : Int,
+  timeout_millis? : Int32,
 ) -> Bytes raise @transport.RpcError {
   let metadata = @transport.request_metadata(self.config)
   let timeout = match timeout_millis {
