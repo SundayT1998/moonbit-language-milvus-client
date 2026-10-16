@@ -33,9 +33,13 @@
 // 1. **不切 nq**。服务端要求搜索迭代器的 nq 恒为 1。上游靠 `nq = 1` 就
 //    直接取 `topks[0]`；本移植在 `nq > 1` 时报错，而不是自己挑一段假装
 //    那就是答案。
-// 2. **`limit` 不跨批截断**。上游在 `SearchIterator` 里会把超出上限的那
-//    一批切短（而 `QueryIterator` 切的是中间结果，切了等于白切）。本移植
-//    两条路统一：上限只决定「还发不发下一次请求」，已取回的批次原样返回。
+// 2. **`limit` 跨批截断**。与上游一致：服务端按批大小回整批，最后一批
+//    可能越过上限，多出来的行由本地切掉再返回。早先这里写的是「不截断，
+//    上限只决定还发不发下一次请求」，那条取舍配着一个 `remaining == 0`
+//    的判定就是无界溢出 —— 上限不是批大小的整数倍时 `remaining` 会跳过
+//    0（4 → 1 → -2），判定永不成立，迭代器一路翻到全表。现在判定改成
+//    `remaining <= 0`，并且真的把越界的那一批切短。两条缺一不可：
+//    只改判定会收敛成「最多超出一批」，仍不满足上限契约。
 // 3. **收尾会真去关服务端会话**。服务端侧游标不会自己过期，所以
 //    `SearchIterator` 翻到空、以及调用方显式 `close` 时，都补一次
 //    `nq = 0` 的空检索把 session 收掉，而不是只打个本地标记。这条是 #18
@@ -490,8 +494,8 @@ fn QueryIterator::advance(
 ///|
 /// 取下一批。到末尾报 `EndOfIterator`，关掉了报 `Closed`。
 ///
-/// 每次请求都问 `batch_size` 行，服务端给多少就回多少；不做跨批截断，
-/// 上限只控制「还发不发下一次请求」（见文件头第 2 条）。
+/// 每次请求都问 `batch_size` 行，服务端给多少就回多少；超出上限的部分
+/// 本地切短（见文件头第 2 条）。
 pub async fn QueryIterator::next(
   iterator : QueryIterator,
 ) -> QueryResult raise IteratorError {
@@ -503,7 +507,9 @@ pub async fn QueryIterator::next(
   if iterator.exhausted {
     raise IteratorError::EndOfIterator
   }
-  if iterator.remaining == 0L {
+  // 上限用完（`<= 0` 而不是 `== 0`）：`remaining` 按整批扣减，最后一小段
+  // 会直接跨过 0 落到负数，用等号就永远等不到。
+  if iterator.remaining <= 0L {
     iterator.exhausted = true
     raise IteratorError::EndOfIterator
   }
@@ -512,6 +518,7 @@ pub async fn QueryIterator::next(
     iterator.exhausted = true
     raise IteratorError::EndOfIterator
   }
+  let page = iterator.keep_within_limit(page)
   iterator.advance(page)
   if iterator.remaining != iterator_unlimited {
     iterator.remaining = iterator.remaining - page.len().to_int64()
@@ -793,7 +800,9 @@ pub async fn SearchIterator::next(
   if iterator.exhausted {
     raise IteratorError::EndOfIterator
   }
-  if iterator.remaining == 0L {
+  // 上限用完（`<= 0` 而不是 `== 0`）：`remaining` 按整批扣减，最后一小段
+  // 会直接跨过 0 落到负数，用等号就永远等不到。
+  if iterator.remaining <= 0L {
     iterator.exhausted = true
     // 收尾失败不盖掉 `EndOfIterator`：调用方要的是「没有下一批了」，
     // 而不是「服务端会话没关掉」。
@@ -812,10 +821,61 @@ pub async fn SearchIterator::next(
     }
     raise IteratorError::EndOfIterator
   }
+  let result = iterator.keep_within_limit(result)
   if iterator.remaining != iterator_unlimited {
     iterator.remaining = iterator.remaining - result.hits.length().to_int64()
   }
   result
+}
+
+///|
+/// 按 `remaining` 把这一批切短。上限无限时原样返回。
+///
+/// 服务端只会按批大小回整批，所以最后一批常常越过上限 —— 那几个多出来的
+/// 行不该交给调用方，否则「上限」就只是个「下次还发不发的开关」，
+/// 而调用方拿到的行数会随批大小浮动。
+fn SearchIterator::keep_within_limit(
+  iterator : SearchIterator,
+  result : SearchResult,
+) -> SearchResult {
+  if iterator.remaining == iterator_unlimited {
+    return result
+  }
+  let keep = if iterator.remaining < result.hits.length().to_int64() {
+    iterator.remaining.to_int()
+  } else {
+    result.hits.length()
+  }
+  if keep >= result.hits.length() {
+    return result
+  }
+  { hits: result.hits[:keep].to_owned(), }
+}
+
+///|
+/// 查询结果版的 `keep_within_limit`：每一列都裁到同一段行区间。
+///
+/// 主键列也要一起裁 —— 游标按最后一行推进，留着被裁掉的尾巴会让下一批
+/// 从错误的行继续。
+fn QueryIterator::keep_within_limit(
+  iterator : QueryIterator,
+  page : QueryResult,
+) -> QueryResult {
+  if iterator.remaining == iterator_unlimited {
+    return page
+  }
+  let keep = if iterator.remaining < page.len().to_int64() {
+    iterator.remaining.to_int()
+  } else {
+    page.len()
+  }
+  if keep >= page.len() {
+    return page
+  }
+  {
+    columns: page.columns.map(column => column.slice(0, keep)),
+    names: page.names,
+  }
 }
 
 ///|

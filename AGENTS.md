@@ -357,8 +357,11 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   `search_input`。
 - `SearchIterator` 走到末尾会自己发一次收尾请求。服务端侧游标不会自己过期，
   「不泄漏服务端资源」是 #18 的验收标准之一。
-- 两处与上游刻意的差异，写在 `iterator.mbt` 文件头：nq 恒为 1（多给报错）、
-  `limit` 不跨批截断（上游 `SearchIterator` 会切短）。改之前先读那段注释。
+- `limit` 的判定是 `remaining <= 0` 而不是 `== 0`，而且越界的那一批**要切短**
+  （`keep_within_limit`，两条迭代器都有）。原因写在 `iterator.mbt` 文件头
+  第 2 条：`remaining` 按整批扣减，非整数倍上限会跨过零点，等号判定等于
+  没有上限。改判定或改截断之前先读那段注释。
+- 一处与上游刻意的差异，写在 `iterator.mbt` 文件头：nq 恒为 1（多给报错）。
 - 游标状态（`last` / `cursor` / `remaining`）在 `pub struct` 里标了 `priv`，
   外部只能通过 `next` / `close` / `is_closed` 操作。
 
