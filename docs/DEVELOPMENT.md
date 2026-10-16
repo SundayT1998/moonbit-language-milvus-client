@@ -207,6 +207,18 @@ README。写代码和查问题时从这里找。
   `search_iterator_v2_results`，`next` 会报 `Setup`（上游这里是
   `ErrServerVersionIncompatible`）。
 
+### 写入前的本地校验
+
+- 每列的**行数**要一致（`check_row_counts`），否则服务端只按第一列的长度算
+  `num_rows`，多出来的数据被静默丢掉。
+- 向量列的**每行宽度**要一致（`check_row_width`）。服务端按 `dim` 这个列级
+  宽度切值，看不见客户端的行边界，所以宽度对不上时它报的是从总数反推出来的
+  行数不匹配（`num_rows (2) ... num_rows (1)`），指不到病根上。
+  判据是「各行等宽」而不是「等于 `dim`」：`FloatVector(dim, rows)` 同时服务
+  查询向量，那里 `dim` 是冗余的，不能拿它卡。
+- 二进制向量的 `dim` 是 **bit** 数、一行一个字节管 8 个 bit；Int8 向量的
+  `dim` 就是 byte 数。校验要对齐到同一套单位，见 `column/vectors.mbt` 的回读侧。
+
 ### 请求编排
 
 - `search_params` 固定写全 `anns_field` / `topk` / `offset` / `metric_type` /

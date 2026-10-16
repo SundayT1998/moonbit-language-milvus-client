@@ -315,6 +315,11 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   补一个 schema 缓存。
 - `WriteColumn` 用 `@column.ColumnValue` 而不是另造枚举，让回读的 `Column`
   能改个名字写回去。它推导不出 `Array` 列的元素类型，所以那一支直接报 `Encode`。
+- 向量列的**每行宽度要一致**，本地校验（`check_row_width`）。服务端是按
+  `dim` 这个列级宽度切值的，看不见客户端的行边界 —— 宽度对不上时它自己
+  从总数反推行数，报出来的错（`num_rows (2) ... not equal to passed
+  num_rows (1)`）跟「这一行有几列不对」毫无关系。判据是各行等宽，
+  **不是等于 `dim`**：查询向量的 `dim` 是冗余的，建表 8 维、按 4 维写合法。
 - `search_params` 的键集合与顺序照搬上游 `AnnRequest.searchRequest`：
   固定七个键写全，调用方的 `with_search_param` 最后覆盖。
 - **建索引 → 加载 → 检索的顺序不能倒**：Milvus 拒绝加载没有索引的集合

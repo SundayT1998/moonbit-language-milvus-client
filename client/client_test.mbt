@@ -1114,3 +1114,156 @@ async test "响应字节坏掉时报 Decode" {
     Err(_) => fail("expected Decode")
   }
 }
+
+///|
+/// 向量列各行宽度不一致时**在本地就报错**，不发请求。
+///
+/// `dim = 4`、两行各 6 个值：值的总数 12 能被 4 整除，服务端会放行，
+/// 然后按 dim 把这一串重新切成 `[4] + [2] + [4] + [2]` 写进去 ——
+/// 值与行都对不上，而客户端拿到的是写入成功。这里提前拦掉。
+async test "insert 向量列各行宽度不一致时报 Encode" {
+  let (client, recorded) = test_client([])
+  let outcome : Result[Unit, @client.ClientError] = try {
+    ignore(
+      client.insert(
+        @client.new_write_option("demo", [
+          @client.WriteColumn::new(
+            "vector",
+            @column.ColumnValue::FloatVector(4, [
+              [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+              [0.7, 0.8, 0.9, 1.0, 1.1],
+            ]),
+          ),
+        ]),
+      ),
+    )
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected an encode error")
+    Err(Encode(msg)) => {
+      assert_true(msg.contains("different widths"))
+      assert_true(msg.contains("vector"))
+    }
+    Err(_) => fail("expected Encode")
+  }
+  // 本地拦下就不该发出去
+  assert_eq(recorded.val.length(), 0)
+}
+
+///|
+/// 单行时 `dim` 就是不可歧义的行宽，对不上要报 —— 服务端那边单行的
+/// payload 也是按 dim 切的。
+async test "insert 单行向量宽度与 dim 不符时报 Encode" {
+  let (client, _) = test_client([])
+  let outcome : Result[Unit, @client.ClientError] = try {
+    ignore(
+      client.insert(
+        @client.new_write_option("demo", [
+          @client.WriteColumn::new(
+            "vector",
+            @column.ColumnValue::FloatVector(4, [[0.1, 0.2, 0.3]]),
+          ),
+        ]),
+      ),
+    )
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected an encode error")
+    Err(Encode(msg)) => assert_true(msg.contains("dim is 4"))
+    Err(_) => fail("expected Encode")
+  }
+}
+
+///|
+/// 多行等宽但**不等于 dim** 是放行的：`FloatVector(dim, rows)` 同时服务
+/// 查询向量，而查询向量的 `dim` 字段是冗余的（每个元素就是一次查询）。
+/// 建表 dim = 8、调用方按 4 写是合法用法，不能拿 dim 去卡。
+async test "insert 多行等宽但不等于 dim 时放行" {
+  let response = @milvus.MutationResult::{
+    status: Some(ok_status()),
+    ids: None,
+    succ_index: [],
+    err_index: [],
+    acknowledged: true,
+    insert_cnt: 2L,
+    delete_cnt: 0L,
+    upsert_cnt: 0L,
+    timestamp: 42UL,
+  }
+  let (client, recorded) = test_client([(@client.insert_path, encode(response))])
+  let result = client.insert(
+    @client.new_write_option("demo", [
+      @client.WriteColumn::new(
+        "vector",
+        @column.ColumnValue::FloatVector(8, [
+          [0.1, 0.2, 0.3, 0.4],
+          [0.5, 0.6, 0.7, 0.8],
+        ]),
+      ),
+    ]),
+  ) catch {
+    err => fail("insert should succeed")
+  }
+  assert_eq(result.insert_count, 2L)
+  assert_eq(recorded.val.length(), 1)
+}
+
+///|
+/// 二进制向量的 `dim` 是 bit 数、一行一个字节管 8 个 bit，
+/// 换算不到同一套单位上就会误报。
+async test "insert 二进制向量按 bit 数校宽度" {
+  let response = @milvus.MutationResult::{
+    status: Some(ok_status()),
+    ids: None,
+    succ_index: [],
+    err_index: [],
+    acknowledged: true,
+    insert_cnt: 2L,
+    delete_cnt: 0L,
+    upsert_cnt: 0L,
+    timestamp: 42UL,
+  }
+  // dim = 16 bit -> 每行 2 字节，两行等宽，放行
+  let (client, _) = test_client([(@client.insert_path, encode(response))])
+  ignore(
+    client.insert(
+      @client.new_write_option("demo", [
+        @client.WriteColumn::new(
+          "vector",
+          @column.ColumnValue::BinaryVector(16, [b"\x01\x02", b"\x03\x04"]),
+        ),
+      ]),
+    ),
+  ) catch {
+    err => fail("insert should succeed")
+  }
+  // 两行不等宽（1 字节 + 2 字节），拦下
+  let (client2, recorded2) = test_client([])
+  let outcome : Result[Unit, @client.ClientError] = try {
+    ignore(
+      client2.insert(
+        @client.new_write_option("demo", [
+          @client.WriteColumn::new(
+            "vector",
+            @column.ColumnValue::BinaryVector(16, [b"\x01", b"\x03\x04"]),
+          ),
+        ]),
+      ),
+    )
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected an encode error")
+    Err(Encode(msg)) => assert_true(msg.contains("binary"))
+    Err(_) => fail("expected Encode")
+  }
+  assert_eq(recorded2.val.length(), 0)
+}

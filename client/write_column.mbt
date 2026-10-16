@@ -186,32 +186,61 @@ pub fn WriteColumn::to_field_data(
       raise ClientError::Encode(
         "column \{self.name}: Array fields need an element type, which WriteColumn cannot infer",
       )
+    // 浮点向量：一行 `Float` 数量就是宽度。
     FloatVector(dim, rows) =>
-      vector_row_payload(self.name, dim, rows.length(), () => {
-        @schema.VectorField_Data::FloatVector(
-          @schema.FloatArray::FloatArray(flatten(rows)),
-        )
-      })
+      vector_row_payload(
+        self.name,
+        dim,
+        rows.map(row => row.length()),
+        "float",
+        () => {
+          @schema.VectorField_Data::FloatVector(
+            @schema.FloatArray::FloatArray(flatten(rows)),
+          )
+        },
+      )
     Float16Vector(dim, rows) =>
-      vector_row_payload(self.name, dim, rows.length(), () => {
-        @schema.VectorField_Data::Float16Vector(
-          bytes_of_rows(rows, @entity.float16_vector_bytes),
-        )
-      })
+      vector_row_payload(
+        self.name,
+        dim,
+        rows.map(row => row.length()),
+        "float16",
+        () => {
+          @schema.VectorField_Data::Float16Vector(
+            bytes_of_rows(rows, @entity.float16_vector_bytes),
+          )
+        },
+      )
     BFloat16Vector(dim, rows) =>
-      vector_row_payload(self.name, dim, rows.length(), () => {
-        @schema.VectorField_Data::Bfloat16Vector(
-          bytes_of_rows(rows, @entity.bfloat16_vector_bytes),
-        )
-      })
+      vector_row_payload(
+        self.name,
+        dim,
+        rows.map(row => row.length()),
+        "bfloat16",
+        () => {
+          @schema.VectorField_Data::Bfloat16Vector(
+            bytes_of_rows(rows, @entity.bfloat16_vector_bytes),
+          )
+        },
+      )
+    // 二进制向量：`dim` 是 **bit** 数，一行 `row.length()` 个字节管 8 倍。
     BinaryVector(dim, rows) =>
-      vector_row_payload(self.name, dim, rows.length(), () => {
-        @schema.VectorField_Data::BinaryVector(join_bytes(rows))
-      })
+      vector_row_payload(
+        self.name,
+        dim,
+        rows.map(row => row.length() * 8),
+        "binary",
+        () => @schema.VectorField_Data::BinaryVector(join_bytes(rows)),
+      )
+    // Int8 向量：`dim` 是 byte 数，与行 `Bytes` 长度同一套单位。
     Int8Vector(dim, rows) =>
-      vector_row_payload(self.name, dim, rows.length(), () => {
-        @schema.VectorField_Data::Int8Vector(join_bytes(rows))
-      })
+      vector_row_payload(
+        self.name,
+        dim,
+        rows.map(row => row.length()),
+        "int8",
+        () => @schema.VectorField_Data::Int8Vector(join_bytes(rows)),
+      )
     SparseFloatVector(rows) =>
       @schema.FieldData_Field::Vectors(@schema.VectorField::{
         dim: 0L,
@@ -259,11 +288,18 @@ fn scalar(data : @schema.ScalarField_Data) -> @schema.ScalarField {
 }
 
 ///|
-/// 向量 payload 的公共外壳，顺带校一下 dim 与行数。
+/// 向量 payload 的公共外壳，顺带校一下 dim、行数与各行宽度。
+///
+/// 宽度校验放在 `build` 之前：报错要来自这里，而不是等 `flatten` 把
+/// 不等宽的行拼成一段对不上行的字节流。
+///
+/// `widths` 是每行的「逻辑宽度」而不是 `Array` 的长度：二进制向量一行
+/// 一个 byte 管 8 个 bit，`dim` 说的是 bit 数，两边得换算到同一套单位上。
 fn vector_row_payload(
   name : String,
   dim : Int,
-  rows : Int,
+  widths : Array[Int],
+  kind : String,
   build : () -> @schema.VectorField_Data raise ClientError,
 ) -> @schema.FieldData_Field raise ClientError {
   if dim <= 0 {
@@ -271,14 +307,89 @@ fn vector_row_payload(
       "column \{name}: vector dim must be positive, got \{dim}",
     )
   }
-  if rows == 0 {
+  if widths.length() == 0 {
     raise ClientError::Encode("column \{name}: vector column has no rows")
   }
+  check_row_width(name, kind, dim, widths)
   @schema.FieldData_Field::Vectors(@schema.VectorField::{
     dim: dim.to_int64(),
     valid_data: [],
     data: build(),
   })
+}
+
+///|
+/// 校一下「每行宽度一致」。
+///
+/// Milvus 是按 `dim` 这个**列级宽度**切值的：客户端的行边界它看不见，只有
+/// 「值的总数」和「`num_rows`」。所以宽度对不上时，服务端会拿总数去除以 `dim`
+/// 自己算出一个行数，再跟请求里的 `num_rows` 对不上就拒。真 v3.0.2 上实测：
+///
+/// ```
+/// 单行 8 值 dim=4   -> the num_rows (2) of field (vector) is not equal
+///                      to passed num_rows (1)
+/// 两行各 6 值 dim=4 -> the num_rows (3) of field (vector) is not equal
+///                      to passed num_rows (2)
+/// 单行 3 值 dim=4   -> the length(3) of float data should divide the dim(4)
+/// ```
+///
+/// 三条都不是「这一行有几列不对」，而是从 `dim` 反推出来的行数。其中最坏的
+/// 一条是「值的总数能被 dim 整除、但行数与声明对不上」：这个形态下服务端会
+/// **按 dim 重新切开**（8 个值被当成 2 行），只是最后被 `num_rows` 校验挡在
+/// 门外。挡得住不代表这条路径是对的 —— 客户端比服务端多知道一件事：
+/// 这一行本该有几列。在本地报出来，错误文本才指得准。
+///
+/// 判据是「各行宽度全等」，**不是「等于 dim」**。`FloatVector(dim, rows)`
+/// 这个建模同时服务写入与查询向量，而查询向量的 `dim` 字段是冗余的
+/// （每个元素就是一次查询，见 `client/search.mbt` 的契约）：建表 dim = 8、
+/// 调用方按 4 写是合法用法，拿 dim 去卡会把本来正确的请求拦下来。
+///
+/// 单行时没有「各行」可言，`dim` 就是不可歧义的行宽，顺带对齐。
+fn check_row_width(
+  name : String,
+  kind : String,
+  dim : Int,
+  widths : Array[Int],
+) -> Unit raise ClientError {
+  let first = widths[0]
+  let mut uniform = true
+  for width in widths {
+    if width != first {
+      uniform = false
+    }
+  }
+  if !uniform {
+    let detail : Array[String] = []
+    for width in widths {
+      detail.push(width.to_string())
+    }
+    raise ClientError::Encode(
+      "column " +
+      name +
+      ": " +
+      kind +
+      " vector rows have different widths (first row has " +
+      first.to_string() +
+      " values, all rows: " +
+      detail.join(",") +
+      "); the server re-splits by dim " +
+      dim.to_string() +
+      " and the values silently go to the wrong rows",
+    )
+  }
+  if widths.length() == 1 && first != dim {
+    raise ClientError::Encode(
+      "column " +
+      name +
+      ": " +
+      kind +
+      " vector row has " +
+      first.to_string() +
+      " values but dim is " +
+      dim.to_string() +
+      "; the server splits the payload by dim, not by row",
+    )
+  }
 }
 
 ///|
