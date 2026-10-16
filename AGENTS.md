@@ -240,6 +240,17 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 `git diff --exit-code -- proto/milvus/proto`，有 diff 就红。所以手改生成物
 一定会在 CI 上暴露，别手改。
 
+「可复现」的边界要说清：可复现的是**同一套工具链**下的重复生成。
+`.cnb/Dockerfile` 装的是 `latest`，工具链升级会同时改变生成器的产物与
+`moon fmt` 的排版 —— 这时 diff 不是「有人手改了」，是工具链换底。
+对策是显式对齐：重跑 `gen.sh` + 全树 `moon fmt` + `moon info`，把这段
+diff 单独成一个 commit 说明来源。详细判据与 10-12 版踩过的两类差异见
+`docs/DEVELOPMENT.md`「工具链漂移」一节。
+
+一并记住：本工具链下 **`Int32` 与 `Int` 是同一个 32 位整型**，可互相赋值
+与传参。生成器写 `Int32`、`moon info` 统一写回 `Int`，所以 `.mbt` 与
+`.mbti` 的拼写不一致属正常，别去「修」它。
+
 `proto/upstream/` 与 `proto/trimmed/` 仍是**源码侧输入**，不参与编译；
 只有 `proto/milvus/` 是编译目标。
 
