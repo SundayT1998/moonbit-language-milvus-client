@@ -59,10 +59,10 @@ mkdir -p "$OUT"
 cp -r "$GEN_SRC"/. "$OUT"/
 
 # 探针测试作为源码叠加，避免被重新生成抹掉。
-# p0test       : DescribeCollection 的 wire 往返（#10）
-# indextest    : 索引 RPC 的 wire 往返（#16）
-# rpctest      : Client 门面核心 RPC 的 wire 往返（#15）
-# lifecycletest: 分区 / 加载 / flush 的 wire 往返（#17）
+# p0test       : DescribeCollection 的 wire 往返
+# indextest    : 索引 RPC 的 wire 往返
+# rpctest      : Client 门面核心 RPC 的 wire 往返
+# lifecycletest: 分区 / 加载 / flush 的 wire 往返
 for suite in p0test indextest rpctest lifecycletest; do
   src="$ROOT/proto/tools/$suite"
   [ -d "$src" ] || continue

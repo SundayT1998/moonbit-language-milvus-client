@@ -75,9 +75,9 @@ pub let search_path : String = method_path("Search")
 ///|
 pub let query_path : String = method_path("Query")
 
-// ---- 分区与数据生命周期（#17）----
-// load_collection / release_collection / get_load_state 的路径已在上面
-// （随集成自检一起落地的 #17 前半），这里只补分区与轮询/flush 用到的。
+// ---- 分区与数据生命周期 ----
+// load_collection / release_collection / get_load_state 的路径已在上面，
+// 这里只补分区与轮询/flush 用到的。
 
 ///|
 pub let create_partition_path : String = method_path("CreatePartition")

@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// 分区 / 加载 / flush 的跨 target 测试（#17）。
+// 分区 / 加载 / flush 的跨 target 测试。
 // 复用 `client_test.mbt` 里的假传输：断言请求编成了服务端认的字节，
 // 响应解回了对的类型，轮询在拿到终止态后停下。
 

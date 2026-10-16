@@ -18,7 +18,7 @@
 //
 // 单独成包的唯一理由是目标平台：`moonrpc/net` 声明了
 // `supported_targets = "native"`，而模块 `preferred_target = "wasm"`，
-// 混进 `client/` 会让 wasm / js 直接编不过（同 Issue #11 的 R4）。
+// 混进 `client/` 会让 wasm / js 直接编不过。
 // 这里除了「建连 + 绑一下元数据」之外不做别的事。
 
 ///|
