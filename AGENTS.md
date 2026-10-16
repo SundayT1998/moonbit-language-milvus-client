@@ -101,12 +101,20 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
   `.proto` 来自 `milvus-io/milvus-proto`，锚定 commit 见 `proto/upstream/PROVENANCE.md`。
 - 归属声明：来源仓库 + commit + 改写定性写明在 README「来源与许可」一节。
   归属相关事实变更时，同时更新这一节与 `proto/upstream/PROVENANCE.md`。
-- 移植文件保留来源声明头：
-  ```
-  // 移植自 github.com/milvus-io/milvus client/<path> (Apache-2.0)
-  // Copyright (c) LF AI & Data Foundation
-  ```
-  新增移植文件时必须带上；这是 Apache-2.0 §4(a)(b) 的要求，不是可选项。
+- **许可头按 Apache-2.0 §4(b) 的要求给足**（保留 NOTICE、标明改动），
+  这是硬性底线。写法有二，取其一即可：
+  - 上游许可头（ASF 模板全文，含 `Copyright (c) LF AI & Data Foundation`）；
+  - 或一份写明来源仓库 + commit + Apache-2.0 + 上游版权人的头，例如
+    `// 移植自 github.com/milvus-io/milvus client/internal/merr (Apache-2.0)`
+    加一行 `// Copyright (c) LF AI & Data Foundation`。
+- 有对应的上游文件时，**推荐**在许可头里把那两行来源声明也写上 —— 它比模板
+  全文多给一个「对着谁读」的坐标。没有对应上游文件时（本项目自己写的
+  `*_native` 传输、`transport/*` 的配置与 metadata 组装、根包门面等）就不写，
+  免得让读者去找一份并不存在的源文件。
+- 现状对得上这条：`client/`（除 `paths.mbt`）与 `index/` 走第一种，
+  `errors/` 走第二种，`column/`、`entity/`、`transport/`、`client/native/`
+  下未被改写的文件不加来源声明。**新增移植文件时二选一即可**，不必为了
+  统一格式去补文件头。
 - 商标：不得在文档里把本项目写成 official Milvus SDK。统一措辞是
   "community-driven MoonBit client for Milvus"。
 

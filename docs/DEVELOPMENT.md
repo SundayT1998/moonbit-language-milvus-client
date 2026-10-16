@@ -169,7 +169,7 @@ git diff                     # 这部分 diff 单独成一个 commit，说明是
 | 6 | 至少一个可运行示例 | 满足（`cmd/main`、`cmd/integration`） |
 | 7 | 测试覆盖核心路径 | 满足，四 target 全绿 |
 | 8 | 发布到 mooncakes.io | 见下节「发布」 |
-| 9 | OSI 认可许可证，移植合规 | 满足，Apache-2.0 + 来源声明头 |
+| 9 | OSI 认可许可证，移植合规 | 满足，Apache-2.0；移植文件带许可头，来源仓库 + 基线 commit + 版权写在 README「来源与许可」 |
 
 ## 发布
 

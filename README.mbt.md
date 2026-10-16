@@ -51,20 +51,36 @@ moon add SundayT1998/milvus-client
 
 连上 Milvus，建集合、建索引、加载、写入、检索、查询，最后清理掉。
 
-```moonbit nocheck
+```moonbit
 ///|
-async fn quickstart() -> Unit raise @client.ClientError {
+async fn quickstart() -> Unit {
   // 1. 连上 Milvus
   let cfg = @transport.Config::new("127.0.0.1:19530")
     .with_token("root:Milvus")
     .with_db_name("default")
     .with_timeout_millis(5000)
-  let (client, channel) = @native.connect(cfg)
+  let (client, channel) = @native.connect(cfg) catch {
+    err => {
+      println("建连失败：" + err.to_string())
+      return
+    }
+  }
 
   // 2. 建集合
-  client.create_collection(
-    @client.simple_create_collection_option("demo", dim=4),
-  )
+  let schema = @entity.CollectionSchema::new([
+    @entity.Field::new("id", @entity.DataType::Int64)
+    .as_primary_key()
+    .as_auto_id(),
+    @entity.Field::new("title", @entity.DataType::VarChar).with_max_length(128) catch {
+      _ => return
+    },
+    @entity.Field::new("vector", @entity.DataType::FloatVector).with_dim(4) catch {
+      _ => return
+    },
+  ])
+  client.create_collection(@client.new_create_collection_option("demo", schema)) catch {
+    _ => return
+  }
 
   // 3. 建索引
   client.create_index(
@@ -73,15 +89,22 @@ async fn quickstart() -> Unit raise @client.ClientError {
       "vector",
       @index.new_flat_index(@index.MetricType::L2),
     ),
-  )
+  ) catch {
+    _ => return
+  }
 
   // 4. 加载，等到数据面就绪
-  client.load_collection(@client.new_load_collection_option("demo")).wait()
+  client.load_collection(@client.new_load_collection_option("demo")).wait() catch {
+    _ => return
+  }
 
-  // 5. 写入三行
+  // 5. 写入三行。主键 auto_id，不用自己给
   let _ = client.insert(
     @client.new_write_option("demo", [
-      @client.WriteColumn::new("id", @column.ColumnValue::Int64([1L, 2L, 3L])),
+      @client.WriteColumn::new(
+        "title",
+        @column.ColumnValue::VarChar(["a", "b", "c"]),
+      ),
       @client.WriteColumn::new(
         "vector",
         @column.ColumnValue::FloatVector(4, [
@@ -91,24 +114,35 @@ async fn quickstart() -> Unit raise @client.ClientError {
         ]),
       ),
     ]),
-  )
+  ) catch {
+    _ => return
+  }
 
   // 6. 检索
   let hits = client.search(
-    @client.new_search_option("demo", limit=3, [
+    @client.new_search_option("demo", 3, [
       @column.ColumnValue::FloatVector(4, [[0.1, 0.2, 0.3, 0.4]]),
     ]).with_anns_field("vector"),
-  )
+  ) catch {
+    _ => return
+  }
   ignore(hits)
 
-  // 7. 按表达式查询
+  // 7. 按表达式查询。主键是 auto_id 发的大整数，`id >= 1` 等于全表
+  //    通过，要筛就用自己写的字段；列名要逐点点名，不能用 `*`。
   let rows = client.query(
     @client.new_query_option("demo")
-    .with_filter("id >= 1")
-    .with_output_fields(["id", "vector"])
+    .with_filter("title in [\"a\",\"b\"]")
+    .with_output_fields(["id", "title"])
     .with_limit(10),
-  )
-  let ids : @column.Column = rows.column("id") catch { _ => return }
+  ) catch {
+    _ => return
+  }
+  let titles : @column.Column = match rows.column("title") {
+    Some(column) => column
+    None => return
+  }
+  ignore(titles)
 
   // 8. 翻页
   let iterator = client.search_iterator(
@@ -117,22 +151,35 @@ async fn quickstart() -> Unit raise @client.ClientError {
     ])
     .with_anns_field("vector")
     .with_batch_size(500),
-  ) catch {
-    _ => return
-  }
+  )
   while true {
     let page = iterator.next() catch {
       err => if err.is_end_of_iterator() { break } else { return }
     }
     ignore(page.hits.length())
   }
-  let _ = iterator.close()
+  // 收尾那一发是 best-effort 的，失败不改本地状态，也会抛
+  // `Error`（socket 断了这种），所以就地兜住。
+  ignore(iterator.close()) catch {
+    _ => ()
+  }
 
-  // 9. 清理
-  client.flush(@client.new_flush_option("demo")).wait()
-  client.release_collection(@client.new_release_collection_option("demo"))
-  client.drop_collection(@client.new_drop_collection_option("demo"))
+  // 9. 清理。到这一步已经没什么可丢的了，出错就地记一笔。
+  client.flush(@client.new_flush_option("demo")).wait() catch {
+    _ => ()
+  }
+  client.release_collection(@client.new_release_collection_option("demo")) catch {
+    _ => ()
+  }
+  client.drop_collection(@client.new_drop_collection_option("demo")) catch {
+    _ => ()
+  }
   channel.close()
+}
+
+///|
+fn main {
+  @async.run_async_main(quickstart)
 }
 ```
 
