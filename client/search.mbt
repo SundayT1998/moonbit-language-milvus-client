@@ -342,29 +342,43 @@ fn placeholder_group_bytes(
 /// `search_params`。上游总是把 `anns_field` / `topk` / `offset` /
 /// `metric_type` / `round_decimal` / `ignore_growing` / `params` 这七个键
 /// 写全（`metric_type` 为空时写空串），调用方的 `WithSearchParam`
-/// 最后覆盖。这里保持同样的顺序与键集合，方便与服务端的行为对照。
+/// 最后覆盖 —— 这里的顺序照搬，覆盖也照搬。
+///
+/// 覆盖是**无条件**的：七个固定键先按字段推导的值入表，随后 `search_params`
+/// 里同名的键就地改写。早先这里是「同名的直接丢弃」，与 `with_search_param`
+/// 的「有则替换、无则追加」语义正相反 —— 调用方传 `topk` / `anns_field`
+/// 会被静默丢掉，生效的始终是字段推导出来的值，而 `client_test.mbt` 的注释
+/// 却写着「调用方覆盖」。现在两边一致：后写的赢。
+///
+/// 顺序也要留意：`with_search_param` 是追加语义，所以迭代器那一路塞进
+/// `SearchOption.search_params` 的 `iterator` / `search_iter_v2` 等键不受
+/// 影响 —— 它们不在固定七个键里，原样留在表尾。
 fn search_params_of(option : SearchOption) -> Array[(String, String)] {
-  let params : Array[(String, String)] = []
-  let seen : Array[String] = []
-  let push = (key : String, value : String) => {
-    params.push((key, value))
-    seen.push(key)
-  }
-  push(search_param_anns_field, option.anns_field)
-  push(search_param_topk, option.limit.to_string())
-  push(search_param_offset, option.offset.to_string())
-  push(
-    search_param_metric_type,
-    match option.metric_type {
-      Some(m) => m.to_string()
-      None => ""
-    },
-  )
-  push(search_param_round_decimal, option.round_decimal.to_string())
-  push(search_param_ignore_growing, option.ignore_growing.to_string())
-  push(search_param_params, "{}")
+  let params : Array[(String, String)] = [
+    (search_param_anns_field, option.anns_field),
+    (search_param_topk, option.limit.to_string()),
+    (search_param_offset, option.offset.to_string()),
+    (
+      search_param_metric_type,
+      match option.metric_type {
+        Some(m) => m.to_string()
+        None => ""
+      },
+    ),
+    (search_param_round_decimal, option.round_decimal.to_string()),
+    (search_param_ignore_growing, option.ignore_growing.to_string()),
+    (search_param_params, "{}"),
+  ]
+  // 调用方最后覆盖：同名的就地改写，保证每个键只出现一次。
   for pair in option.search_params {
-    if !seen.contains(pair.0) {
+    let mut replaced = false
+    for i = 0; i < params.length(); i = i + 1 {
+      if params[i].0 == pair.0 {
+        params[i] = pair
+        replaced = true
+      }
+    }
+    if !replaced {
       params.push(pair)
     }
   }

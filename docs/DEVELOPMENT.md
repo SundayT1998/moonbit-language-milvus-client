@@ -211,7 +211,10 @@ README。写代码和查问题时从这里找。
 
 - `search_params` 固定写全 `anns_field` / `topk` / `offset` / `metric_type` /
   `round_decimal` / `ignore_growing` / `params` 七个键，调用方的
-  `with_search_param` 最后覆盖，与上游的键集合和顺序一致。
+  `with_search_param` **最后覆盖** —— 与上游的键集合、顺序、语义都一致。
+  覆盖是「就地改写同名键」，不是「追加一条重复键」，所以键不会出现两次。
+  注意这里曾经不对：`search_params_of` 用 `seen` 把调用方同名的七个键全丢掉，
+  `with_search_param("topk", ...)` 静默无效；现在两边一致。
 - `has_collection` 走 `DescribeCollection`，把 `CollectionNotExists` 当 `false`
   而不是失败；`has_partition` 走真 `HasPartition` RPC。两处不同是上游的选择。
 - 未显式设一致性等级时，请求里 `use_default_consistency` 为真、等级填
