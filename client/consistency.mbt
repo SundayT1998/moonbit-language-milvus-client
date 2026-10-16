@@ -32,7 +32,7 @@ pub let default_consistency_level : ConsistencyLevel = ConsistencyLevel::Bounded
 
 ///|
 /// 上游字面量 / proto 枚举值。
-pub fn ConsistencyLevel::to_int(self : ConsistencyLevel) -> Int {
+pub fn ConsistencyLevel::to_int(self : ConsistencyLevel) -> Int32 {
   match self {
     Strong => 0
     Session => 1
@@ -45,7 +45,7 @@ pub fn ConsistencyLevel::to_int(self : ConsistencyLevel) -> Int {
 ///|
 /// 反解 proto 枚举值。越界一律退回 `Bounded`（下游的默认值），
 /// 因为协议未来加档时旧客户端只能按默认档处理。
-pub fn ConsistencyLevel::from_int(value : Int) -> ConsistencyLevel {
+pub fn ConsistencyLevel::from_int(value : Int32) -> ConsistencyLevel {
   match value {
     0 => Strong
     1 => Session

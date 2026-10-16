@@ -1,7 +1,7 @@
 ///|
 /// A dense vector of `dim` float32 values.
 pub(all) struct FloatVector {
-  dim : Int
+  dim : Int32
   values : Array[Float]
 } derive(Debug)
 
@@ -9,7 +9,7 @@ pub(all) struct FloatVector {
 /// A dense vector of `dim` IEEE-754 half-precision values. The values are kept
 /// as floats and narrowed on the wire, where each one takes two bytes.
 pub(all) struct Float16Vector {
-  dim : Int
+  dim : Int32
   values : Array[Float]
 } derive(Debug)
 
@@ -17,7 +17,7 @@ pub(all) struct Float16Vector {
 /// A dense vector of `dim` bfloat16 values, kept widened to float32 so that
 /// arithmetic on them stays exact.
 pub(all) struct BFloat16Vector {
-  dim : Int
+  dim : Int32
   values : Array[Float]
 } derive(Debug)
 
@@ -26,14 +26,14 @@ pub(all) struct BFloat16Vector {
 /// `VectorField.binary_vector` expects. `dim` is always a multiple of 8, so
 /// the byte count is `dim / 8`.
 pub(all) struct BinaryVector {
-  dim : Int
+  dim : Int32
   data : Bytes
 } derive(Debug)
 
 ///|
 /// A dense vector of `dim` signed bytes.
 pub(all) struct Int8Vector {
-  dim : Int
+  dim : Int32
   data : Bytes
 } derive(Debug)
 
@@ -47,7 +47,7 @@ pub(all) struct Int8Vector {
 /// encoding by `varint`, so an index at or above `2^32 - 1` is rejected the
 /// same way upstream rejects it.
 pub(all) struct SparseFloatVector {
-  indices : Array[UInt]
+  indices : Array[UInt32]
   values : Array[Float]
 } derive(Eq, Debug)
 
@@ -55,7 +55,7 @@ pub(all) struct SparseFloatVector {
 /// A sparse row from parallel index/value arrays. Both arrays must be the
 /// same length; neither may hold a NaN value.
 pub fn SparseFloatVector::new(
-  indices : Array[UInt],
+  indices : Array[UInt32],
   values : Array[Float],
 ) -> SparseFloatVector raise SchemaError {
   if indices.length() != values.length() {
@@ -69,7 +69,7 @@ pub fn SparseFloatVector::new(
 ///|
 /// A sparse row with a single entry.
 pub fn SparseFloatVector::from_entry(
-  index : UInt,
+  index : UInt32,
   value : Float,
 ) -> SparseFloatVector {
   { indices: [index], values: [value], }
@@ -78,7 +78,7 @@ pub fn SparseFloatVector::from_entry(
 ///|
 /// The dimension the server will infer for this row: the largest index plus
 /// one, or 0 for an empty row.
-pub fn SparseFloatVector::inferred_dim(self : SparseFloatVector) -> Int {
+pub fn SparseFloatVector::inferred_dim(self : SparseFloatVector) -> Int32 {
   let mut dim = 0
   for index in self.indices {
     dim = dim.max(index.reinterpret_as_int() + 1)
@@ -195,7 +195,7 @@ pub fn SparseFloatVector::from_bytes(
       "sparse vector payload must be a multiple of 8 bytes, got \{bytes.length()}",
     )
   }
-  let indices : Array[UInt] = []
+  let indices : Array[UInt32] = []
   let values : Array[Float] = []
   for i = 0; i * 8 < bytes.length(); i = i + 1 {
     let base = i * 8
@@ -232,7 +232,7 @@ pub fn SparseFloatVector::from_bytes(
 /// Rounding to nearest even is done on the integer mantissa rather than on
 /// the value, so no intermediate is ever held in a wider float: this is what
 /// the read side in `@column` inverts, bit for bit.
-pub fn float16_from_float(value : Float) -> UInt {
+pub fn float16_from_float(value : Float) -> UInt32 {
   let bits = value.reinterpret_as_uint()
   let sign = (bits >> 16) & 0x8000U
   let exponent = (bits >> 23) & 0xFFU
@@ -266,7 +266,7 @@ pub fn float16_from_float(value : Float) -> UInt {
 
 ///|
 /// `value >> shift` rounded half-to-even on the discarded bits.
-fn round_half_even(value : UInt, shift : Int) -> UInt {
+fn round_half_even(value : UInt32, shift : Int32) -> UInt32 {
   if shift <= 0 {
     return value
   }

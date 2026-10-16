@@ -295,7 +295,7 @@ fn param_map(pairs : Array[@common.KeyValuePair]) -> Map[String, String] {
 /// 第 `n` 次调用的请求体，解码成 `QueryRequest`。
 fn query_request_at(
   recorded : Ref[Array[Recorded]],
-  n : Int,
+  n : Int32,
 ) -> @milvus.QueryRequest raise {
   @lib.Read::read_with_limit(
     @lib.LimitedReader::LimitedReader(
@@ -308,7 +308,7 @@ fn query_request_at(
 /// 第 `n` 次调用的请求体，解码成 `SearchRequest`。
 fn search_request_at(
   recorded : Ref[Array[Recorded]],
-  n : Int,
+  n : Int32,
 ) -> @milvus.SearchRequest raise {
   @lib.Read::read_with_limit(
     @lib.LimitedReader::LimitedReader(

@@ -114,7 +114,7 @@ pub fn WriteOption::with_partition(
 /// 只在 upsert 上有意义；insert 上设了不会报错，只是被忽略。
 pub fn WriteOption::with_partial_update(
   self : WriteOption,
-  partial_update? : Bool = true,
+  partial_update~ : Bool = true,
 ) -> WriteOption {
   { ..self, partial_update, }
 }
@@ -122,7 +122,7 @@ pub fn WriteOption::with_partial_update(
 ///|
 /// 所有列的行数必须一致，否则服务端只会按第一列的长度算 `num_rows`，
 /// 多出来的数据被静默丢掉。上游 `processInsertColumns` 也做这一步校验。
-fn check_row_counts(columns : Array[WriteColumn]) -> Int raise ClientError {
+fn check_row_counts(columns : Array[WriteColumn]) -> Int32 raise ClientError {
   if columns.length() == 0 {
     raise ClientError::Encode("write requires at least one column")
   }
@@ -141,7 +141,7 @@ fn check_row_counts(columns : Array[WriteColumn]) -> Int raise ClientError {
 /// 列数组 → `FieldData` 数组，并返回行数。
 fn build_fields_data(
   columns : Array[WriteColumn],
-) -> (Array[@schema.FieldData], Int) raise ClientError {
+) -> (Array[@schema.FieldData], Int32) raise ClientError {
   let rows = check_row_counts(columns)
   let fields : Array[@schema.FieldData] = []
   for column in columns {

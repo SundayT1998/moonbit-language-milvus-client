@@ -29,8 +29,8 @@
 /// 这是本 Issue 的核心入口：`Query` / `Search` 返回的每一种列类型都从这里过。
 pub fn from_field_data(
   field : @schema.FieldData,
-  begin? : Int = 0,
-  end? : Int = -1,
+  begin~ : Int32 = 0,
+  end~ : Int32 = -1,
 ) -> Column raise ColumnError {
   let type_ = field.type_
   if valid_data_conflicts(field) {

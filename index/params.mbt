@@ -23,7 +23,7 @@
 /// 这里在构造期就拦下，错误信息带上参数名与取值范围。
 pub suberror IndexParamError {
   /// 参数越界：参数名、给定值、期望范围
-  OutOfRange(key~ : String, value~ : Int, expected~ : String)
+  OutOfRange(key~ : String, value~ : Int32, expected~ : String)
   /// 参数组合在该索引类型上不被接受：索引类型、说明
   InvalidCombination(index_type~ : String, reason~ : String)
   /// 空集合等前置条件不满足
@@ -100,7 +100,7 @@ pub fn IndexParams::get(self : IndexParams, key : String) -> String? {
 
 ///|
 /// 键数量。
-pub fn IndexParams::size(self : IndexParams) -> Int {
+pub fn IndexParams::size(self : IndexParams) -> Int32 {
   self.entries.length()
 }
 
@@ -121,7 +121,7 @@ pub fn IndexParams::from_pairs(pairs : Array[(String, String)]) -> IndexParams {
 pub fn IndexParams::set_int(
   self : IndexParams,
   key : String,
-  value : Int,
+  value : Int32,
 ) -> Unit {
   self.set(key, value.to_string())
 }

@@ -65,7 +65,7 @@ pub fn Code::name(self : Code) -> String {
 }
 
 ///|
-pub fn Code::to_int(self : Code) -> Int {
+pub fn Code::to_int(self : Code) -> Int32 {
   match self {
     Ok => 0
     Cancelled => 1
@@ -90,7 +90,7 @@ pub fn Code::to_int(self : Code) -> Int {
 ///|
 /// 规范数值还原成枚举。未知数值归 `Unknown`；
 /// 原始数值不丢，`RpcError::raw_code` 留着。
-pub fn Code::from_int(n : Int) -> Code {
+pub fn Code::from_int(n : Int32) -> Code {
   match n {
     0 => Ok
     1 => Cancelled
@@ -119,7 +119,7 @@ pub fn Code::from_int(n : Int) -> Code {
 /// 用 `suberror` 而不是 `struct`：调用侧要能 `raise` 它，
 /// 否则「超时错误可被上层识别」就只剩比较返回值一条路。
 pub suberror RpcError {
-  RpcError(Code, Int, String)
+  RpcError(Code, Int32, String)
 }
 
 ///|
@@ -131,7 +131,7 @@ pub fn RpcError::code(self : RpcError) -> Code {
 
 ///|
 /// 线上原始 `grpc-status` 数值。未知码也不丢。
-pub fn RpcError::raw_code(self : RpcError) -> Int {
+pub fn RpcError::raw_code(self : RpcError) -> Int32 {
   let RpcError(_, raw_code, _) = self
   raw_code
 }
@@ -179,7 +179,7 @@ pub fn RpcError::same_kind(self : RpcError, other : RpcError) -> Bool {
 
 ///|
 /// 把 gRPC 层的 (status, message) 包成上层能判别的错误。
-pub fn RpcError::new(raw_code : Int, message : String) -> RpcError {
+pub fn RpcError::new(raw_code : Int32, message : String) -> RpcError {
   RpcError(Code::from_int(raw_code), raw_code, message)
 }
 

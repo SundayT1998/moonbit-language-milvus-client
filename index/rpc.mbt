@@ -46,12 +46,12 @@ pub(all) enum IndexState {
   Failed
   Retry
   /// 上游新增而本客户端尚未认识的值。保留原始序号，不猜测语义。
-  Unknown(Int)
+  Unknown(Int32)
 } derive(Eq, Debug)
 
 ///|
 /// 上游枚举序号。
-pub fn IndexState::to_int(self : IndexState) -> Int {
+pub fn IndexState::to_int(self : IndexState) -> Int32 {
   match self {
     None => 0
     Unissued => 1
@@ -65,7 +65,7 @@ pub fn IndexState::to_int(self : IndexState) -> Int {
 
 ///|
 /// 反解上游枚举序号。
-pub fn IndexState::from_int(n : Int) -> IndexState {
+pub fn IndexState::from_int(n : Int32) -> IndexState {
   match n {
     0 => None
     1 => Unissued
@@ -108,7 +108,7 @@ pub fn CreateIndexRequest::from_index(
   collection_name : String,
   field_name : String,
   index : Index,
-  db_name? : String = "",
+  db_name~ : String = "",
 ) -> CreateIndexRequest raise IndexParamError {
   if collection_name == "" {
     raise InvalidArgument(reason="collection_name must not be empty")
@@ -138,7 +138,7 @@ pub(all) struct DescribeIndexRequest {
 /// 列出某集合的全部索引。
 pub fn DescribeIndexRequest::list_all(
   collection_name : String,
-  db_name? : String = "",
+  db_name~ : String = "",
 ) -> DescribeIndexRequest raise IndexParamError {
   if collection_name == "" {
     raise InvalidArgument(reason="collection_name must not be empty")
@@ -151,7 +151,7 @@ pub fn DescribeIndexRequest::list_all(
 pub fn DescribeIndexRequest::by_name(
   collection_name : String,
   index_name : String,
-  db_name? : String = "",
+  db_name~ : String = "",
 ) -> DescribeIndexRequest raise IndexParamError {
   if collection_name == "" {
     raise InvalidArgument(reason="collection_name must not be empty")
@@ -169,7 +169,7 @@ pub fn DescribeIndexRequest::by_name(
 pub fn DescribeIndexRequest::by_field(
   collection_name : String,
   field_name : String,
-  db_name? : String = "",
+  db_name~ : String = "",
 ) -> DescribeIndexRequest raise IndexParamError {
   if collection_name == "" {
     raise InvalidArgument(reason="collection_name must not be empty")
@@ -195,7 +195,7 @@ pub(all) struct DropIndexRequest {
 pub fn DropIndexRequest::new(
   collection_name : String,
   index_name : String,
-  db_name? : String = "",
+  db_name~ : String = "",
 ) -> DropIndexRequest raise IndexParamError {
   if collection_name == "" {
     raise InvalidArgument(reason="collection_name must not be empty")

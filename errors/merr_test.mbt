@@ -75,7 +75,7 @@ test "unknown modern code is preserved (upstream TestUnknownModernCodeIsPreserve
 ///|
 /// 上游 `TestLegacyStatusConversion` 的表格：legacy 码 → modern 码逐条对齐。
 test "legacy status conversion (upstream TestLegacyStatusConversion)" {
-  let cases : Array[(@common.ErrorCode, Int)] = [
+  let cases : Array[(@common.ErrorCode, Int32)] = [
     (@common.ErrorCode::NotReadyServe, 1),
     (@common.ErrorCode::CollectionNotExists, 100),
     (@common.ErrorCode::IllegalArgument, 1100),
@@ -215,7 +215,7 @@ test "code of no error is zero (upstream merr.Code)" {
 /// `IsRetryableErr` 只认服务端下发的 retriable 位，不做本地猜测。
 /// 覆盖限流 / 内存 / 磁盘 / 连接类这些上游标记为可重试的码。
 test "retriable follows server bit only (upstream IsRetryableErr)" {
-  let retriable_codes : Array[Int] = [1, 3, 7, 8, 11, 2400]
+  let retriable_codes : Array[Int32] = [1, 3, 7, 8, 11, 2400]
   for code in retriable_codes {
     let status : @common.Status = {
       code,
@@ -227,7 +227,7 @@ test "retriable follows server bit only (upstream IsRetryableErr)" {
     }
     assert_true(@errors.is_retryable_err(@errors.from_status(status)))
   }
-  let non_retriable_codes : Array[Int] = [5, 100, 700, 1100, 1101, 600, 500]
+  let non_retriable_codes : Array[Int32] = [5, 100, 700, 1100, 1101, 600, 500]
   for code in non_retriable_codes {
     let status : @common.Status = {
       code,
