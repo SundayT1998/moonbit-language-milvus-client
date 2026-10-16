@@ -401,8 +401,10 @@ fn malformed_vector_column() -> String? {
 /// 1. **翻到末尾**：上限 `with_limit(3)`、批大小 3（整数倍，与 `limit` 的
 ///    零点判定无关 —— 那一处回归在 `client/iterator_test.mbt` 里按非整数倍
 ///    钉住）。走到 `EndOfIterator` 时会自动补一发收尾。
-/// 2. **显式 `close`**：建一个新迭代器，只取一批就直接关 —— 这一发**不能**
-///    是 `nq = 0` / `NotSet`，v3.0.2 会拒（`nq [0] is invalid`）。第一段里
+/// 2. **不设上限，取一批就 `close`**：`remaining` 默认是「无限」的 `-1`，
+///    上限判定若只写 `<= 0` 就会把它也当成用完，第一发 `next` 直接报
+///    `EndOfIterator` —— 这一屏就是被这条打红的。收尾那一发**不能**是
+///    `nq = 0` / `NotSet`，v3.0.2 会拒（`nq [0] is invalid`）。第一段里
 ///    `close` 是在 `exhausted` 之后调的，根本没发请求，所以只有这第二段才
 ///    真的走 `Client::cancel_search`。
 async fn search_iterator_screen(

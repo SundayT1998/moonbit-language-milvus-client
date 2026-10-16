@@ -336,7 +336,7 @@ fn ids_of(page : @client.QueryResult) -> Array[Int64] raise {
 }
 
 ///|
-async test "query_iterator 连翻三批，第三批空即收尾" {
+async test "query_iterator 连翻三批，第三批取完上限即收尾" {
   let (client, _, recorded) = iter_client([
     (
       @client.describe_collection_path,
@@ -349,7 +349,8 @@ async test "query_iterator 连翻三批，第三批空即收尾" {
   let iterator = client.query_iterator(
     @client.new_query_iterator_option("demo")
     .with_output_fields(["name"])
-    .with_batch_size(2),
+    .with_batch_size(2)
+    .with_limit(5L),
   ) catch {
     _ => fail("query_iterator should succeed")
   }
@@ -369,7 +370,7 @@ async test "query_iterator 连翻三批，第三批空即收尾" {
   let second = iterator.next() catch { _ => fail("second batch expected") }
   assert_eq(ids_of(second), [3L])
   assert_eq(query_request_at(recorded, 2).expr, "id > 2")
-  // 第三批：服务端回空
+  // 第三批（1 行）把上限 5 用完了，本地收尾，不再问服务端
   let outcome : Result[Unit, @client.IteratorError] = try {
     ignore(iterator.next())
     Ok(())
@@ -380,7 +381,7 @@ async test "query_iterator 连翻三批，第三批空即收尾" {
     Ok(_) => fail("expected EndOfIterator")
     Err(err) => assert_true(err.is_end_of_iterator())
   }
-  // 取空之后迭代器自己收尾了：内部状态一致，也对调用方报 EndOfIterator
+  // 上限用完就自己收尾了：内部状态一致，也对调用方报 EndOfIterator
   assert_true(iterator.is_closed())
   // 收尾之后再问一次还是 EndOfIterator，而不是又发一发
   let again : Result[Unit, @client.IteratorError] = try {
@@ -409,7 +410,8 @@ async test "query_iterator 把 filter 与主键游标用 and 拼起来" {
   let iterator = client.query_iterator(
     @client.new_query_iterator_option("demo")
     .with_filter("  name != \"skip\"  ")
-    .with_batch_size(1),
+    .with_batch_size(1)
+    .with_limit(2L),
   ) catch {
     _ => fail("query_iterator should succeed")
   }
@@ -430,17 +432,47 @@ async test "query_iterator 字符串主键的游标带双引号" {
       @client.describe_collection_path,
       describe_response(@schema.DataType::VarChar),
     ),
-    (@client.query_path, query_results([], [])),
+    (@client.query_path, string_pk_page()),
   ])
   let iterator = client.query_iterator(
-    @client.new_query_iterator_option("demo").with_batch_size(1),
+    @client.new_query_iterator_option("demo").with_batch_size(1).with_limit(1L),
   ) catch {
     _ => fail("query_iterator should succeed")
   }
-  ignore(iterator.next()) catch {
-    _ => ()
-  }
+  let page = iterator.next() catch { _ => fail("first batch expected") }
+  assert_eq(page.len(), 1)
+  // 主键是字符串时游标取字符串原值
+  let key = id_column(page)
+  assert_eq(key.get_as_string(0), "z")
+  // 上限 1 正好用完，第二批发不出去
   assert_eq(recorded.val.length(), 2)
+}
+
+///|
+/// 一页字符串主键的结果。
+fn string_pk_page() -> Bytes raise {
+  encode(@milvus.QueryResults::{
+    status: Some(ok_status()),
+    fields_data: [
+      @schema.FieldData::{
+        type_: @schema.DataType::VarChar,
+        field_name: "id",
+        field_id: 100L,
+        is_dynamic: false,
+        valid_data: [],
+        field: @schema.FieldData_Field::Scalars(@schema.ScalarField::{
+          valid_data: [],
+          data: @schema.ScalarField_Data::StringData(
+            @schema.StringArray::StringArray(["z"]),
+          ),
+        }),
+      },
+    ],
+    collection_name: "demo",
+    output_fields: ["id"],
+    session_ts: 0UL,
+    primary_field_name: "id",
+  })
 }
 
 ///|
@@ -475,8 +507,84 @@ async test "query_iterator 上限到了就不再发请求" {
 }
 
 ///|
-async test "query_iterator 上限不跨批截断" {
-  let (client, _, _) = iter_client([
+/// 不设上限（默认 `iterator_unlimited = -1`）时，`next` 第一发就必须真的
+/// 去问服务端。曾经把「上限用完」写成 `remaining <= 0`，而「无限」的写法
+/// 正是 `-1` —— 新的迭代器一发都不发，第一次 `next` 就报 `EndOfIterator`。
+/// 单测原先每条都显式 `with_limit`，所以只有真 Milvus 上的集成自检踩到。
+async test "query_iterator 不设上限时照常取数" {
+  let (client, _, recorded) = iter_client([
+    (
+      @client.describe_collection_path,
+      describe_response(@schema.DataType::Int64),
+    ),
+    (@client.query_path, query_results([1L, 2L], ["a", "b"])),
+    (@client.query_path, query_results([3L], ["c"])),
+    (@client.query_path, empty_query_results()),
+  ])
+  let iterator = client.query_iterator(
+    @client.new_query_iterator_option("demo")
+    .with_output_fields(["name"])
+    .with_batch_size(2),
+  ) catch {
+    _ => fail("query_iterator should succeed")
+  }
+  let first = iterator.next() catch { _ => fail("first batch expected") }
+  assert_eq(ids_of(first), [1L, 2L])
+  let second = iterator.next() catch { _ => fail("second batch expected") }
+  assert_eq(ids_of(second), [3L])
+  let outcome : Result[Unit, @client.IteratorError] = try {
+    ignore(iterator.next())
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected EndOfIterator")
+    Err(err) => assert_true(err.is_end_of_iterator())
+  }
+  // DescribeCollection + 两批 + 取空那一发
+  assert_eq(recorded.val.length(), 4)
+}
+
+///|
+/// `SearchIterator` 的同一处回归：不设上限时第一发要真发出去。
+async test "search_iterator 不设上限时照常取数" {
+  let (client, _, recorded) = iter_client([
+    (
+      @client.describe_collection_path,
+      describe_response(@schema.DataType::Int64),
+    ),
+    (@client.search_path, search_results([7L, 8L], [0.9, 0.8], "tok-1", 0.8)),
+    (@client.search_path, search_results([], [], "tok-2", 0.0)),
+    // 翻到空之后迭代器自己补的那一发收尾
+    (@client.search_path, search_results([], [], "tok-2", 0.0)),
+  ])
+  let iterator = client.search_iterator(
+    @client.new_search_iterator_option("demo", 10, [
+      @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
+    ]).with_batch_size(2),
+  ) catch {
+    _ => fail("search_iterator should succeed")
+  }
+  let first = iterator.next() catch { _ => fail("first batch expected") }
+  assert_eq(first.hits.length(), 2)
+  let outcome : Result[Unit, @client.IteratorError] = try {
+    ignore(iterator.next())
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected EndOfIterator")
+    Err(err) => assert_true(err.is_end_of_iterator())
+  }
+  // DescribeCollection + 两批 + 收尾
+  assert_eq(recorded.val.length(), 4)
+}
+
+///|
+async test "query_iterator 上限跨批截断" {
+  let (client, _, recorded) = iter_client([
     (
       @client.describe_collection_path,
       describe_response(@schema.DataType::Int64),
@@ -488,10 +596,64 @@ async test "query_iterator 上限不跨批截断" {
   ) catch {
     _ => fail("query_iterator should succeed")
   }
-  // 上限 2、批大小 3：服务端给了 3 行，原样返回 3 行。
-  // 这是与上游不同的地方，见 iterator.mbt 文件头第 2 条。
+  // 上限 2、批大小 3：服务端给了 3 行，多出来的那行本地切掉。
+  // 见 iterator.mbt 文件头第 2 条。
   let batch = iterator.next() catch { _ => fail("first batch expected") }
-  assert_eq(batch.len(), 3)
+  assert_eq(batch.len(), 2)
+  assert_eq(ids_of(batch), [1L, 2L])
+  // 切短的批次里列也一起切了，不是直接拿原列冒充
+  assert_eq(batch.column("name").unwrap().get_as_string(1), "b")
+  // 上限用完：下一批直接 EndOfIterator，不再问服务端
+  let outcome : Result[Unit, @client.IteratorError] = try {
+    ignore(iterator.next())
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected EndOfIterator")
+    Err(err) => assert_true(err.is_end_of_iterator())
+  }
+  assert_eq(recorded.val.length(), 2)
+}
+
+///|
+/// `limit` 不是 `batch_size` 整数倍时的回归：`remaining` 按整批扣减会
+/// 跨过 0 落到负数，判定必须用 `<= 0` 而不是 `== 0`，否则迭代器一路翻到
+/// 表尾，上限彻底失效。
+async test "query_iterator 上限跨过零点后仍然收尾" {
+  let (client, _, recorded) = iter_client([
+    (
+      @client.describe_collection_path,
+      describe_response(@schema.DataType::Int64),
+    ),
+    // 批大小 3、上限 4：4 - 3 = 1，再翻一批就是 1 - 3 = -2。
+    (@client.query_path, query_results([1L, 2L, 3L], ["a", "b", "c"])),
+    (@client.query_path, query_results([4L, 5L, 6L], ["d", "e", "f"])),
+  ])
+  let iterator = client.query_iterator(
+    @client.new_query_iterator_option("demo").with_batch_size(3).with_limit(4L),
+  ) catch {
+    _ => fail("query_iterator should succeed")
+  }
+  let first = iterator.next() catch { _ => fail("first batch expected") }
+  assert_eq(ids_of(first), [1L, 2L, 3L])
+  let second = iterator.next() catch { _ => fail("second batch expected") }
+  // 第二批发的是整批，但上限只允许再拿 1 行
+  assert_eq(ids_of(second), [4L])
+  // 上限用完：不再问服务端
+  let outcome : Result[Unit, @client.IteratorError] = try {
+    ignore(iterator.next())
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected EndOfIterator")
+    Err(err) => assert_true(err.is_end_of_iterator())
+  }
+  // DescribeCollection + 两批，没有第三发
+  assert_eq(recorded.val.length(), 3)
 }
 
 ///|
@@ -541,7 +703,7 @@ async test "query_iterator 主键不可排序时报 Setup" {
 
 ///|
 async test "query_iterator 服务端没回主键列时报 Setup" {
-  let (client, _, _) = iter_client([
+  let (client, _, recorded) = iter_client([
     (
       @client.describe_collection_path,
       describe_response(@schema.DataType::Int64),
@@ -549,7 +711,7 @@ async test "query_iterator 服务端没回主键列时报 Setup" {
     (@client.query_path, only_name_payload()),
   ])
   let iterator = client.query_iterator(
-    @client.new_query_iterator_option("demo").with_batch_size(1),
+    @client.new_query_iterator_option("demo").with_batch_size(1).with_limit(1L),
   ) catch {
     _ => fail("query_iterator should succeed")
   }
@@ -564,6 +726,8 @@ async test "query_iterator 服务端没回主键列时报 Setup" {
     Err(Setup(msg)) => assert_true(msg.contains("primary key column"))
     Err(_) => fail("expected Setup")
   }
+  // 坏页当场报出来，没有第二发；那发空响应留着当兜底
+  assert_eq(recorded.val.length(), 2)
 }
 
 ///|
@@ -637,7 +801,8 @@ async test "search_iterator 连翻两批并把 token 带回去" {
       @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
     ])
     .with_anns_field("vector")
-    .with_batch_size(2),
+    .with_batch_size(2)
+    .with_limit(5L),
   ) catch {
     _ => fail("search_iterator should succeed")
   }
@@ -663,7 +828,8 @@ async test "search_iterator 连翻两批并把 token 带回去" {
   assert_true(
     second_params[@client.iterator_search_last_bound_key].has_prefix("0.8"),
   )
-  // 第三批空 -> 收尾，再发的那一发把服务端会话关掉（不带 token）
+  // 第三批（1 条）把上限 5 用完 -> 收尾，再发的那一发把服务端会话
+  // 关掉（不带 token）
   let outcome : Result[Unit, @client.IteratorError] = try {
     ignore(iterator.next())
     Ok(())
@@ -674,7 +840,7 @@ async test "search_iterator 连翻两批并把 token 带回去" {
     Ok(_) => fail("expected EndOfIterator")
     Err(err) => assert_true(err.is_end_of_iterator())
   }
-  // 第三批（空）之后迭代器自己补了一发收尾请求：带着上一批的 token，
+  // 上限用完之后迭代器自己补了一发收尾请求：带着上一批的 token，
   // 用 nq = 1 的占位符把服务端那个游标会话收掉 —— nq = 0 / NotSet 被
   // v3.0.2 拒（见 `Client::cancel_search`）。
   let close_request = search_request_at(recorded, 4)
@@ -769,9 +935,9 @@ async test "search_iterator 服务端不支持 v2 时报 Setup" {
     (@client.search_path, encode(without_token)),
   ])
   let iterator = client.search_iterator(
-    @client.new_search_iterator_option("demo", 10, [
+    @client.new_search_iterator_option("demo", 1, [
       @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
-    ]),
+    ]).with_limit(1L),
   ) catch {
     _ => fail("search_iterator should succeed")
   }
@@ -801,7 +967,9 @@ async test "search_iterator Close 会发出收尾请求" {
   let iterator = client.search_iterator(
     @client.new_search_iterator_option("demo", 10, [
       @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
-    ]).with_batch_size(1),
+    ])
+    .with_batch_size(1)
+    .with_limit(1L),
   ) catch {
     _ => fail("search_iterator should succeed")
   }
@@ -877,7 +1045,9 @@ async test "search_iterator 收尾请求失败时 Close 仍然返回 true" {
   let iterator = client.search_iterator(
     @client.new_search_iterator_option("demo", 10, [
       @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
-    ]).with_batch_size(1),
+    ])
+    .with_batch_size(1)
+    .with_limit(1L),
   ) catch {
     _ => fail("search_iterator should succeed")
   }
@@ -925,6 +1095,57 @@ async test "search_iterator 上限到了就不再发请求" {
 }
 
 ///|
+/// 检索迭代器的同一处回归：非整数倍上限 + 收尾那一发也照发。
+async test "search_iterator 上限跨过零点后仍然收尾" {
+  let (client, _, recorded) = iter_client([
+    (
+      @client.describe_collection_path,
+      describe_response(@schema.DataType::Int64),
+    ),
+    (
+      @client.search_path,
+      search_results([7L, 8L, 9L], [0.9, 0.8, 0.7], "tok-1", 0.7),
+    ),
+    (
+      @client.search_path,
+      search_results([10L, 11L, 12L], [0.6, 0.5, 0.4], "tok-2", 0.4),
+    ),
+    // 上限用完时补的收尾一发
+    (@client.search_path, search_results([], [], "tok-3", 0.0)),
+  ])
+  let iterator = client.search_iterator(
+    @client.new_search_iterator_option("demo", 10, [
+      @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
+    ])
+    .with_batch_size(3)
+    .with_limit(4L),
+  ) catch {
+    _ => fail("search_iterator should succeed")
+  }
+  let first = iterator.next() catch { _ => fail("first batch expected") }
+  assert_eq(first.hits.length(), 3)
+  let second = iterator.next() catch { _ => fail("second batch expected") }
+  // 上限只剩 1 行，第二批切到 1 条
+  assert_eq(second.hits.length(), 1)
+  assert_eq(second.hits[0].id, "10")
+  let outcome : Result[Unit, @client.IteratorError] = try {
+    ignore(iterator.next())
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected EndOfIterator")
+    Err(err) => assert_true(err.is_end_of_iterator())
+  }
+  // DescribeCollection + 两批 + 收尾
+  assert_eq(recorded.val.length(), 4)
+  // 收尾那一发不是 `nq = 0`：v3.0.2 拒 `nq = 0` / `NotSet`，得用一个真实
+  // 维度的占位符凑一发（见 `Client::cancel_search`）。
+  assert_eq(search_request_at(recorded, 3).nq, 1L)
+}
+
+///|
 async test "search_iterator 空结果第一批发完就收尾" {
   let (client, _, recorded) = iter_client([
     (
@@ -936,9 +1157,9 @@ async test "search_iterator 空结果第一批发完就收尾" {
     (@client.search_path, search_results([], [], "tok-0", 0.0)),
   ])
   let iterator = client.search_iterator(
-    @client.new_search_iterator_option("demo", 10, [
+    @client.new_search_iterator_option("demo", 3, [
       @column.ColumnValue::FloatVector(2, [[0.1, 0.2]]),
-    ]),
+    ]).with_limit(3L),
   ) catch {
     _ => fail("search_iterator should succeed")
   }

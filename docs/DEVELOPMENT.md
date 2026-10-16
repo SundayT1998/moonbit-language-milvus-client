@@ -240,9 +240,11 @@ README。写代码和查问题时从这里找。
   invalid ... should be in range [1, 16384]`）。现在发的是「一个占位符、
   `topk = 1`」，服务端认，会话真能收掉。
 - `QueryIterator` 在服务端没有会话，`close` 只是本地标记。
-- `with_limit` 是整体上限，只决定「还发不发下一次请求」，**不跨批截断**：
-  `with_limit(10)` 配 `with_batch_size(100)` 时一次拿到 100 行。上游的
-  `SearchIterator` 会切短超出上限的那一批，本移植统一不切。
+- `with_limit` 是整体上限，服务端按批大小回整批，**超出上限的那一批本地切短**
+  再返回，两条迭代器一致：`with_limit(4)` 配 `with_batch_size(3)` 拿到的是
+  3 + 1 行，不是 3 + 3 行。判定用 `remaining <= 0` 而不是 `== 0` ——
+  `remaining` 按整批扣减，非整数倍上限会直接跨过零点（4 → 1 → -2），
+  用等号就永远等不到终点，迭代器会一路翻到表尾。这两条缺一不可。
 - `SearchIterator` 依赖服务端实现 SearchIterator V2。老服务端不给
   `search_iterator_v2_results`，`next` 会报 `Setup`（上游这里是
   `ErrServerVersionIncompatible`）。
