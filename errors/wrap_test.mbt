@@ -15,7 +15,7 @@ test "wrap keeps code identity for every sentinel" {
     @errors.wrap_err_parameter_invalid_msg("bad thing"),
     @errors.wrap_err_parameter_missing_msg("name required"),
   ]
-  let expected_codes : Array[Int] = [1, 5, 100, 109, 700, 1100, 1100, 1101]
+  let expected_codes : Array[Int32] = [1, 5, 100, 109, 700, 1100, 1100, 1101]
   assert_eq(wrapped.length(), expected_codes.length())
   for i in 0..<wrapped.length() {
     assert_eq(@errors.error_code(Some(wrapped[i])), expected_codes[i])

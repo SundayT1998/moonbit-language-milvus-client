@@ -36,10 +36,13 @@
 // 2. **`limit` 不跨批截断**。上游在 `SearchIterator` 里会把超出上限的那
 //    一批切短（而 `QueryIterator` 切的是中间结果，切了等于白切）。本移植
 //    两条路统一：上限只决定「还发不发下一次请求」，已取回的批次原样返回。
-// 3. **收尾会真去关服务端会话**。服务端侧游标不会自己过期，所以
-//    `SearchIterator` 翻到空、以及调用方显式 `close` 时，都补一次
-//    `nq = 0` 的空检索把 session 收掉，而不是只打个本地标记。这条是 #18
-//    验收标准里的「不泄漏服务端资源」；上游在翻到空时是靠服务端兜底的。
+// 3. **收尾会真去关服务端会话，但是 best-effort**。服务端侧游标不会自己
+//    过期，所以 `SearchIterator` 翻到空、以及调用方显式 `close` 时，都补
+//    一发检索把 session 收掉，而不是只打个本地标记。这条是 #18 验收标准
+//    里的「不泄漏服务端资源」；上游在翻到空时是靠服务端兜底的。
+//    收尾失败**不改变 `close` 的返回值、也不往上抛**：调用方多半把它挂在
+//    `defer` 里，拿到 `false` 只会以为自己用错了，而服务端的 v2 游标本身
+//    有 TTL，会话到期会自己回收。
 
 ///|
 /// `search_params` 里与迭代器相关的键。字面量与上游逐条对齐。
@@ -150,7 +153,7 @@ fn decode_failure(message : String) -> IteratorError {
 ///|
 /// 批大小必须是正数。服务端收到 `limit = 0` 会回空，迭代器就此静默终止，
 /// 比少查几行更难查，所以在本地挡下。
-fn validate_batch_size(batch_size : Int) -> Unit raise IteratorError {
+fn validate_batch_size(batch_size : Int32) -> Unit raise IteratorError {
   if batch_size <= 0 {
     raise IteratorError::Setup(
       "batch size must be greater than 0, got " + batch_size.to_string(),
@@ -175,7 +178,7 @@ pub(all) struct QueryIteratorOption {
   partition_names : Array[String]
   expr : String
   output_fields : Array[String]
-  batch_size : Int
+  batch_size : Int32
   limit : Int64
   consistency_level : ConsistencyLevel?
 } derive(Debug)
@@ -199,7 +202,7 @@ pub fn new_query_iterator_option(
 ///|
 pub fn QueryIteratorOption::with_batch_size(
   self : QueryIteratorOption,
-  batch_size : Int,
+  batch_size : Int32,
 ) -> QueryIteratorOption {
   { ..self, batch_size, }
 }
@@ -280,7 +283,7 @@ pub struct QueryIterator {
   priv partition_names : Array[String]
   priv expr : String
   priv output_fields : Array[String]
-  priv batch_size : Int
+  priv batch_size : Int32
   priv consistency_level : ConsistencyLevel?
   priv mut remaining : Int64
   priv mut last : QueryCursor?
@@ -524,7 +527,7 @@ pub async fn QueryIterator::next(
 /// 再加批大小与上限），这里照着嵌一个 `SearchOption`。
 pub(all) struct SearchIteratorOption {
   base : SearchOption
-  batch_size : Int
+  batch_size : Int32
   limit : Int64
 }
 
@@ -539,7 +542,7 @@ pub(all) struct SearchIteratorOption {
 /// 这里直接不放那个数 —— 少一个会被改写的东西。
 pub fn new_search_iterator_option(
   collection_name : String,
-  limit : Int,
+  limit : Int32,
   vectors : Array[@column.ColumnValue],
 ) -> SearchIteratorOption {
   let base = new_search_option(collection_name, limit, vectors)
@@ -551,7 +554,7 @@ pub fn new_search_iterator_option(
 ///|
 pub fn SearchIteratorOption::with_batch_size(
   self : SearchIteratorOption,
-  batch_size : Int,
+  batch_size : Int32,
 ) -> SearchIteratorOption {
   { ..self, batch_size, }
 }
@@ -619,7 +622,7 @@ pub fn SearchIteratorOption::with_search_param(
 ///|
 pub fn SearchIteratorOption::with_ignore_growing(
   self : SearchIteratorOption,
-  ignore_growing? : Bool = true,
+  ignore_growing~ : Bool = true,
 ) -> SearchIteratorOption {
   { ..self, base: self.base.with_ignore_growing(ignore_growing~), }
 }
@@ -725,7 +728,7 @@ pub fn SearchIterator::is_closed(self : SearchIterator) -> Bool {
 /// `search_iter_id` / `search_iter_last_bound` 只有拿到游标之后才有。
 fn SearchIterator::search_params(
   iterator : SearchIterator,
-  batch_size : Int,
+  batch_size : Int32,
   collection_id : Int64,
   with_cursor : Bool,
 ) -> Array[(String, String)] {
@@ -819,52 +822,63 @@ pub async fn SearchIterator::next(
 }
 
 ///|
-/// 补一次空检索把服务端那个游标会话收掉。
+/// 补一发检索把服务端那个游标会话收掉。
 ///
 /// 服务端侧的游标不会自己过期，所以走到末尾、或者调用方显式 `close` 的
 /// 时候，都得主动告诉服务端一声，否则它会为一个没人再读的会话留着资源。
 /// 上游在 `SearchIterator` 翻到空时**不**收尾，靠服务端兜底；这里两处都收，
 /// 理由就是上面这条（验收标准里的「不泄漏服务端资源」）。
 ///
-/// 失败往上抛，由调用方决定怎么处置：翻到末尾时那个失败只说明「服务端
-/// 会话收尾没成功」，不该盖掉 `EndOfIterator`；显式 `close` 时调用方拿
-/// `false` 也就够用了。两处都不想让一个收尾动作变成主流程的错误来源。
+/// 这一发是 **best-effort**：失败往上抛，由调用方决定怎么处置。翻到末尾时
+/// 那个失败只说明「服务端会话收尾没成功」，不该盖掉 `EndOfIterator`；
+/// 显式 `close` 时也只记在本地状态里，不翻成 `false`（见 `close` 的注释）。
+///
+/// 带上一批的续页凭据：服务端靠 `search_iter_id` 找到那个会话。`vectors`
+/// 不能空 —— v3.0.2 的 `searchShard` 校验会拒 `nq = 0` / `NotSet`，用一个
+/// 与实际维度一致的向量凑一发，见 `Client::cancel_search`。
 async fn SearchIterator::stop_server_session(
   iterator : SearchIterator,
 ) -> Unit raise IteratorError {
   // 从没取过一批：服务端那边没有任何会话可关。
-  if iterator.cursor is None {
-    return
+  match iterator.cursor {
+    None => return
+    Some(_) => ()
   }
   let option : SearchOption = {
     ..iterator.option.base,
-    vectors: [],
-    search_params: iterator.search_params(0, iterator.collection_id, true),
+    search_params: iterator.search_params(1, iterator.collection_id, true),
   }
-  // 收尾失败抬给调用方 —— 只有它知道这时候该不该在乎。走到末尾时不在乎
-  // （`EndOfIterator` 才是重点），显式 `close` 时在乎（返回 `false`）。
   iterator.client.cancel_search(option) catch {
     err => raise as_rpc(err)
   }
 }
 
 ///|
-/// 关掉迭代器。
+/// 关掉迭代器。返回 `true` 表示本地状态已钉成「已关」。
 ///
-/// 服务端侧的游标不会自己过期，所以这里补一次空检索让服务端把那个
-/// session 收掉，顺便把本地状态钉成「已关」。
+/// 服务端侧的游标不会自己过期，所以这里补一发检索让服务端把那个 session
+/// 收掉，顺便把本地状态钉成「已关」。
 ///
-/// 空检索失败不往上抛：调用方多半是在 `defer` 里关的，这时候再报一个
-/// 「关不掉」也救不回来，反倒会把原本的错误盖掉。返回值告诉调用方这次
-/// 关闭是干净收尾（`true`）还是服务端侧没关成（`false`）。
+/// **收尾是 best-effort，失败不改变返回值**，也不再抛。早先这里把收尾失败
+/// 翻成 `false`，语义是「服务端侧没关成」——但 `false` 对调用方是个误导：
+/// 它多半是在 `defer` / `while` 收尾里调的，拿到 `false` 只会以为是自己
+/// 用错了，而实际上服务端的 v2 游标本身有 TTL，会话到期会自己回收。收尾
+/// 失败时唯一有意义的动作是「记下来」，不该把它变成主流程的错误来源。
+///
+/// 所以返回值的含义收窄成「这次关闭干净吗」的**本地**判据：已经关过 /
+/// 已经翻完（那两处服务端会话早已收掉或本就不需要收）返回 `true`，
+/// 显式关也返回 `true`。调用方要判「服务端侧是否真关成」，看这个方法
+/// 已经没意义了 —— 那本来也不该由调用方负责。
 pub async fn SearchIterator::close(iterator : SearchIterator) -> Bool {
   // 已经关过、或已经翻完了：服务端那边早在翻到空时收掉了，别再发一发。
   if iterator.closed || iterator.exhausted {
     return true
   }
   iterator.closed = true
+  // 收尾失败只记本地状态：调用方拿到的 `true` 说的是「本地已关」，
+  // 不是「服务端一定收到并处理了」。会话有 TTL 兜底。
   ignore(iterator.stop_server_session()) catch {
-    _ => return false
+    _ => ()
   }
   true
 }

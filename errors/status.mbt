@@ -15,7 +15,7 @@ pub fn is_ok(status : @common.Status?) -> Bool {
 
 ///|
 /// 成功状态，对应上游 `merr.Success`。
-pub fn success(reason? : String = "") -> @common.Status {
+pub fn success(reason~ : String = "") -> @common.Status {
   @common.Status::{
     error_code: @common.ErrorCode::Success,
     reason,

@@ -69,15 +69,15 @@ pub(all) struct SearchOption {
   collection_name : String
   partition_names : Array[String]
   anns_field : String
-  limit : Int
+  limit : Int32
   vectors : Array[@column.ColumnValue]
   expr : String
   output_fields : Array[String]
   metric_type : @index.MetricType?
   search_params : Array[(String, String)]
-  offset : Int
+  offset : Int32
   ignore_growing : Bool
-  round_decimal : Int
+  round_decimal : Int32
   consistency_level : ConsistencyLevel?
 }
 
@@ -86,7 +86,7 @@ pub(all) struct SearchOption {
 /// `FloatVector(dim, [v1, v2])` 表示 nq = 2、每行 dim 维。
 pub fn new_search_option(
   collection_name : String,
-  limit : Int,
+  limit : Int32,
   vectors : Array[@column.ColumnValue],
 ) -> SearchOption {
   {
@@ -171,7 +171,7 @@ pub fn SearchOption::with_search_param(
 ///|
 pub fn SearchOption::with_offset(
   self : SearchOption,
-  offset : Int,
+  offset : Int32,
 ) -> SearchOption {
   { ..self, offset, }
 }
@@ -179,7 +179,7 @@ pub fn SearchOption::with_offset(
 ///|
 pub fn SearchOption::with_ignore_growing(
   self : SearchOption,
-  ignore_growing? : Bool = true,
+  ignore_growing~ : Bool = true,
 ) -> SearchOption {
   { ..self, ignore_growing, }
 }
@@ -187,7 +187,7 @@ pub fn SearchOption::with_ignore_growing(
 ///|
 pub fn SearchOption::with_round_decimal(
   self : SearchOption,
-  round_decimal : Int,
+  round_decimal : Int32,
 ) -> SearchOption {
   { ..self, round_decimal, }
 }
@@ -232,7 +232,7 @@ fn placeholder_type(
 /// 行内不定长，`to_bytes` 已经是行编码。
 fn serialize_row(
   column : @column.ColumnValue,
-  index : Int,
+  index : Int32,
 ) -> Bytes raise ClientError {
   match column {
     FloatVector(dim, rows) =>
@@ -267,9 +267,9 @@ fn serialize_row(
 ///|
 fn floats_row(
   name : String,
-  dim : Int,
+  dim : Int32,
   rows : Array[Array[Float]],
-  index : Int,
+  index : Int32,
   encode : (Array[Float]) -> Bytes,
 ) -> Bytes raise ClientError {
   if index >= rows.length() {
@@ -290,9 +290,9 @@ fn floats_row(
 /// 定长字节行：逐行取一段。
 fn bytes_row(
   name : String,
-  row_bytes : Int,
+  row_bytes : Int32,
   rows : Array[Bytes],
-  index : Int,
+  index : Int32,
 ) -> Bytes raise ClientError {
   if index >= rows.length() {
     raise ClientError::Encode(
@@ -394,8 +394,8 @@ async fn Client::search_call(
     raise ClientError::Encode("search requires at least one query vector")
   }
   // `nq` 是 `vectors` 的长度，服务端不接受「nq = 0」。迭代器收尾要发的
-  // 那个空检索走下面的 `cancel_search` —— 它另开一个入口，因为它的
-  // `search_input` 不是占位符。
+  // 那一发走下面的 `cancel_search` —— 它另开一个入口，因为它的 `topk`
+  // 与 `params` 得在那一层补（迭代器给的 `search_params` 里没有）。
   let placeholder = placeholder_group_bytes(option.vectors)
   let search_params = search_params_of(option).map(pair => {
     @common.KeyValuePair::KeyValuePair(pair.0, pair.1)
@@ -432,20 +432,35 @@ async fn Client::search_call(
 }
 
 ///|
-/// 迭代器收尾用的空检索：`nq = 0`，`search_input` 显式留空（`NotSet`）。
+/// 迭代器收尾：带着续页凭据再发一发检索，让服务端把那个游标会话收掉。
 ///
-/// 服务端据 `search_iter_id` 找到那个游标会话，`nq = 0` 就表示「这批不要
-/// 结果，把会话收掉」。走不了 `Client::search`：那条路要求至少一个查询向量，
-/// 会用占位符填 `search_input`。
+/// 服务端据 `search_iter_id` 找到会话。这一发不是「要结果」，而是
+/// 「这批读完了」——`topk = 1` 只为了过服务端的参数校验，命中数不关心。
 ///
-/// `search_params` 由调用方拼好传进来 —— 迭代器比这一层更清楚要带哪些凭据。
+/// **不能发 `nq = 0` + `search_input = NotSet`**。上游 v2.6 的 querynode
+/// 走 `searchInput` 解析，nil 时按默认参数构造，`nq = 0` 能满足「不是翻页
+/// 请求」的判定；v3.0.2 走另一套 `searchShard` 校验，`NotSet` 直接判非法：
+///
+/// ```
+/// nq [0] is invalid, nq (number of search vector per search request)
+/// should be in range [1, 16384], but got 0: invalid parameter
+/// ```
+///
+/// 所以这里改发「一个占位符、一维匹配的向量」，服务端认；`close` 于是能
+/// 真的把会话关掉，而不是每次都报一次假失败。
+///
+/// `topk` 与 `params` 两个键必须补上：`search_params` 由调用方（迭代器）
+/// 拼好传进来，它只带迭代器自己的那几个键，不含 `search_params_of` 里那七个
+/// 固定键的推导值。少了 `topk` 服务端报 `topk is required`，`params` 为空串
+/// 则会在 querynode 里挂成 JSON 解析错。
 ///
 /// 包内可见：`SearchIterator` 的收尾用它，不属于门面 API。
 async fn Client::cancel_search(
   self : Client,
   option : SearchOption,
 ) -> Unit raise ClientError {
-  let search_params = option.search_params.map(pair => {
+  let search_params = (option.search_params +
+  [(search_param_topk, "1"), (search_param_params, "{}")]).map(pair => {
     @common.KeyValuePair::KeyValuePair(pair.0, pair.1)
   })
   let consistency = match option.consistency_level {
@@ -458,13 +473,15 @@ async fn Client::cancel_search(
     collection_name: option.collection_name,
     partition_names: option.partition_names,
     dsl: option.expr,
-    search_input: @milvus.SearchRequest_SearchInput::NotSet,
+    search_input: @milvus.SearchRequest_SearchInput::PlaceholderGroup(
+      placeholder_group_bytes(option.vectors),
+    ),
     dsl_type: @common.DslType::BoolExprV1,
     output_fields: [],
     search_params,
     travel_timestamp: 0UL,
     guarantee_timestamp: 0UL,
-    nq: 0L,
+    nq: option.vectors.length().to_int64(),
     not_return_all_meta: false,
     consistency_level: consistency,
     use_default_consistency: option.consistency_level is None,
@@ -555,7 +572,7 @@ fn decode_search_results(
 /// 字符串主键的 `string_id` 为真，好让调用方区分 `"12"` 与 `12`。
 fn id_strings(
   ids : @schema.IDs?,
-  total : Int,
+  total : Int32,
 ) -> Array[(String, Bool)] raise ClientError {
   let out : Array[(String, Bool)] = []
   match ids {

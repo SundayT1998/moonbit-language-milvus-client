@@ -197,8 +197,15 @@ README。写代码和查问题时从这里找。
 
 - 走到末尾报 `IteratorError::EndOfIterator`，不是故障；`is_end_of_iterator`
   用来把它从 `while` 里放出来。`IteratorError::Closed` 才是「迭代器已经关了」。
-- `SearchIterator::close` 会真的发一次空检索收掉服务端会话（服务端侧游标不会
-  自己过期），翻到末尾时也自动收一次。失败不往上抛。
+- `SearchIterator::close` 会真的发一发检索收掉服务端会话（服务端侧游标不会
+  自己过期），翻到末尾时也自动收一次。**收尾是 best-effort**：失败不抛、
+  也不改变 `close` 的返回值 —— `true` 只表示「本地已关」。调用方多半把
+  `close` 挂在 `defer` 里，拿到 `false` 除了以为自己用错了没有别的用处。
+- 收尾那一发**不能**是 `nq = 0` + `search_input = NotSet`。上游 v2.6 的
+  querynode 走 `searchInput` 解析，nil 时按默认参数构造，`nq = 0` 能满足
+  「不是翻页请求」的判定；v3.0.2 走另一套校验，直接判非法（`nq [0] is
+  invalid ... should be in range [1, 16384]`）。现在发的是「一个占位符、
+  `topk = 1`」，服务端认，会话真能收掉。
 - `QueryIterator` 在服务端没有会话，`close` 只是本地标记。
 - `with_limit` 是整体上限，只决定「还发不发下一次请求」，**不跨批截断**：
   `with_limit(10)` 配 `with_batch_size(100)` 时一次拿到 100 行。上游的

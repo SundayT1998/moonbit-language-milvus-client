@@ -545,8 +545,8 @@ pub(all) struct IndexDescription {
   mut state : @common.IndexState
   mut index_state_fail_reason : String
   mut pending_index_rows : Int64
-  mut min_index_version : Int
-  mut max_index_version : Int
+  mut min_index_version : Int32
+  mut max_index_version : Int32
 } derive(Eq, Debug)
 
 ///|
@@ -626,8 +626,8 @@ pub fn IndexDescription::IndexDescription(
   state : @common.IndexState,
   index_state_fail_reason : String,
   pending_index_rows : Int64,
-  min_index_version : Int,
-  max_index_version : Int,
+  min_index_version : Int32,
+  max_index_version : Int32,
 ) -> IndexDescription {
   IndexDescription::{
     index_name,
@@ -1354,7 +1354,7 @@ pub(all) struct LoadCollectionRequest {
   mut base : @common.MsgBase?
   mut db_name : String
   mut collection_name : String
-  mut replica_number : Int
+  mut replica_number : Int32
   mut resource_groups : Array[String]
   mut refresh : Bool
   mut load_fields : Array[String]
@@ -1421,7 +1421,7 @@ pub fn LoadCollectionRequest::LoadCollectionRequest(
   base? : @common.MsgBase,
   db_name : String,
   collection_name : String,
-  replica_number : Int,
+  replica_number : Int32,
   resource_groups : Array[String],
   refresh : Bool,
   load_fields : Array[String],
@@ -2351,7 +2351,7 @@ pub(all) struct DescribeCollectionResponse {
   mut physical_channel_names : Array[String]
   mut created_timestamp : UInt64
   mut created_utc_timestamp : UInt64
-  mut shards_num : Int
+  mut shards_num : Int32
   mut aliases : Array[String]
   mut start_positions : Array[@common.KeyDataPair]
   mut consistency_level : @common.ConsistencyLevel
@@ -2487,7 +2487,7 @@ pub fn DescribeCollectionResponse::DescribeCollectionResponse(
   physical_channel_names : Array[String],
   created_timestamp : UInt64,
   created_utc_timestamp : UInt64,
-  shards_num : Int,
+  shards_num : Int32,
   aliases : Array[String],
   start_positions : Array[@common.KeyDataPair],
   consistency_level : @common.ConsistencyLevel,
@@ -2963,7 +2963,7 @@ pub(all) struct CreateCollectionRequest {
   mut db_name : String
   mut collection_name : String
   mut schema : Bytes
-  mut shards_num : Int
+  mut shards_num : Int32
   mut consistency_level : @common.ConsistencyLevel
   mut properties : Array[@common.KeyValuePair]
   mut num_partitions : Int64
@@ -3023,7 +3023,7 @@ pub fn CreateCollectionRequest::CreateCollectionRequest(
   db_name : String,
   collection_name : String,
   schema : Bytes,
-  shards_num : Int,
+  shards_num : Int32,
   consistency_level : @common.ConsistencyLevel,
   properties : Array[@common.KeyValuePair],
   num_partitions : Int64,
@@ -3913,7 +3913,7 @@ pub(all) struct ShowCollectionsResponse {
   mut created_utc_timestamps : Array[UInt64]
   mut in_memory_percentages : Array[Int64]
   mut query_service_available : Array[Bool]
-  mut shards_num : Array[Int]
+  mut shards_num : Array[Int32]
 } derive(Eq, Debug)
 
 ///|
@@ -3928,13 +3928,16 @@ pub impl @lib.Sized for ShowCollectionsResponse with fn size_of(self) {
   if !self.collection_ids.is_empty() {
     size += @lib.size_of_length_delimited_field(
       3U,
-      self.collection_ids.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.collection_ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if !self.created_timestamps.is_empty() {
     size += @lib.size_of_length_delimited_field(
       4U,
-      self.created_timestamps.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.created_timestamps
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add),
     )
   }
   if !self.created_utc_timestamps.is_empty() {
@@ -3943,7 +3946,7 @@ pub impl @lib.Sized for ShowCollectionsResponse with fn size_of(self) {
       self.created_utc_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add),
+      .fold(init=0U, UInt32::add),
     )
   }
   if !self.in_memory_percentages.is_empty() {
@@ -3952,7 +3955,7 @@ pub impl @lib.Sized for ShowCollectionsResponse with fn size_of(self) {
       self.in_memory_percentages
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add),
+      .fold(init=0U, UInt32::add),
     )
   }
   if !self.query_service_available.is_empty() {
@@ -3961,13 +3964,13 @@ pub impl @lib.Sized for ShowCollectionsResponse with fn size_of(self) {
       self.query_service_available
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add),
+      .fold(init=0U, UInt32::add),
     )
   }
   if !self.shards_num.is_empty() {
     size += @lib.size_of_length_delimited_field(
       8U,
-      self.shards_num.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.shards_num.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   size
@@ -3997,7 +4000,7 @@ pub fn ShowCollectionsResponse::ShowCollectionsResponse(
   created_utc_timestamps : Array[UInt64],
   in_memory_percentages : Array[Int64],
   query_service_available : Array[Bool],
-  shards_num : Array[Int],
+  shards_num : Array[Int32],
 ) -> ShowCollectionsResponse {
   ShowCollectionsResponse::{
     status,
@@ -4081,7 +4084,7 @@ pub impl @lib.Write for ShowCollectionsResponse with fn write(
     let size = self.collection_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.collection_ids {
       writer |> @lib.write_int64(item)
@@ -4092,7 +4095,7 @@ pub impl @lib.Write for ShowCollectionsResponse with fn write(
     let size = self.created_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.created_timestamps {
       writer |> @lib.write_uint64(item)
@@ -4103,7 +4106,7 @@ pub impl @lib.Write for ShowCollectionsResponse with fn write(
     let size = self.created_utc_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.created_utc_timestamps {
       writer |> @lib.write_uint64(item)
@@ -4114,7 +4117,7 @@ pub impl @lib.Write for ShowCollectionsResponse with fn write(
     let size = self.in_memory_percentages
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.in_memory_percentages {
       writer |> @lib.write_int64(item)
@@ -4125,7 +4128,7 @@ pub impl @lib.Write for ShowCollectionsResponse with fn write(
     let size = self.query_service_available
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.query_service_available {
       writer |> @lib.write_bool(item)
@@ -4133,7 +4136,10 @@ pub impl @lib.Write for ShowCollectionsResponse with fn write(
   }
   if !self.shards_num.is_empty() {
     writer |> @lib.write_varint(66UL)
-    let size = self.shards_num.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.shards_num
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.shards_num {
       writer |> @lib.write_int32(item)
@@ -4284,7 +4290,7 @@ pub impl @lib.AsyncWrite for ShowCollectionsResponse with fn write(
     let size = self.collection_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.collection_ids {
       writer |> @lib.async_write_int64(item)
@@ -4295,7 +4301,7 @@ pub impl @lib.AsyncWrite for ShowCollectionsResponse with fn write(
     let size = self.created_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.created_timestamps {
       writer |> @lib.async_write_uint64(item)
@@ -4306,7 +4312,7 @@ pub impl @lib.AsyncWrite for ShowCollectionsResponse with fn write(
     let size = self.created_utc_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.created_utc_timestamps {
       writer |> @lib.async_write_uint64(item)
@@ -4317,7 +4323,7 @@ pub impl @lib.AsyncWrite for ShowCollectionsResponse with fn write(
     let size = self.in_memory_percentages
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.in_memory_percentages {
       writer |> @lib.async_write_int64(item)
@@ -4328,7 +4334,7 @@ pub impl @lib.AsyncWrite for ShowCollectionsResponse with fn write(
     let size = self.query_service_available
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.query_service_available {
       writer |> @lib.async_write_bool(item)
@@ -4336,7 +4342,10 @@ pub impl @lib.AsyncWrite for ShowCollectionsResponse with fn write(
   }
   if !self.shards_num.is_empty() {
     writer |> @lib.async_write_varint(66UL)
-    let size = self.shards_num.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.shards_num
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.shards_num {
       writer |> @lib.async_write_int32(item)
@@ -4351,8 +4360,8 @@ pub(all) struct InsertRequest {
   mut collection_name : String
   mut partition_name : String
   mut fields_data : Array[@schema.FieldData]
-  mut hash_keys : Array[UInt]
-  mut num_rows : UInt
+  mut hash_keys : Array[UInt32]
+  mut num_rows : UInt32
   mut schema_timestamp : UInt64
   mut namespace_ : String?
 } derive(Eq, Debug)
@@ -4384,7 +4393,7 @@ pub impl @lib.Sized for InsertRequest with fn size_of(self) {
   if !self.hash_keys.is_empty() {
     size += @lib.size_of_length_delimited_field(
       6U,
-      self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if self.num_rows != Default::default() {
@@ -4422,8 +4431,8 @@ pub fn InsertRequest::InsertRequest(
   collection_name : String,
   partition_name : String,
   fields_data : Array[@schema.FieldData],
-  hash_keys : Array[UInt],
-  num_rows : UInt,
+  hash_keys : Array[UInt32],
+  num_rows : UInt32,
   schema_timestamp : UInt64,
   namespace_? : String,
 ) -> InsertRequest {
@@ -4498,7 +4507,10 @@ pub impl @lib.Write for InsertRequest with fn write(
   }
   if !self.hash_keys.is_empty() {
     writer |> @lib.write_varint(50UL)
-    let size = self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.hash_keys
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.hash_keys {
       writer |> @lib.write_uint32(item)
@@ -4645,7 +4657,10 @@ pub impl @lib.AsyncWrite for InsertRequest with fn write(
   }
   if !self.hash_keys.is_empty() {
     writer |> @lib.async_write_varint(50UL)
-    let size = self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.hash_keys
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.hash_keys {
       writer |> @lib.async_write_uint32(item)
@@ -4672,8 +4687,8 @@ pub(all) struct UpsertRequest {
   mut collection_name : String
   mut partition_name : String
   mut fields_data : Array[@schema.FieldData]
-  mut hash_keys : Array[UInt]
-  mut num_rows : UInt
+  mut hash_keys : Array[UInt32]
+  mut num_rows : UInt32
   mut schema_timestamp : UInt64
   mut partial_update : Bool
   mut namespace_ : String?
@@ -4706,7 +4721,7 @@ pub impl @lib.Sized for UpsertRequest with fn size_of(self) {
   if !self.hash_keys.is_empty() {
     size += @lib.size_of_length_delimited_field(
       6U,
-      self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if self.num_rows != Default::default() {
@@ -4748,8 +4763,8 @@ pub fn UpsertRequest::UpsertRequest(
   collection_name : String,
   partition_name : String,
   fields_data : Array[@schema.FieldData],
-  hash_keys : Array[UInt],
-  num_rows : UInt,
+  hash_keys : Array[UInt32],
+  num_rows : UInt32,
   schema_timestamp : UInt64,
   partial_update : Bool,
   namespace_? : String,
@@ -4827,7 +4842,10 @@ pub impl @lib.Write for UpsertRequest with fn write(
   }
   if !self.hash_keys.is_empty() {
     writer |> @lib.write_varint(50UL)
-    let size = self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.hash_keys
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.hash_keys {
       writer |> @lib.write_uint32(item)
@@ -4984,7 +5002,10 @@ pub impl @lib.AsyncWrite for UpsertRequest with fn write(
   }
   if !self.hash_keys.is_empty() {
     writer |> @lib.async_write_varint(50UL)
-    let size = self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.hash_keys
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.hash_keys {
       writer |> @lib.async_write_uint32(item)
@@ -5012,8 +5033,8 @@ pub impl @lib.AsyncWrite for UpsertRequest with fn write(
 pub(all) struct MutationResult {
   mut status : @common.Status?
   mut ids : @schema.IDs?
-  mut succ_index : Array[UInt]
-  mut err_index : Array[UInt]
+  mut succ_index : Array[UInt32]
+  mut err_index : Array[UInt32]
   mut acknowledged : Bool
   mut insert_cnt : Int64
   mut delete_cnt : Int64
@@ -5033,13 +5054,13 @@ pub impl @lib.Sized for MutationResult with fn size_of(self) {
   if !self.succ_index.is_empty() {
     size += @lib.size_of_length_delimited_field(
       3U,
-      self.succ_index.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.succ_index.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if !self.err_index.is_empty() {
     size += @lib.size_of_length_delimited_field(
       4U,
-      self.err_index.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.err_index.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if self.acknowledged != Default::default() {
@@ -5080,8 +5101,8 @@ pub impl Default for MutationResult with fn default() -> MutationResult {
 pub fn MutationResult::MutationResult(
   status? : @common.Status,
   ids? : @schema.IDs,
-  succ_index : Array[UInt],
-  err_index : Array[UInt],
+  succ_index : Array[UInt32],
+  err_index : Array[UInt32],
   acknowledged : Bool,
   insert_cnt : Int64,
   delete_cnt : Int64,
@@ -5150,7 +5171,10 @@ pub impl @lib.Write for MutationResult with fn write(
   }
   if !self.succ_index.is_empty() {
     writer |> @lib.write_varint(26UL)
-    let size = self.succ_index.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.succ_index
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.succ_index {
       writer |> @lib.write_uint32(item)
@@ -5158,7 +5182,10 @@ pub impl @lib.Write for MutationResult with fn write(
   }
   if !self.err_index.is_empty() {
     writer |> @lib.write_varint(34UL)
-    let size = self.err_index.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.err_index
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.err_index {
       writer |> @lib.write_uint32(item)
@@ -5301,7 +5328,10 @@ pub impl @lib.AsyncWrite for MutationResult with fn write(
   }
   if !self.succ_index.is_empty() {
     writer |> @lib.async_write_varint(26UL)
-    let size = self.succ_index.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.succ_index
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.succ_index {
       writer |> @lib.async_write_uint32(item)
@@ -5309,7 +5339,10 @@ pub impl @lib.AsyncWrite for MutationResult with fn write(
   }
   if !self.err_index.is_empty() {
     writer |> @lib.async_write_varint(34UL)
-    let size = self.err_index.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.err_index
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.err_index {
       writer |> @lib.async_write_uint32(item)
@@ -5344,7 +5377,7 @@ pub(all) struct DeleteRequest {
   mut collection_name : String
   mut partition_name : String
   mut expr : String
-  mut hash_keys : Array[UInt]
+  mut hash_keys : Array[UInt32]
   mut consistency_level : @common.ConsistencyLevel
   mut namespace_ : String?
 } derive(Eq, Debug)
@@ -5376,7 +5409,7 @@ pub impl @lib.Sized for DeleteRequest with fn size_of(self) {
   if !self.hash_keys.is_empty() {
     size += @lib.size_of_length_delimited_field(
       6U,
-      self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if self.consistency_level != Default::default() {
@@ -5410,7 +5443,7 @@ pub fn DeleteRequest::DeleteRequest(
   collection_name : String,
   partition_name : String,
   expr : String,
-  hash_keys : Array[UInt],
+  hash_keys : Array[UInt32],
   consistency_level : @common.ConsistencyLevel,
   namespace_? : String,
 ) -> DeleteRequest {
@@ -5483,7 +5516,10 @@ pub impl @lib.Write for DeleteRequest with fn write(
   }
   if !self.hash_keys.is_empty() {
     writer |> @lib.write_varint(50UL)
-    let size = self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.hash_keys
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.hash_keys {
       writer |> @lib.write_uint32(item)
@@ -5620,7 +5656,10 @@ pub impl @lib.AsyncWrite for DeleteRequest with fn write(
   }
   if !self.hash_keys.is_empty() {
     writer |> @lib.async_write_varint(50UL)
-    let size = self.hash_keys.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.hash_keys
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.hash_keys {
       writer |> @lib.async_write_uint32(item)
@@ -5799,7 +5838,7 @@ pub fn SearchRequest::SearchRequest(
   consistency_level : @common.ConsistencyLevel,
   use_default_consistency : Bool,
   namespace_? : String,
-  search_input? : SearchRequest_SearchInput = SearchRequest_SearchInput::NotSet,
+  search_input~ : SearchRequest_SearchInput = SearchRequest_SearchInput::NotSet,
 ) -> SearchRequest {
   SearchRequest::{
     base,
@@ -6185,7 +6224,7 @@ pub impl @lib.Sized for Hits with fn size_of(self) {
   if !self.ids.is_empty() {
     size += @lib.size_of_length_delimited_field(
       1U,
-      self.ids.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   for s in self.row_data {
@@ -6244,7 +6283,7 @@ pub impl @lib.Read for Hits with fn read_with_limit(
 pub impl @lib.Write for Hits with fn write(self : Hits, writer : &@lib.Writer) -> Unit raise {
   if !self.ids.is_empty() {
     writer |> @lib.write_varint(10UL)
-    let size = self.ids.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.ids {
       writer |> @lib.write_int64(item)
@@ -6338,7 +6377,7 @@ pub impl @lib.AsyncWrite for Hits with fn write(
 ) -> Unit raise {
   if !self.ids.is_empty() {
     writer |> @lib.async_write_varint(10UL)
-    let size = self.ids.iter().map(@lib.size_of).fold(init=0U, UInt::add)
+    let size = self.ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.ids {
       writer |> @lib.async_write_int64(item)
@@ -7847,7 +7886,7 @@ pub(all) struct LoadPartitionsRequest {
   mut db_name : String
   mut collection_name : String
   mut partition_names : Array[String]
-  mut replica_number : Int
+  mut replica_number : Int32
   mut resource_groups : Array[String]
   mut refresh : Bool
   mut load_fields : Array[String]
@@ -7919,7 +7958,7 @@ pub fn LoadPartitionsRequest::LoadPartitionsRequest(
   db_name : String,
   collection_name : String,
   partition_names : Array[String],
-  replica_number : Int,
+  replica_number : Int32,
   resource_groups : Array[String],
   refresh : Bool,
   load_fields : Array[String],
@@ -8610,13 +8649,16 @@ pub impl @lib.Sized for ShowPartitionsResponse with fn size_of(self) {
   if !self.partition_ids.is_empty() {
     size += @lib.size_of_length_delimited_field(
       3U,
-      self.partition_ids.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.partition_ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if !self.created_timestamps.is_empty() {
     size += @lib.size_of_length_delimited_field(
       4U,
-      self.created_timestamps.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.created_timestamps
+      .iter()
+      .map(@lib.size_of)
+      .fold(init=0U, UInt32::add),
     )
   }
   if !self.created_utc_timestamps.is_empty() {
@@ -8625,7 +8667,7 @@ pub impl @lib.Sized for ShowPartitionsResponse with fn size_of(self) {
       self.created_utc_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add),
+      .fold(init=0U, UInt32::add),
     )
   }
   if !self.in_memory_percentages.is_empty() {
@@ -8634,7 +8676,7 @@ pub impl @lib.Sized for ShowPartitionsResponse with fn size_of(self) {
       self.in_memory_percentages
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add),
+      .fold(init=0U, UInt32::add),
     )
   }
   size
@@ -8730,7 +8772,7 @@ pub impl @lib.Write for ShowPartitionsResponse with fn write(
     let size = self.partition_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.partition_ids {
       writer |> @lib.write_int64(item)
@@ -8741,7 +8783,7 @@ pub impl @lib.Write for ShowPartitionsResponse with fn write(
     let size = self.created_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.created_timestamps {
       writer |> @lib.write_uint64(item)
@@ -8752,7 +8794,7 @@ pub impl @lib.Write for ShowPartitionsResponse with fn write(
     let size = self.created_utc_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.created_utc_timestamps {
       writer |> @lib.write_uint64(item)
@@ -8763,7 +8805,7 @@ pub impl @lib.Write for ShowPartitionsResponse with fn write(
     let size = self.in_memory_percentages
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.in_memory_percentages {
       writer |> @lib.write_int64(item)
@@ -8888,7 +8930,7 @@ pub impl @lib.AsyncWrite for ShowPartitionsResponse with fn write(
     let size = self.partition_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.partition_ids {
       writer |> @lib.async_write_int64(item)
@@ -8899,7 +8941,7 @@ pub impl @lib.AsyncWrite for ShowPartitionsResponse with fn write(
     let size = self.created_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.created_timestamps {
       writer |> @lib.async_write_uint64(item)
@@ -8910,7 +8952,7 @@ pub impl @lib.AsyncWrite for ShowPartitionsResponse with fn write(
     let size = self.created_utc_timestamps
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.created_utc_timestamps {
       writer |> @lib.async_write_uint64(item)
@@ -8921,7 +8963,7 @@ pub impl @lib.AsyncWrite for ShowPartitionsResponse with fn write(
     let size = self.in_memory_percentages
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.in_memory_percentages {
       writer |> @lib.async_write_int64(item)
@@ -10448,7 +10490,7 @@ pub impl @lib.Sized for GetFlushStateRequest with fn size_of(self) {
   if !self.segment_ids.is_empty() {
     size += @lib.size_of_length_delimited_field(
       1U,
-      self.segment_ids.iter().map(@lib.size_of).fold(init=0U, UInt::add),
+      self.segment_ids.iter().map(@lib.size_of).fold(init=0U, UInt32::add),
     )
   }
   if self.flush_ts != Default::default() {
@@ -10519,7 +10561,7 @@ pub impl @lib.Write for GetFlushStateRequest with fn write(
     let size = self.segment_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.write_uint32(size)
     for item in self.segment_ids {
       writer |> @lib.write_int64(item)
@@ -10615,7 +10657,7 @@ pub impl @lib.AsyncWrite for GetFlushStateRequest with fn write(
     let size = self.segment_ids
       .iter()
       .map(@lib.size_of)
-      .fold(init=0U, UInt::add)
+      .fold(init=0U, UInt32::add)
     writer |> @lib.async_write_uint32(size)
     for item in self.segment_ids {
       writer |> @lib.async_write_int64(item)

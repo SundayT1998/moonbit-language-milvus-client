@@ -69,8 +69,8 @@ fn missing_vector(field : @schema.FieldData, want : String) -> ColumnError {
 /// Bool 列的数据段。
 fn scalar_bool(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
 ) -> Array[Bool] raise ColumnError {
   let s = scalar_payload(field, "bool_data")
@@ -87,10 +87,10 @@ fn scalar_bool(
 /// 因为 MoonBit 的 `Int` 就是 32 位以上，收窄只是显示问题。
 fn scalar_int(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
-) -> Array[Int] raise ColumnError {
+) -> Array[Int32] raise ColumnError {
   let s = scalar_payload(field, "int_data")
   match s.data {
     @schema.ScalarField_Data::IntData(a) =>
@@ -103,8 +103,8 @@ fn scalar_int(
 /// `long_data`：`Int64` 与 `Timestamptz` 共用。
 fn scalar_long(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
 ) -> Array[Int64] raise ColumnError {
   let s = scalar_payload(field, "long_data")
@@ -119,8 +119,8 @@ fn scalar_long(
 /// `float_data`。
 fn scalar_float(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
 ) -> Array[Float] raise ColumnError {
   let s = scalar_payload(field, "float_data")
@@ -135,8 +135,8 @@ fn scalar_float(
 /// `double_data`。
 fn scalar_double(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
 ) -> Array[Double] raise ColumnError {
   let s = scalar_payload(field, "double_data")
@@ -151,8 +151,8 @@ fn scalar_double(
 /// `string_data`：`String / VarChar / Text / Geometry` 共用。
 fn scalar_string(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
 ) -> Array[String] raise ColumnError {
   let s = scalar_payload(field, "string_data")
@@ -169,8 +169,8 @@ fn scalar_string(
 /// 二进制标量：`JSON` 落的 `json_data`。动态字段就在这一支。
 fn scalar_bytes(
   field : @schema.FieldData,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
   valid : Array[Bool],
 ) -> Array[Bytes] raise ColumnError {
   let s = scalar_payload(field, "json_data")

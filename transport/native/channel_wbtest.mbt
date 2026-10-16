@@ -10,7 +10,7 @@
 struct Seen {
   auth : String
   db : String
-  deadline : Int?
+  deadline : Int32?
   body : String
 }
 
@@ -39,7 +39,7 @@ fn capture_server(seen : Array[Seen]) -> @net.GrpcServer {
 
 ///|
 /// 一个偏高的端口，避开常用服务；测试串行跑，够用。
-fn test_port() -> Int {
+fn test_port() -> Int32 {
   19173
 }
 

@@ -26,9 +26,9 @@
 /// 仍要能区分「第 3 行是 null」和「列就这么长」，`Cell` 自己承载这个区别。
 pub(all) enum Cell {
   Bool(Bool)
-  Int8(Int)
-  Int16(Int)
-  Int32(Int)
+  Int8(Int32)
+  Int16(Int32)
+  Int32(Int32)
   Int64(Int64)
   Float(Float)
   Double(Double)
@@ -51,7 +51,7 @@ pub(all) enum Cell {
 ///|
 /// 逻辑行数。可空列以 `valid` 的长度为准——数据行可能比它短，那是紧凑
 /// 布局；非空列就是数据的长度。
-pub fn Column::len(self : Column) -> Int {
+pub fn Column::len(self : Column) -> Int32 {
   if self.nullable {
     self.valid.length()
   } else {
@@ -74,7 +74,7 @@ pub fn Column::len(self : Column) -> Int {
 
 ///|
 /// 第 `idx` 行是否为 null。越界报错；非空列恒为 `false`。
-pub fn Column::is_null(self : Column, idx : Int) -> Bool raise ColumnError {
+pub fn Column::is_null(self : Column, idx : Int32) -> Bool raise ColumnError {
   if idx < 0 || idx >= self.len() {
     raise IndexOutOfRange("row index \{idx} out of range [0, \{self.len()})")
   }
@@ -88,7 +88,7 @@ pub fn Column::is_null(self : Column, idx : Int) -> Bool raise ColumnError {
 ///|
 /// 有效行数：`valid` 里 `true` 的个数，非空列等于 `len()`。
 /// 上游 `ValidCount`。
-pub fn Column::valid_count(self : Column) -> Int {
+pub fn Column::valid_count(self : Column) -> Int32 {
   if !self.nullable {
     return self.len()
   }
@@ -107,7 +107,7 @@ pub fn Column::valid_count(self : Column) -> Int {
 /// 可空列的数据按上游约定分两种布局：`valid` 长度等于数据长度时（行满）
 /// 数据行与逻辑行一一对应；否则数据是紧凑的，null 行不占位，需要把逻辑
 /// 下标映射到物理下标。`value_index` 负责这件事，下面所有取值都走它。
-pub fn Column::get(self : Column, idx : Int) -> Cell raise ColumnError {
+pub fn Column::get(self : Column, idx : Int32) -> Cell raise ColumnError {
   if idx < 0 || idx >= self.len() {
     raise IndexOutOfRange("row index \{idx} out of range [0, \{self.len()})")
   }
@@ -144,7 +144,7 @@ pub fn Column::get(self : Column, idx : Int) -> Cell raise ColumnError {
 ///
 /// 只有「可空且紧凑」才需要映射：数据长度小于逻辑行数。行满布局里
 /// 物理下标就是逻辑下标，上游 `genericColumnBase.valueIndex` 同理。
-fn Column::value_index(self : Column, idx : Int) -> Int {
+fn Column::value_index(self : Column, idx : Int32) -> Int32 {
   if !self.nullable || self.data_len() == self.valid.length() {
     return idx
   }
@@ -159,7 +159,7 @@ fn Column::value_index(self : Column, idx : Int) -> Int {
 
 ///|
 /// 数据数组的长度。用于判断紧凑布局，不参与任何取值。
-fn Column::data_len(self : Column) -> Int {
+fn Column::data_len(self : Column) -> Int32 {
   match self.column {
     Bool(v) => v.length()
     Int8(v) | Int16(v) | Int32(v) => v.length()
@@ -182,7 +182,7 @@ fn Column::data_len(self : Column) -> Int {
 ///
 /// 与 `from_field_data` 的 `begin` / `end` 是同一件事，区别是那个作用于
 /// 线上 payload（还没成列），这个作用于已经解好的列。
-pub fn Column::slice(self : Column, begin : Int, end : Int) -> Column {
+pub fn Column::slice(self : Column, begin : Int32, end : Int32) -> Column {
   let n = self.len()
   let b = clamp_begin(begin, n)
   let e = normalize_end(end, n)
@@ -196,7 +196,7 @@ pub fn Column::slice(self : Column, begin : Int, end : Int) -> Column {
 ///|
 /// 数据数组的那一段。可空紧凑布局下物理下标与逻辑下标不是一回事，
 /// 得先把 `[b, e)` 映射到物理区间再切。
-fn slice_value(column : Column, begin : Int, end : Int) -> ColumnValue {
+fn slice_value(column : Column, begin : Int32, end : Int32) -> ColumnValue {
   let (lo, hi) = if column.nullable &&
     column.data_len() != column.valid.length() {
     (rank_before(column, begin), rank_before(column, end))
@@ -208,7 +208,7 @@ fn slice_value(column : Column, begin : Int, end : Int) -> ColumnValue {
 
 ///|
 /// `[0, idx)` 里的有效行数，也就是物理下标的前缀和。
-fn rank_before(column : Column, idx : Int) -> Int {
+fn rank_before(column : Column, idx : Int32) -> Int32 {
   let mut count = 0
   for i = 0; i < idx && i < column.valid.length(); i = i + 1 {
     if column.valid[i] {
@@ -221,8 +221,8 @@ fn rank_before(column : Column, idx : Int) -> Int {
 ///|
 fn slice_value_range(
   value : ColumnValue,
-  begin : Int,
-  end : Int,
+  begin : Int32,
+  end : Int32,
 ) -> ColumnValue {
   match value {
     Bool(v) => Bool(v[begin:end].to_owned())

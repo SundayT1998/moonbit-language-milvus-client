@@ -295,7 +295,7 @@ fn param_map(pairs : Array[@common.KeyValuePair]) -> Map[String, String] {
 /// 第 `n` 次调用的请求体，解码成 `QueryRequest`。
 fn query_request_at(
   recorded : Ref[Array[Recorded]],
-  n : Int,
+  n : Int32,
 ) -> @milvus.QueryRequest raise {
   @lib.Read::read_with_limit(
     @lib.LimitedReader::LimitedReader(
@@ -308,7 +308,7 @@ fn query_request_at(
 /// 第 `n` 次调用的请求体，解码成 `SearchRequest`。
 fn search_request_at(
   recorded : Ref[Array[Recorded]],
-  n : Int,
+  n : Int32,
 ) -> @milvus.SearchRequest raise {
   @lib.Read::read_with_limit(
     @lib.LimitedReader::LimitedReader(
@@ -674,13 +674,19 @@ async test "search_iterator 连翻两批并把 token 带回去" {
     Ok(_) => fail("expected EndOfIterator")
     Err(err) => assert_true(err.is_end_of_iterator())
   }
-  // 第三批（空）之后迭代器自己补了一发收尾请求：nq = 0、不带占位符
+  // 第三批（空）之后迭代器自己补了一发收尾请求：带着上一批的 token，
+  // 用 nq = 1 的占位符把服务端那个游标会话收掉 —— nq = 0 / NotSet 被
+  // v3.0.2 拒（见 `Client::cancel_search`）。
   let close_request = search_request_at(recorded, 4)
-  assert_eq(close_request.nq, 0L)
+  assert_eq(close_request.nq, 1L)
   match close_request.search_input {
-    NotSet => ()
-    _ => fail("close request should carry no search input")
+    PlaceholderGroup(_) => ()
+    _ => fail("close request should carry a placeholder group")
   }
+  let close_params = param_map(close_request.search_params)
+  assert_eq(close_params[@client.iterator_search_id_key], "tok-3")
+  assert_eq(close_params[@client.search_param_topk], "1")
+  assert_eq(close_params[@client.search_param_params], "{}")
   assert_eq(recorded.val.length(), 5)
 }
 
@@ -805,11 +811,21 @@ async test "search_iterator Close 会发出收尾请求" {
   }
   assert_true(closed_cleanly)
   assert_true(iterator.is_closed())
-  // 收尾请求把 token 带上（服务端据此找到那个会话），批大小写 0 ——
-  // 它不是一次翻页，值是多少无所谓，写 0 是为了别让人误以为还要一批
+  // 收尾请求把 token 带上（服务端据此找到那个会话），并且是一发**合法**的
+  // 检索：nq = 1、带占位符、topk / params 齐备。v3.0.2 会拒 nq = 0 +
+  // NotSet（`nq [0] is invalid`），那样 close 就永远关不掉服务端会话。
   let close_request = search_request_at(recorded, 2)
+  assert_eq(close_request.nq, 1L)
+  match close_request.search_input {
+    PlaceholderGroup(_) => ()
+    _ => fail("close request should carry a placeholder group")
+  }
   let params = param_map(close_request.search_params)
   assert_eq(params[@client.iterator_search_id_key], "tok-1")
+  assert_eq(params[@client.search_param_topk], "1")
+  assert_eq(params[@client.search_param_params], "{}")
+  // 不是一次翻页：批大小写 1，别让人误以为还要一批
+  assert_eq(params[@client.iterator_batch_size_key], "1")
   // 关掉之后再问报 Closed，不再发请求
   let outcome : Result[Unit, @client.IteratorError] = try {
     ignore(iterator.next())
@@ -847,7 +863,10 @@ async test "search_iterator 没取过一批时 Close 不发请求" {
 }
 
 ///|
-async test "search_iterator 收尾请求失败时 Close 返回 false" {
+/// 收尾那一发失败**不影响** `close` 的返回值：它说的是「本地已关」，
+/// 而服务端侧的 v2 游标有 TTL 兜底会自己回收。早先这里回 `false`，
+/// 调用方（多半在 `defer` 里）只会以为自己用错了。
+async test "search_iterator 收尾请求失败时 Close 仍然返回 true" {
   let (client, _, _) = iter_client([
     (
       @client.describe_collection_path,
@@ -867,7 +886,7 @@ async test "search_iterator 收尾请求失败时 Close 返回 false" {
   let closed_cleanly = iterator.close() catch {
     _ => fail("close should not raise")
   }
-  assert_false(closed_cleanly)
+  assert_true(closed_cleanly)
   assert_true(iterator.is_closed())
 }
 
@@ -935,6 +954,9 @@ async test "search_iterator 空结果第一批发完就收尾" {
   }
   // 第一发（空）+ 收尾一发
   assert_eq(recorded.val.length(), 3)
+  // 空结果那一发也带着 token（服务端会回），所以收尾那一发能带上它
   let close_request = search_request_at(recorded, 2)
-  assert_eq(close_request.nq, 0L)
+  assert_eq(close_request.nq, 1L)
+  let close_params = param_map(close_request.search_params)
+  assert_eq(close_params[@client.iterator_search_id_key], "tok-0")
 }

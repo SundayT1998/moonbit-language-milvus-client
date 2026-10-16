@@ -47,11 +47,11 @@ pub(all) enum CollectionLoadState {
   /// 已加载。
   Loaded
   /// 上游新增而本客户端尚未认识的值。保留原始序号，不猜测语义。
-  Unknown(Int)
+  Unknown(Int32)
 } derive(Eq, Debug)
 
 ///|
-pub fn CollectionLoadState::to_int(self : CollectionLoadState) -> Int {
+pub fn CollectionLoadState::to_int(self : CollectionLoadState) -> Int32 {
   match self {
     NotExist => 0
     NotLoad => 1
@@ -62,7 +62,7 @@ pub fn CollectionLoadState::to_int(self : CollectionLoadState) -> Int {
 }
 
 ///|
-pub fn CollectionLoadState::from_int(n : Int) -> CollectionLoadState {
+pub fn CollectionLoadState::from_int(n : Int32) -> CollectionLoadState {
   match n {
     0 => NotExist
     1 => NotLoad
@@ -98,14 +98,14 @@ pub fn CollectionLoadState::is_loaded(self : CollectionLoadState) -> Bool {
 
 ///|
 /// 上游 `NewLoadCollectionOption` 的默认轮询间隔。
-pub let default_load_check_interval_millis : Int = 200
+pub let default_load_check_interval_millis : Int32 = 200
 
 ///|
 /// 加载集合的入参。对应上游 `loadCollectionOption`。
 pub(all) struct LoadCollectionOption {
   collection_name : String
   /// 副本数。0 表示走服务端默认（上游注释也是这个意思，默认值在服务端）。
-  replica_number : Int
+  replica_number : Int32
   resource_groups : Array[String]
   /// 字段级部分加载：只加载这些字段。空数组表示全字段。
   load_fields : Array[String]
@@ -116,7 +116,7 @@ pub(all) struct LoadCollectionOption {
   /// refresh 模式：等 `refresh_progress` 而不是 `progress`。
   refresh : Bool
   /// `wait` 的轮询间隔。
-  check_interval_millis : Int
+  check_interval_millis : Int32
 }
 
 ///|
@@ -138,7 +138,7 @@ pub fn new_load_collection_option(
 ///|
 pub fn LoadCollectionOption::with_replica(
   self : LoadCollectionOption,
-  replica_number : Int,
+  replica_number : Int32,
 ) -> LoadCollectionOption {
   { ..self, replica_number, }
 }
@@ -148,7 +148,7 @@ pub fn LoadCollectionOption::with_replica(
 /// 早先的集成自检按 `with_replica_number` 写，两个都留着少一次改名。
 pub fn LoadCollectionOption::with_replica_number(
   self : LoadCollectionOption,
-  replica_number : Int,
+  replica_number : Int32,
 ) -> LoadCollectionOption {
   { ..self, replica_number, }
 }
@@ -205,7 +205,7 @@ pub fn LoadCollectionOption::with_load_fields(
 ///|
 pub fn LoadCollectionOption::with_skip_load_dynamic_field(
   self : LoadCollectionOption,
-  skip? : Bool = true,
+  skip~ : Bool = true,
 ) -> LoadCollectionOption {
   { ..self, skip_load_dynamic_field: skip, }
 }
@@ -213,7 +213,7 @@ pub fn LoadCollectionOption::with_skip_load_dynamic_field(
 ///|
 pub fn LoadCollectionOption::with_refresh(
   self : LoadCollectionOption,
-  refresh? : Bool = true,
+  refresh~ : Bool = true,
 ) -> LoadCollectionOption {
   { ..self, refresh, }
 }
@@ -221,7 +221,7 @@ pub fn LoadCollectionOption::with_refresh(
 ///|
 pub fn LoadCollectionOption::with_check_interval_millis(
   self : LoadCollectionOption,
-  millis : Int,
+  millis : Int32,
 ) -> LoadCollectionOption {
   { ..self, check_interval_millis: millis, }
 }
@@ -233,7 +233,7 @@ pub struct LoadTask {
   collection_name : String
   /// 空数组表示「整个集合」。非空表示「只等这些分区」。
   partition_names : Array[String]
-  interval_millis : Int
+  interval_millis : Int32
   refresh : Bool
 }
 
@@ -292,7 +292,7 @@ pub async fn LoadTask::wait(self : LoadTask) -> Unit raise ClientError {
 ///|
 /// `@async.sleep` 失败只有取消一种可能，翻成 `Code::Cancelled` 的传输错误，
 /// 好让 `ClientError::is_transport` 能把它认出来。
-async fn sleep_or_cancel(millis : Int) -> Unit raise ClientError {
+async fn sleep_or_cancel(millis : Int32) -> Unit raise ClientError {
   @async.sleep(millis) catch {
     err =>
       raise ClientError::Transport(
@@ -376,13 +376,13 @@ pub async fn Client::release_collection(
 pub(all) struct LoadPartitionsOption {
   collection_name : String
   partition_names : Array[String]
-  replica_number : Int
+  replica_number : Int32
   resource_groups : Array[String]
   load_fields : Array[String]
   skip_load_dynamic_field : Bool
   load_params : Array[(String, String)]
   refresh : Bool
-  check_interval_millis : Int
+  check_interval_millis : Int32
 }
 
 ///|
@@ -406,7 +406,7 @@ pub fn new_load_partitions_option(
 ///|
 pub fn LoadPartitionsOption::with_replica(
   self : LoadPartitionsOption,
-  replica_number : Int,
+  replica_number : Int32,
 ) -> LoadPartitionsOption {
   { ..self, replica_number, }
 }
@@ -430,7 +430,7 @@ pub fn LoadPartitionsOption::with_load_fields(
 ///|
 pub fn LoadPartitionsOption::with_skip_load_dynamic_field(
   self : LoadPartitionsOption,
-  skip? : Bool = true,
+  skip~ : Bool = true,
 ) -> LoadPartitionsOption {
   { ..self, skip_load_dynamic_field: skip, }
 }
@@ -439,7 +439,7 @@ pub fn LoadPartitionsOption::with_skip_load_dynamic_field(
 /// `with_replica` 的别名，理由同 `LoadCollectionOption::with_replica_number`。
 pub fn LoadPartitionsOption::with_replica_number(
   self : LoadPartitionsOption,
-  replica_number : Int,
+  replica_number : Int32,
 ) -> LoadPartitionsOption {
   { ..self, replica_number, }
 }
@@ -457,7 +457,7 @@ pub fn LoadPartitionsOption::with_load_param(
 ///|
 pub fn LoadPartitionsOption::with_refresh(
   self : LoadPartitionsOption,
-  refresh? : Bool = true,
+  refresh~ : Bool = true,
 ) -> LoadPartitionsOption {
   { ..self, refresh, }
 }
@@ -465,7 +465,7 @@ pub fn LoadPartitionsOption::with_refresh(
 ///|
 pub fn LoadPartitionsOption::with_check_interval_millis(
   self : LoadPartitionsOption,
-  millis : Int,
+  millis : Int32,
 ) -> LoadPartitionsOption {
   { ..self, check_interval_millis: millis, }
 }
@@ -550,7 +550,7 @@ pub(all) struct GetLoadStateOption {
 ///|
 pub fn new_get_load_state_option(
   collection_name : String,
-  partition_names? : Array[String] = [],
+  partition_names~ : Array[String] = [],
 ) -> GetLoadStateOption {
   { collection_name, partition_names, }
 }

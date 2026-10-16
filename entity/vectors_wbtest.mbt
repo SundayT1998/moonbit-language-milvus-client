@@ -41,7 +41,7 @@ test "sparse vector encodes sorted little-endian pairs" {
   let row = SparseFloatVector::new([5U, 1U], [2.0F, 1.0F])
   let bytes = row.to_bytes()
   assert_eq(bytes.length(), 16)
-  let expected : Array[Int] = [
+  let expected : Array[Int32] = [
     1, 0, 0, 0, // index 1
      0, 0, 128, 63, // 1.0f
      5, 0, 0, 0, // index 5

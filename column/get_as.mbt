@@ -49,7 +49,7 @@ pub fn Column::data_type(self : Column) -> @entity.DataType {
 /// 不做跨大类转换：读 `Float` 列要整数是调用方的错，直接报出来。
 pub fn Column::get_as_int64(
   self : Column,
-  idx : Int,
+  idx : Int32,
 ) -> Int64 raise ColumnError {
   match self.get(idx) {
     Int8(v) => v.to_int64()
@@ -66,7 +66,7 @@ pub fn Column::get_as_int64(
 /// JSON 列要的是原始字节，用 `get_as_bytes`。
 pub fn Column::get_as_string(
   self : Column,
-  idx : Int,
+  idx : Int32,
 ) -> String raise ColumnError {
   match self.get(idx) {
     String(v) => v
@@ -81,7 +81,7 @@ pub fn Column::get_as_string(
 /// 第 `idx` 行读成双精度浮点。`Float / Double` 可读，`Int*` 不隐式转浮点。
 pub fn Column::get_as_double(
   self : Column,
-  idx : Int,
+  idx : Int32,
 ) -> Double raise ColumnError {
   match self.get(idx) {
     Float(v) => v.to_double()
@@ -92,7 +92,10 @@ pub fn Column::get_as_double(
 
 ///|
 /// 第 `idx` 行读成布尔。
-pub fn Column::get_as_bool(self : Column, idx : Int) -> Bool raise ColumnError {
+pub fn Column::get_as_bool(
+  self : Column,
+  idx : Int32,
+) -> Bool raise ColumnError {
   match self.get(idx) {
     Bool(v) => v
     other => raise type_error(self, "Bool", other)
@@ -103,7 +106,7 @@ pub fn Column::get_as_bool(self : Column, idx : Int) -> Bool raise ColumnError {
 /// 第 `idx` 行读成原始字节。JSON 列（动态字段）与 `Bytes` 语义的列走这里。
 pub fn Column::get_as_bytes(
   self : Column,
-  idx : Int,
+  idx : Int32,
 ) -> Bytes raise ColumnError {
   match self.get(idx) {
     Json(v) => v
@@ -124,7 +127,7 @@ pub fn Column::get_as_bytes(
 /// 读不了的文本」比报错更难查。
 pub fn Column::get_as_json_string(
   self : Column,
-  idx : Int,
+  idx : Int32,
 ) -> String raise ColumnError {
   let bytes = self.get_as_bytes(idx)
   @utf8.decode(bytes) catch {
