@@ -3,7 +3,7 @@
 // 这层只做三件事 —— 建连、把 metadata 挂上、把 reply 翻成上层认识的 `RpcError`。
 // 之所以单独成包而不是塞进 `transport/`：`moonrpc/net` 声明了
 // `supported_targets = "native"`，而模块 `preferred_target = "wasm"`，
-// 混在一起会让 wasm / js 直接编不过（见 Issue #11 的 R4）。
+// 混在一起会让 wasm / js 直接编不过。
 
 ///|
 /// 一条到 Milvus 的 gRPC 连接。`moonrpc` 的 `Channel` 本身是长连接、

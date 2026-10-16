@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// 迭代器的假传输测试（#18）。
+// 迭代器的假传输测试。
 //
 // 这里用的是同一套 `Recorded` / `fake_transport`（见 client_test.mbt），
 // 只是响应是**队列**：迭代器天然要连发好几次同类请求，按路径回放一份

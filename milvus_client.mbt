@@ -199,7 +199,7 @@ pub type QueryOption = @client.QueryOption
 /// 一次查询的结果。
 pub type QueryResult = @client.QueryResult
 
-// ---- 分区（#17）----
+// ---- 分区 ----
 
 ///|
 /// 建分区的入参。
@@ -217,7 +217,7 @@ pub type HasPartitionOption = @client.HasPartitionOption
 /// 列分区的入参。
 pub type ListPartitionsOption = @client.ListPartitionsOption
 
-// ---- 加载 / 卸载（#17）----
+// ---- 加载 / 卸载 ----
 
 ///|
 /// 加载档位。
@@ -251,7 +251,7 @@ pub type GetLoadStateOption = @client.GetLoadStateOption
 /// 加载任务，`LoadTask::wait` 等加载完成。
 pub type LoadTask = @client.LoadTask
 
-// ---- flush（#17）----
+// ---- flush ----
 
 ///|
 /// flush 的入参。

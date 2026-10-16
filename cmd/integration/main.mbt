@@ -16,7 +16,7 @@
 //   → search / query
 // 少一步的报错各不相同：不建索引就 load 会得到 `index not found`
 // （`IndexNotExist`），建了不 load 就检索会得到 `collection not loaded`
-// （`CollectionNotLoaded`）—— 两种都在 #33 的 CI 上真踩过。
+// （`CollectionNotLoaded`）—— 两种都在 CI 上真踩过。
 //
 // 另一条踩过的坑：Query 的 `output_fields` 必须逐点列名，不能用 `*`、也不能
 // 留空。服务端在返回全部字段时不填 `FieldData.field_name`（只给 `field_id`），

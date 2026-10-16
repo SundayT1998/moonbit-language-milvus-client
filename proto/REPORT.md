@@ -347,8 +347,7 @@ moon test  --target all  ->  193 passed（wasm / js），四目标全绿
 新增 20 条迭代器测试，覆盖：连翻三批与收尾、`expr` 与主键游标的拼接
 （Int64 / VarChar 两种）、上限到了不再发请求、上限不跨批截断、批大小非正、
 主键不可排序、服务端没回主键列、`Close` 之后报 `Closed`、传输失败抬成 `Rpc`、
-服务端不支持 V2、收尾请求的内容（`nq = 0` / `NotSet` / 带 token）、
-收尾请求失败返回 `false`、空结果第一批即收尾。
+服务端不支持 V2、收尾请求失败返回 `false`、空结果第一批即收尾。
 
 注：`trimmed/schema.proto` 的字段号一律照抄 `proto/upstream/schema.proto`；
 上一节里「裁剪掉的字段号原样保留空档」这条对 `SearchResultData` 依然成立 ——

@@ -3,7 +3,7 @@
 // 用法：
 //   moon run --target native cmd/main -- [host:port] [token] [dbName]
 //
-// 它依次验证 Issue #11 的三条验收标准：
+// 它依次验证传输层的三条验收标准：
 //   1. 能建立连接并完成一次 unary 调用
 //   2. 认证与 dbName metadata 确实发出去了
 //   3. 超时配置生效，超时错误能被识别出来
