@@ -151,6 +151,18 @@ BF16 是手写实现，对 float32 做 bit 截断加 round-half-to-even，与上
 - README 的围栏标记保持 `nocheck` 就行 —— `moon fmt` 每次都会把它改回这个词，
   跟它较劲没有意义。可编译性不走它这条路。
 
+## README 只有一份，工具链有下限
+
+- `README.mbt.md` 是唯一的事实源，也是 `moon.mod` 的 `readme`；`README.md`
+  是指向它的**符号链接**（GitHub 首页照常渲染）。不要把链接换成实体副本 ——
+  两份全文并存就会各自长，读者迟早看到两个版本。别为此加门禁，符号链接本身
+  就是门禁。
+- 工具链下限写 **`moonc v0.10.16`**，不是赛事要求的 0.10.14。原因是 `.mbti`
+  里 `Int` / `Int32` 的规整拼写随工具链变：入库的是 0.10.16 的产出，更早的
+  工具链跑 `moon info` 会改出一批纯拼写 diff，把 CI 的零 diff 门禁弄红。
+  这批 diff 已经对齐入库，重跑 `moon info` 应当是零 diff（见
+  `docs/DEVELOPMENT.md`「工具链漂移」）。
+
 ## 文档归属
 
 - **README（`README.mbt.md`）面向使用者**，只写：项目定位、特性与能力边界、

@@ -66,7 +66,7 @@ pub(all) struct CollectionSchema {
   mut functions : Array[FunctionSchema]
   mut db_name : String
   mut struct_array_fields : Array[StructArrayFieldSchema]
-  mut version : Int
+  mut version : Int32
   mut external_source : String
   mut external_spec : String
   mut do_physical_backfill : Bool
@@ -74,7 +74,7 @@ pub(all) struct CollectionSchema {
   mut enable_namespace : Bool
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn CollectionSchema::CollectionSchema(String, String, Bool, Array[FieldSchema], Bool, Array[@common.KeyValuePair], Array[FunctionSchema], String, Array[StructArrayFieldSchema], Int, String, String, Bool, Array[Int64], Bool) -> Self
+pub fn CollectionSchema::CollectionSchema(String, String, Bool, Array[FieldSchema], Bool, Array[@common.KeyValuePair], Array[FunctionSchema], String, Array[StructArrayFieldSchema], Int32, String, String, Bool, Array[Int64], Bool) -> Self
 pub impl Default for CollectionSchema
 pub impl ToJson for CollectionSchema
 pub impl @json.FromJson for CollectionSchema
@@ -355,10 +355,10 @@ pub impl ToJson for IDs_IdField
 pub impl @json.FromJson for IDs_IdField
 
 pub(all) struct IntArray {
-  mut data : Array[Int]
+  mut data : Array[Int32]
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn IntArray::IntArray(Array[Int]) -> Self
+pub fn IntArray::IntArray(Array[Int32]) -> Self
 pub impl Default for IntArray
 pub impl ToJson for IntArray
 pub impl @json.FromJson for IntArray
@@ -604,14 +604,14 @@ pub impl @protobuf.Write for ValueField
 
 pub(all) enum ValueField_Data {
   BoolData(Bool)
-  IntData(Int)
+  IntData(Int32)
   LongData(Int64)
   FloatData(Float)
   DoubleData(Double)
   StringData(String)
   BytesData(Bytes)
   TimestamptzData(Int64)
-  DateData(Int)
+  DateData(Int32)
   TimeData(Int64)
   NotSet
 } derive(Eq, @debug.Debug)

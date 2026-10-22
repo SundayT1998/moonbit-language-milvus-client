@@ -28,13 +28,13 @@ pub fn new_flat_index(MetricType) -> Index
 
 pub fn new_generic_index(String, IndexParams) -> Index raise IndexParamError
 
-pub fn new_hnsw_index(MetricType, m? : Int, ef_construction? : Int) -> Index raise IndexParamError
+pub fn new_hnsw_index(MetricType, m? : Int32, ef_construction? : Int32) -> Index raise IndexParamError
 
-pub fn new_ivf_flat_index(MetricType, nlist? : Int) -> Index raise IndexParamError
+pub fn new_ivf_flat_index(MetricType, nlist? : Int32) -> Index raise IndexParamError
 
 // Errors
 pub suberror IndexParamError {
-  OutOfRange(key~ : String, value~ : Int, expected~ : String)
+  OutOfRange(key~ : String, value~ : Int32, expected~ : String)
   InvalidCombination(index_type~ : String, reason~ : String)
   InvalidArgument(reason~ : String)
 } derive(@debug.Debug)
@@ -103,8 +103,8 @@ pub fn IndexParams::get(Self, String) -> String?
 pub fn IndexParams::new() -> Self
 pub fn IndexParams::set(Self, String, String) -> Unit
 pub fn IndexParams::set_default(Self, String, String) -> Unit
-pub fn IndexParams::set_int(Self, String, Int) -> Unit
-pub fn IndexParams::size(Self) -> Int
+pub fn IndexParams::set_int(Self, String, Int32) -> Unit
+pub fn IndexParams::size(Self) -> Int32
 pub fn IndexParams::to_json(Self) -> String
 pub fn IndexParams::to_pairs(Self) -> Array[(String, String)]
 pub impl Show for IndexParams
@@ -116,11 +116,11 @@ pub(all) enum IndexState {
   Finished
   Failed
   Retry
-  Unknown(Int)
+  Unknown(Int32)
 } derive(Eq, @debug.Debug)
-pub fn IndexState::from_int(Int) -> Self
+pub fn IndexState::from_int(Int32) -> Self
 pub fn IndexState::is_terminal(Self) -> Bool
-pub fn IndexState::to_int(Self) -> Int
+pub fn IndexState::to_int(Self) -> Int32
 
 pub(all) enum IndexType {
   Flat

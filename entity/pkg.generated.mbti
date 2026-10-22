@@ -6,11 +6,11 @@ import {
 }
 
 // Values
-pub fn bfloat16_from_float(Float) -> UInt
+pub fn bfloat16_from_float(Float) -> UInt32
 
-pub fn bfloat16_from_floats(Array[Float]) -> Array[UInt]
+pub fn bfloat16_from_floats(Array[Float]) -> Array[UInt32]
 
-pub fn bfloat16_to_float(UInt) -> Float
+pub fn bfloat16_to_float(UInt32) -> Float
 
 pub fn bfloat16_vector_bytes(Array[Float]) -> Bytes
 
@@ -18,7 +18,7 @@ pub fn bfloat16_vector_from_bytes(Bytes) -> Array[Float] raise SchemaError
 
 pub let dim_key : String
 
-pub fn float16_from_float(Float) -> UInt
+pub fn float16_from_float(Float) -> UInt32
 
 pub fn float16_vector_bytes(Array[Float]) -> Bytes
 
@@ -37,14 +37,14 @@ pub fn SchemaError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct BFloat16Vector {
-  dim : Int
+  dim : Int32
   values : Array[Float]
 } derive(@debug.Debug)
 #deprecated
 pub fn BFloat16Vector::to_repr(Self) -> @debug.Repr
 
 pub(all) struct BinaryVector {
-  dim : Int
+  dim : Int32
   data : Bytes
 } derive(@debug.Debug)
 #deprecated
@@ -101,16 +101,16 @@ pub(all) enum DataType {
 } derive(Eq, @debug.Debug)
 #deprecated
 pub fn DataType::equal(Self, Self) -> Bool
-pub fn DataType::from_int(Int) -> Self?
+pub fn DataType::from_int(Int32) -> Self?
 pub fn DataType::is_dense_vector_type(Self) -> Bool
 pub fn DataType::is_vector_type(Self) -> Bool
 pub fn DataType::name(Self) -> String
 #deprecated
 pub fn DataType::not_equal(Self, Self) -> Bool
-pub fn DataType::to_int(Self) -> Int
+pub fn DataType::to_int(Self) -> Int32
 #deprecated
 pub fn DataType::to_repr(Self) -> @debug.Repr
-pub fn DataType::vector_bytes_per_dim(Self) -> Int?
+pub fn DataType::vector_bytes_per_dim(Self) -> Int32?
 
 pub(all) struct Field {
   name : String
@@ -124,8 +124,8 @@ pub(all) struct Field {
   is_clustering_key : Bool
   nullable : Bool
   element_type : DataType?
-  dim : Int?
-  max_length : Int?
+  dim : Int32?
+  max_length : Int32?
   type_params : Array[(String, String)]
 } derive(@debug.Debug)
 pub fn Field::as_auto_id(Self) -> Self
@@ -138,42 +138,42 @@ pub fn Field::new(String, DataType) -> Self
 pub fn Field::to_repr(Self) -> @debug.Repr
 pub fn Field::type_params_pairs(Self) -> Array[(String, String)]
 pub fn Field::validate(Self) -> Unit raise SchemaError
-pub fn Field::with_dim(Self, Int) -> Self raise SchemaError
+pub fn Field::with_dim(Self, Int32) -> Self raise SchemaError
 pub fn Field::with_element_type(Self, DataType) -> Self
-pub fn Field::with_max_length(Self, Int) -> Self raise SchemaError
+pub fn Field::with_max_length(Self, Int32) -> Self raise SchemaError
 pub fn Field::with_type_param(Self, String, String) -> Self
 
 pub(all) struct Float16Vector {
-  dim : Int
+  dim : Int32
   values : Array[Float]
 } derive(@debug.Debug)
 #deprecated
 pub fn Float16Vector::to_repr(Self) -> @debug.Repr
 
 pub(all) struct FloatVector {
-  dim : Int
+  dim : Int32
   values : Array[Float]
 } derive(@debug.Debug)
 #deprecated
 pub fn FloatVector::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Int8Vector {
-  dim : Int
+  dim : Int32
   data : Bytes
 } derive(@debug.Debug)
 #deprecated
 pub fn Int8Vector::to_repr(Self) -> @debug.Repr
 
 pub(all) struct SparseFloatVector {
-  indices : Array[UInt]
+  indices : Array[UInt32]
   values : Array[Float]
 } derive(Eq, @debug.Debug)
 #deprecated
 pub fn SparseFloatVector::equal(Self, Self) -> Bool
 pub fn SparseFloatVector::from_bytes(Bytes) -> Self raise SchemaError
-pub fn SparseFloatVector::from_entry(UInt, Float) -> Self
-pub fn SparseFloatVector::inferred_dim(Self) -> Int
-pub fn SparseFloatVector::new(Array[UInt], Array[Float]) -> Self raise SchemaError
+pub fn SparseFloatVector::from_entry(UInt32, Float) -> Self
+pub fn SparseFloatVector::inferred_dim(Self) -> Int32
+pub fn SparseFloatVector::new(Array[UInt32], Array[Float]) -> Self raise SchemaError
 #deprecated
 pub fn SparseFloatVector::not_equal(Self, Self) -> Bool
 pub fn SparseFloatVector::to_bytes(Self) -> Bytes raise SchemaError

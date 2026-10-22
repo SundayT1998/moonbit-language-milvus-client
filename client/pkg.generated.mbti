@@ -29,9 +29,9 @@ pub fn data_type_to_proto(@entity.DataType) -> @schema.DataType
 
 pub let default_consistency_level : ConsistencyLevel
 
-pub let default_flush_check_interval_millis : Int
+pub let default_flush_check_interval_millis : Int32
 
-pub let default_load_check_interval_millis : Int
+pub let default_load_check_interval_millis : Int32
 
 pub fn delete_by_int64_ids(String, String, Array[Int64]) -> DeleteOption
 
@@ -129,9 +129,9 @@ pub fn new_release_collection_option(String) -> ReleaseCollectionOption
 
 pub fn new_release_partitions_option(String, Array[String]) -> ReleasePartitionsOption
 
-pub fn new_search_iterator_option(String, Int, Array[@column.ColumnValue]) -> SearchIteratorOption
+pub fn new_search_iterator_option(String, Int32, Array[@column.ColumnValue]) -> SearchIteratorOption
 
-pub fn new_search_option(String, Int, Array[@column.ColumnValue]) -> SearchOption
+pub fn new_search_option(String, Int32, Array[@column.ColumnValue]) -> SearchOption
 
 pub fn new_write_option(String, Array[WriteColumn]) -> WriteOption
 
@@ -173,7 +173,7 @@ pub let show_collections_path : String
 
 pub let show_partitions_path : String
 
-pub fn simple_create_collection_option(String, Int) -> CreateCollectionOption
+pub fn simple_create_collection_option(String, Int32) -> CreateCollectionOption
 
 pub let upsert_path : String
 
@@ -185,7 +185,7 @@ pub suberror ClientError {
   Encode(String)
   Decode(String)
 }
-pub fn ClientError::code(Self) -> Int
+pub fn ClientError::code(Self) -> Int32
 pub fn ClientError::is_deadline_exceeded(Self) -> Bool
 pub fn ClientError::is_retryable(Self) -> Bool
 pub fn ClientError::is_transport(Self) -> Bool
@@ -245,7 +245,7 @@ pub(all) struct CollectionDescription {
   physical_channels : Array[String]
   virtual_channels : Array[String]
   consistency_level : ConsistencyLevel
-  shard_num : Int
+  shard_num : Int32
   properties : Array[(String, String)]
   update_timestamp : UInt64
 } derive(@debug.Debug)
@@ -255,12 +255,12 @@ pub(all) enum CollectionLoadState {
   NotLoad
   Loading
   Loaded
-  Unknown(Int)
+  Unknown(Int32)
 } derive(Eq, @debug.Debug)
-pub fn CollectionLoadState::from_int(Int) -> Self
+pub fn CollectionLoadState::from_int(Int32) -> Self
 pub fn CollectionLoadState::from_proto(@common.LoadState) -> Self
 pub fn CollectionLoadState::is_loaded(Self) -> Bool
-pub fn CollectionLoadState::to_int(Self) -> Int
+pub fn CollectionLoadState::to_int(Self) -> Int32
 
 pub(all) enum ConsistencyLevel {
   Strong
@@ -269,22 +269,22 @@ pub(all) enum ConsistencyLevel {
   Eventually
   Customized
 } derive(Eq, @debug.Debug)
-pub fn ConsistencyLevel::from_int(Int) -> Self
+pub fn ConsistencyLevel::from_int(Int32) -> Self
 pub fn ConsistencyLevel::from_proto(@common.ConsistencyLevel) -> Self
-pub fn ConsistencyLevel::to_int(Self) -> Int
+pub fn ConsistencyLevel::to_int(Self) -> Int32
 pub fn ConsistencyLevel::to_proto(Self) -> @common.ConsistencyLevel
 
 pub(all) struct CreateCollectionOption {
   name : String
-  shard_num : Int
+  shard_num : Int32
   schema : @entity.CollectionSchema?
-  dim : Int
+  dim : Int32
   auto_id : Bool
   enable_dynamic_schema : Bool
   pk_field_name : String
   vector_field_name : String
   varchar_pk : Bool
-  varchar_pk_max_length : Int
+  varchar_pk_max_length : Int32
   consistency_level : ConsistencyLevel
   properties : Array[(String, String)]
   num_partitions : Int64
@@ -295,8 +295,8 @@ pub fn CreateCollectionOption::with_dynamic_schema(Self, enable? : Bool) -> Self
 pub fn CreateCollectionOption::with_num_partitions(Self, Int64) -> Self
 pub fn CreateCollectionOption::with_pk_field_name(Self, String) -> Self
 pub fn CreateCollectionOption::with_property(Self, String, String) -> Self
-pub fn CreateCollectionOption::with_shard_num(Self, Int) -> Self
-pub fn CreateCollectionOption::with_varchar_pk(Self, Bool, Int) -> Self
+pub fn CreateCollectionOption::with_shard_num(Self, Int32) -> Self
+pub fn CreateCollectionOption::with_varchar_pk(Self, Bool, Int32) -> Self
 pub fn CreateCollectionOption::with_vector_field_name(Self, String) -> Self
 
 pub(all) struct CreateIndexOption {
@@ -347,9 +347,9 @@ pub(all) struct DropPartitionOption {
 
 pub(all) struct FlushOption {
   collection_name : String
-  check_interval_millis : Int
+  check_interval_millis : Int32
 }
-pub fn FlushOption::with_check_interval_millis(Self, Int) -> Self
+pub fn FlushOption::with_check_interval_millis(Self, Int32) -> Self
 
 pub struct FlushTask {
   client : Client
@@ -357,7 +357,7 @@ pub struct FlushTask {
   segment_ids : Array[Int64]
   flushed_segment_ids : Array[Int64]
   flush_timestamp : UInt64
-  interval_millis : Int
+  interval_millis : Int32
 }
 pub fn FlushTask::collection_name(Self) -> String
 pub fn FlushTask::flush_timestamp(Self) -> UInt64
@@ -394,40 +394,40 @@ pub(all) struct ListPartitionsOption {
 
 pub(all) struct LoadCollectionOption {
   collection_name : String
-  replica_number : Int
+  replica_number : Int32
   resource_groups : Array[String]
   load_fields : Array[String]
   skip_load_dynamic_field : Bool
   load_params : Array[(String, String)]
   refresh : Bool
-  check_interval_millis : Int
+  check_interval_millis : Int32
 }
-pub fn LoadCollectionOption::with_check_interval_millis(Self, Int) -> Self
+pub fn LoadCollectionOption::with_check_interval_millis(Self, Int32) -> Self
 pub fn LoadCollectionOption::with_load_fields(Self, Array[String]) -> Self
 pub fn LoadCollectionOption::with_load_param(Self, String, String) -> Self
 pub fn LoadCollectionOption::with_refresh(Self, refresh? : Bool) -> Self
-pub fn LoadCollectionOption::with_replica(Self, Int) -> Self
-pub fn LoadCollectionOption::with_replica_number(Self, Int) -> Self
+pub fn LoadCollectionOption::with_replica(Self, Int32) -> Self
+pub fn LoadCollectionOption::with_replica_number(Self, Int32) -> Self
 pub fn LoadCollectionOption::with_resource_groups(Self, Array[String]) -> Self
 pub fn LoadCollectionOption::with_skip_load_dynamic_field(Self, skip? : Bool) -> Self
 
 pub(all) struct LoadPartitionsOption {
   collection_name : String
   partition_names : Array[String]
-  replica_number : Int
+  replica_number : Int32
   resource_groups : Array[String]
   load_fields : Array[String]
   skip_load_dynamic_field : Bool
   load_params : Array[(String, String)]
   refresh : Bool
-  check_interval_millis : Int
+  check_interval_millis : Int32
 }
-pub fn LoadPartitionsOption::with_check_interval_millis(Self, Int) -> Self
+pub fn LoadPartitionsOption::with_check_interval_millis(Self, Int32) -> Self
 pub fn LoadPartitionsOption::with_load_fields(Self, Array[String]) -> Self
 pub fn LoadPartitionsOption::with_load_param(Self, String, String) -> Self
 pub fn LoadPartitionsOption::with_refresh(Self, refresh? : Bool) -> Self
-pub fn LoadPartitionsOption::with_replica(Self, Int) -> Self
-pub fn LoadPartitionsOption::with_replica_number(Self, Int) -> Self
+pub fn LoadPartitionsOption::with_replica(Self, Int32) -> Self
+pub fn LoadPartitionsOption::with_replica_number(Self, Int32) -> Self
 pub fn LoadPartitionsOption::with_resource_groups(Self, Array[String]) -> Self
 pub fn LoadPartitionsOption::with_skip_load_dynamic_field(Self, skip? : Bool) -> Self
 
@@ -440,7 +440,7 @@ pub struct LoadTask {
   client : Client
   collection_name : String
   partition_names : Array[String]
-  interval_millis : Int
+  interval_millis : Int32
   refresh : Bool
 }
 pub fn LoadTask::collection_name(Self) -> String
@@ -474,11 +474,11 @@ pub(all) struct QueryIteratorOption {
   partition_names : Array[String]
   expr : String
   output_fields : Array[String]
-  batch_size : Int
+  batch_size : Int32
   limit : Int64
   consistency_level : ConsistencyLevel?
 } derive(@debug.Debug)
-pub fn QueryIteratorOption::with_batch_size(Self, Int) -> Self
+pub fn QueryIteratorOption::with_batch_size(Self, Int32) -> Self
 pub fn QueryIteratorOption::with_consistency_level(Self, ConsistencyLevel) -> Self
 pub fn QueryIteratorOption::with_filter(Self, String) -> Self
 pub fn QueryIteratorOption::with_limit(Self, Int64) -> Self
@@ -496,8 +496,8 @@ pub(all) struct QueryOption {
 pub fn QueryOption::with_consistency_level(Self, ConsistencyLevel) -> Self
 pub fn QueryOption::with_filter(Self, String) -> Self
 pub fn QueryOption::with_int64_ids(Self, String, Array[Int64]) -> Self
-pub fn QueryOption::with_limit(Self, Int) -> Self
-pub fn QueryOption::with_offset(Self, Int) -> Self
+pub fn QueryOption::with_limit(Self, Int32) -> Self
+pub fn QueryOption::with_offset(Self, Int32) -> Self
 pub fn QueryOption::with_order_by_fields(Self, Array[String]) -> Self
 pub fn QueryOption::with_output_fields(Self, Array[String]) -> Self
 pub fn QueryOption::with_partitions(Self, Array[String]) -> Self
@@ -509,7 +509,7 @@ pub(all) struct QueryResult {
 } derive(@debug.Debug)
 pub fn QueryResult::column(Self, String) -> @column.Column?
 pub fn QueryResult::has_column(Self, String) -> Bool
-pub fn QueryResult::len(Self) -> Int
+pub fn QueryResult::len(Self) -> Int32
 
 type RawSearchResult derive(@debug.Debug)
 
@@ -540,11 +540,11 @@ pub async fn SearchIterator::next(Self) -> SearchResult raise IteratorError
 
 pub(all) struct SearchIteratorOption {
   base : SearchOption
-  batch_size : Int
+  batch_size : Int32
   limit : Int64
 }
 pub fn SearchIteratorOption::with_anns_field(Self, String) -> Self
-pub fn SearchIteratorOption::with_batch_size(Self, Int) -> Self
+pub fn SearchIteratorOption::with_batch_size(Self, Int32) -> Self
 pub fn SearchIteratorOption::with_consistency_level(Self, ConsistencyLevel) -> Self
 pub fn SearchIteratorOption::with_filter(Self, String) -> Self
 pub fn SearchIteratorOption::with_ignore_growing(Self, ignore_growing? : Bool) -> Self
@@ -558,15 +558,15 @@ pub(all) struct SearchOption {
   collection_name : String
   partition_names : Array[String]
   anns_field : String
-  limit : Int
+  limit : Int32
   vectors : Array[@column.ColumnValue]
   expr : String
   output_fields : Array[String]
   metric_type : @index.MetricType?
   search_params : Array[(String, String)]
-  offset : Int
+  offset : Int32
   ignore_growing : Bool
-  round_decimal : Int
+  round_decimal : Int32
   consistency_level : ConsistencyLevel?
 }
 pub fn SearchOption::with_anns_field(Self, String) -> Self
@@ -574,10 +574,10 @@ pub fn SearchOption::with_consistency_level(Self, ConsistencyLevel) -> Self
 pub fn SearchOption::with_filter(Self, String) -> Self
 pub fn SearchOption::with_ignore_growing(Self, ignore_growing? : Bool) -> Self
 pub fn SearchOption::with_metric_type(Self, @index.MetricType) -> Self
-pub fn SearchOption::with_offset(Self, Int) -> Self
+pub fn SearchOption::with_offset(Self, Int32) -> Self
 pub fn SearchOption::with_output_fields(Self, Array[String]) -> Self
 pub fn SearchOption::with_partitions(Self, Array[String]) -> Self
-pub fn SearchOption::with_round_decimal(Self, Int) -> Self
+pub fn SearchOption::with_round_decimal(Self, Int32) -> Self
 pub fn SearchOption::with_search_param(Self, String, String) -> Self
 
 pub(all) struct SearchResult {
@@ -589,7 +589,7 @@ pub(all) struct WriteColumn {
   value : @column.ColumnValue
 }
 pub fn WriteColumn::data_type(Self) -> @entity.DataType
-pub fn WriteColumn::len(Self) -> Int
+pub fn WriteColumn::len(Self) -> Int32
 pub fn WriteColumn::new(String, @column.ColumnValue) -> Self
 pub fn WriteColumn::to_field_data(Self, is_dynamic? : Bool) -> @schema.FieldData raise ClientError
 
