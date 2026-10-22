@@ -441,13 +441,13 @@ pub impl @protobuf.Write for ReplicateInfo
 pub(all) struct Status {
   mut error_code : ErrorCode
   mut reason : String
-  mut code : Int
+  mut code : Int32
   mut retriable : Bool
   mut detail : String
   mut extra_info : Map[String, String]
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn Status::Status(ErrorCode, String, Int, Bool, String, Map[String, String]) -> Self
+pub fn Status::Status(ErrorCode, String, Int32, Bool, String, Map[String, String]) -> Self
 pub impl Default for Status
 pub impl ToJson for Status
 pub impl @json.FromJson for Status

@@ -41,7 +41,11 @@ Apache-2.0 不授予商标权，包名里的 "milvus" 只用来指明兼容对�
 
 ## 安装
 
-要求 MoonBit 工具链 0.10.14 或更高（`moon version --all` 查看）：
+要求 MoonBit 工具链不早于 `moonc v0.10.16`（`moon version --all` 查看）。
+
+这个下限不是随手写的：`.mbti` 接口文件里 `Int` / `Int32` 的规范拼写随工具链
+变化，入库的那份是 0.10.16 的产出。用更早的工具链跑 `moon info` 会改出一批
+纯拼写的 diff，CI 的零 diff 门禁会红，但那不是你的改动。
 
 ```sh
 moon add SundayT1998/milvus-client
@@ -219,7 +223,8 @@ fn main {
 
 | 文档 | 内容 |
 |---|---|
-| [`README.mbt.md`](./README.mbt.md) | 本文件 |
+| [`README.mbt.md`](./README.mbt.md) | 本文件，也是 `moon.mod` 声明的 `readme` |
+| [`README.md`](./README.md) | 指向本文件的符号链接，给 GitHub 首页用 —— 只写一份，不会分裂 |
 | [`docs/ROADMAP.md`](./docs/ROADMAP.md) | 已规划未实现的能力 |
 | [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) | 开发流程、集成测试、上游同步、发布、需要注意的取舍 |
 | [`AGENTS.md`](./AGENTS.md) | 协作约定与各包的实现约束 |

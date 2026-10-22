@@ -328,16 +328,17 @@ fn vector_row_payload(
 /// ```
 /// 单行 8 值 dim=4   -> the num_rows (2) of field (vector) is not equal
 ///                      to passed num_rows (1)
-/// 两行各 6 值 dim=4 -> the num_rows (3) of field (vector) is not equal
-///                      to passed num_rows (2)
+/// 两行各 5 值 dim=4 -> the length(10) of float data should divide the dim(4)
 /// 单行 3 值 dim=4   -> the length(3) of float data should divide the dim(4)
 /// ```
 ///
-/// 三条都不是「这一行有几列不对」，而是从 `dim` 反推出来的行数。其中最坏的
-/// 一条是「值的总数能被 dim 整除、但行数与声明对不上」：这个形态下服务端会
-/// **按 dim 重新切开**（8 个值被当成 2 行），只是最后被 `num_rows` 校验挡在
-/// 门外。挡得住不代表这条路径是对的 —— 客户端比服务端多知道一件事：
-/// 这一行本该有几列。在本地报出来，错误文本才指得准。
+/// 三条都不是「这一行有几列不对」，而是从 `dim` 反推出来的行数。最值得记住的
+/// 是第一条：值的总数能被 dim 整除、只是行数与声明对不上，这个形态下服务端会
+/// 按 dim 重新切开（8 个值被当成 2 行），最后才被 `num_rows` 校验挡在门外。
+/// 挡得住不代表这条路径是对的 —— 客户端比服务端多知道一件事：这一行本该有几列。
+/// 在本地报出来，错误文本才指得准。
+///
+/// 后两条（总数除不尽 dim）报的是长度，与行宽无关，纯属服务端连数都切不动。
 ///
 /// 判据是「各行宽度全等」，**不是「等于 dim」**。`FloatVector(dim, rows)`
 /// 这个建模同时服务写入与查询向量，而查询向量的 `dim` 字段是冗余的

@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub let canceled_code : Int
+pub let canceled_code : Int32
 
 pub fn err_collection_not_found() -> MerError
 
@@ -26,7 +26,7 @@ pub fn err_service_unimplemented() -> MerError
 
 pub fn err_unexpected() -> MerError
 
-pub fn error_code(MerError?) -> Int
+pub fn error_code(MerError?) -> Int32
 
 pub fn error_detail(MerError?) -> String
 
@@ -42,19 +42,19 @@ pub fn is_ok(@common.Status?) -> Bool
 
 pub fn is_retryable_err(MerError?) -> Bool
 
-pub fn legacy_code_from_modern(Int) -> @common.ErrorCode
+pub fn legacy_code_from_modern(Int32) -> @common.ErrorCode
 
-pub fn modern_code_from_legacy(@common.ErrorCode) -> Int
+pub fn modern_code_from_legacy(@common.ErrorCode) -> Int32
 
 pub fn redact(String) -> String
 
 pub fn success(reason? : String) -> @common.Status
 
-pub let timeout_code : Int
+pub let timeout_code : Int32
 
 pub fn to_status(MerError?) -> @common.Status
 
-pub let unexpected_code : Int
+pub let unexpected_code : Int32
 
 pub fn wrap_err_collection_not_found(String, messages? : Array[String]) -> MerError
 
@@ -76,9 +76,9 @@ pub fn wrap_err_service_not_ready(String, Int64, String, messages? : Array[Strin
 
 // Errors
 pub suberror MerError {
-  RpcError(code~ : Int, legacy_code~ : @common.ErrorCode, message~ : String, detail~ : String, retriable~ : Bool, input~ : Bool)
+  RpcError(code~ : Int32, legacy_code~ : @common.ErrorCode, message~ : String, detail~ : String, retriable~ : Bool, input~ : Bool)
 }
-pub fn MerError::code(Self?) -> Int
+pub fn MerError::code(Self?) -> Int32
 pub fn MerError::detail(Self?) -> String
 pub fn MerError::is_input_error(Self?) -> Bool
 pub fn MerError::is_retryable(Self?) -> Bool

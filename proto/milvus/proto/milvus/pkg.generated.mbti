@@ -35,13 +35,13 @@ pub(all) struct CreateCollectionRequest {
   mut db_name : String
   mut collection_name : String
   mut schema : Bytes
-  mut shards_num : Int
+  mut shards_num : Int32
   mut consistency_level : @common.ConsistencyLevel
   mut properties : Array[@common.KeyValuePair]
   mut num_partitions : Int64
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn CreateCollectionRequest::CreateCollectionRequest(base? : @common.MsgBase, String, String, Bytes, Int, @common.ConsistencyLevel, Array[@common.KeyValuePair], Int64) -> Self
+pub fn CreateCollectionRequest::CreateCollectionRequest(base? : @common.MsgBase, String, String, Bytes, Int32, @common.ConsistencyLevel, Array[@common.KeyValuePair], Int64) -> Self
 pub impl Default for CreateCollectionRequest
 pub impl ToJson for CreateCollectionRequest
 pub impl @json.FromJson for CreateCollectionRequest
@@ -93,12 +93,12 @@ pub(all) struct DeleteRequest {
   mut collection_name : String
   mut partition_name : String
   mut expr : String
-  mut hash_keys : Array[UInt]
+  mut hash_keys : Array[UInt32]
   mut consistency_level : @common.ConsistencyLevel
   mut namespace_ : String?
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn DeleteRequest::DeleteRequest(base? : @common.MsgBase, String, String, String, String, Array[UInt], @common.ConsistencyLevel, namespace_? : String) -> Self
+pub fn DeleteRequest::DeleteRequest(base? : @common.MsgBase, String, String, String, String, Array[UInt32], @common.ConsistencyLevel, namespace_? : String) -> Self
 pub impl Default for DeleteRequest
 pub impl ToJson for DeleteRequest
 pub impl @json.FromJson for DeleteRequest
@@ -134,7 +134,7 @@ pub(all) struct DescribeCollectionResponse {
   mut physical_channel_names : Array[String]
   mut created_timestamp : UInt64
   mut created_utc_timestamp : UInt64
-  mut shards_num : Int
+  mut shards_num : Int32
   mut aliases : Array[String]
   mut start_positions : Array[@common.KeyDataPair]
   mut consistency_level : @common.ConsistencyLevel
@@ -151,7 +151,7 @@ pub(all) struct DescribeCollectionResponse {
   mut routing_modulus : UInt64
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn DescribeCollectionResponse::DescribeCollectionResponse(status? : @common.Status, schema? : @schema.CollectionSchema, Int64, Array[String], Array[String], UInt64, UInt64, Int, Array[String], Array[@common.KeyDataPair], @common.ConsistencyLevel, String, Array[@common.KeyValuePair], String, Int64, Int64, UInt64, UInt64, String, Array[@schema.CollectionShardInfo], String, UInt64) -> Self
+pub fn DescribeCollectionResponse::DescribeCollectionResponse(status? : @common.Status, schema? : @schema.CollectionSchema, Int64, Array[String], Array[String], UInt64, UInt64, Int32, Array[String], Array[@common.KeyDataPair], @common.ConsistencyLevel, String, Array[@common.KeyValuePair], String, Int64, Int64, UInt64, UInt64, String, Array[@schema.CollectionShardInfo], String, UInt64) -> Self
 pub impl Default for DescribeCollectionResponse
 pub impl ToJson for DescribeCollectionResponse
 pub impl @json.FromJson for DescribeCollectionResponse
@@ -514,11 +514,11 @@ pub(all) struct IndexDescription {
   mut state : @common.IndexState
   mut index_state_fail_reason : String
   mut pending_index_rows : Int64
-  mut min_index_version : Int
-  mut max_index_version : Int
+  mut min_index_version : Int32
+  mut max_index_version : Int32
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn IndexDescription::IndexDescription(String, Int64, Array[@common.KeyValuePair], String, Int64, Int64, @common.IndexState, String, Int64, Int, Int) -> Self
+pub fn IndexDescription::IndexDescription(String, Int64, Array[@common.KeyValuePair], String, Int64, Int64, @common.IndexState, String, Int64, Int32, Int32) -> Self
 pub impl Default for IndexDescription
 pub impl ToJson for IndexDescription
 pub impl @json.FromJson for IndexDescription
@@ -534,13 +534,13 @@ pub(all) struct InsertRequest {
   mut collection_name : String
   mut partition_name : String
   mut fields_data : Array[@schema.FieldData]
-  mut hash_keys : Array[UInt]
-  mut num_rows : UInt
+  mut hash_keys : Array[UInt32]
+  mut num_rows : UInt32
   mut schema_timestamp : UInt64
   mut namespace_ : String?
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn InsertRequest::InsertRequest(base? : @common.MsgBase, String, String, String, Array[@schema.FieldData], Array[UInt], UInt, UInt64, namespace_? : String) -> Self
+pub fn InsertRequest::InsertRequest(base? : @common.MsgBase, String, String, String, Array[@schema.FieldData], Array[UInt32], UInt32, UInt64, namespace_? : String) -> Self
 pub impl Default for InsertRequest
 pub impl ToJson for InsertRequest
 pub impl @json.FromJson for InsertRequest
@@ -554,7 +554,7 @@ pub(all) struct LoadCollectionRequest {
   mut base : @common.MsgBase?
   mut db_name : String
   mut collection_name : String
-  mut replica_number : Int
+  mut replica_number : Int32
   mut resource_groups : Array[String]
   mut refresh : Bool
   mut load_fields : Array[String]
@@ -562,7 +562,7 @@ pub(all) struct LoadCollectionRequest {
   mut load_params : Map[String, String]
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn LoadCollectionRequest::LoadCollectionRequest(base? : @common.MsgBase, String, String, Int, Array[String], Bool, Array[String], Bool, Map[String, String]) -> Self
+pub fn LoadCollectionRequest::LoadCollectionRequest(base? : @common.MsgBase, String, String, Int32, Array[String], Bool, Array[String], Bool, Map[String, String]) -> Self
 pub impl Default for LoadCollectionRequest
 pub impl ToJson for LoadCollectionRequest
 pub impl @json.FromJson for LoadCollectionRequest
@@ -592,7 +592,7 @@ pub(all) struct LoadPartitionsRequest {
   mut db_name : String
   mut collection_name : String
   mut partition_names : Array[String]
-  mut replica_number : Int
+  mut replica_number : Int32
   mut resource_groups : Array[String]
   mut refresh : Bool
   mut load_fields : Array[String]
@@ -600,7 +600,7 @@ pub(all) struct LoadPartitionsRequest {
   mut load_params : Map[String, String]
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn LoadPartitionsRequest::LoadPartitionsRequest(base? : @common.MsgBase, String, String, Array[String], Int, Array[String], Bool, Array[String], Bool, Map[String, String]) -> Self
+pub fn LoadPartitionsRequest::LoadPartitionsRequest(base? : @common.MsgBase, String, String, Array[String], Int32, Array[String], Bool, Array[String], Bool, Map[String, String]) -> Self
 pub impl Default for LoadPartitionsRequest
 pub impl ToJson for LoadPartitionsRequest
 pub impl @json.FromJson for LoadPartitionsRequest
@@ -628,8 +628,8 @@ pub impl @protobuf.Write for LoadPartitionsRequest_LoadParamsEntry
 pub(all) struct MutationResult {
   mut status : @common.Status?
   mut ids : @schema.IDs?
-  mut succ_index : Array[UInt]
-  mut err_index : Array[UInt]
+  mut succ_index : Array[UInt32]
+  mut err_index : Array[UInt32]
   mut acknowledged : Bool
   mut insert_cnt : Int64
   mut delete_cnt : Int64
@@ -637,7 +637,7 @@ pub(all) struct MutationResult {
   mut timestamp : UInt64
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn MutationResult::MutationResult(status? : @common.Status, ids? : @schema.IDs, Array[UInt], Array[UInt], Bool, Int64, Int64, Int64, UInt64) -> Self
+pub fn MutationResult::MutationResult(status? : @common.Status, ids? : @schema.IDs, Array[UInt32], Array[UInt32], Bool, Int64, Int64, Int64, UInt64) -> Self
 pub impl Default for MutationResult
 pub impl ToJson for MutationResult
 pub impl @json.FromJson for MutationResult
@@ -806,10 +806,10 @@ pub(all) struct ShowCollectionsResponse {
   mut created_utc_timestamps : Array[UInt64]
   mut in_memory_percentages : Array[Int64]
   mut query_service_available : Array[Bool]
-  mut shards_num : Array[Int]
+  mut shards_num : Array[Int32]
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn ShowCollectionsResponse::ShowCollectionsResponse(status? : @common.Status, Array[String], Array[Int64], Array[UInt64], Array[UInt64], Array[Int64], Array[Bool], Array[Int]) -> Self
+pub fn ShowCollectionsResponse::ShowCollectionsResponse(status? : @common.Status, Array[String], Array[Int64], Array[UInt64], Array[UInt64], Array[Int64], Array[Bool], Array[Int32]) -> Self
 pub impl Default for ShowCollectionsResponse
 pub impl ToJson for ShowCollectionsResponse
 pub impl @json.FromJson for ShowCollectionsResponse
@@ -875,14 +875,14 @@ pub(all) struct UpsertRequest {
   mut collection_name : String
   mut partition_name : String
   mut fields_data : Array[@schema.FieldData]
-  mut hash_keys : Array[UInt]
-  mut num_rows : UInt
+  mut hash_keys : Array[UInt32]
+  mut num_rows : UInt32
   mut schema_timestamp : UInt64
   mut partial_update : Bool
   mut namespace_ : String?
 } derive(Eq, @debug.Debug)
 #alias(new, deprecated)
-pub fn UpsertRequest::UpsertRequest(base? : @common.MsgBase, String, String, String, Array[@schema.FieldData], Array[UInt], UInt, UInt64, Bool, namespace_? : String) -> Self
+pub fn UpsertRequest::UpsertRequest(base? : @common.MsgBase, String, String, String, Array[@schema.FieldData], Array[UInt32], UInt32, UInt64, Bool, namespace_? : String) -> Self
 pub impl Default for UpsertRequest
 pub impl ToJson for UpsertRequest
 pub impl @json.FromJson for UpsertRequest

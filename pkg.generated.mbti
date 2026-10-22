@@ -9,13 +9,13 @@ import {
 // Values
 pub fn client_config(@client.Client) -> @transport.Config
 
-pub fn client_error_code(@client.ClientError) -> Int
+pub fn client_error_code(@client.ClientError) -> Int32
 
 pub let default_consistency_level : @client.ConsistencyLevel
 
-pub let default_port : Int
+pub let default_port : Int32
 
-pub let default_timeout_millis : Int
+pub let default_timeout_millis : Int32
 
 pub fn is_client_error_deadline_exceeded(@client.ClientError) -> Bool
 
@@ -35,7 +35,7 @@ pub fn with_db_name(@transport.Config, String) -> @transport.Config
 
 pub fn with_gzip(@transport.Config, enable? : Bool) -> @transport.Config
 
-pub fn with_timeout_millis(@transport.Config, Int) -> @transport.Config
+pub fn with_timeout_millis(@transport.Config, Int32) -> @transport.Config
 
 pub fn with_token(@transport.Config, String) -> @transport.Config
 
