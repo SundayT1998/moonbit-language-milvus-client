@@ -341,7 +341,7 @@ Bug #2。`SearchRequest` / `QueryRequest` 本身不用动：迭代器的开关�
 
 ```
 moon check --target all  ->  0 error
-moon test  --target all  ->  193 passed（wasm / js），四目标全绿
+moon test  --target all  ->  0 failed，四目标全绿
 ```
 
 新增 20 条迭代器测试，覆盖：连翻三批与收尾、`expr` 与主键游标的拼接
@@ -386,5 +386,5 @@ moon test  --target all  ->  193 passed（wasm / js），四目标全绿
 proto/tools/gen.sh trimmed   # 连跑两次，第二次零 diff
 moon fmt && moon info        # 之后再跑不再产生新 diff
 moon check --target all      # 0 error
-moon test  --target all      # 230 / 165 / 230 / 234 全绿
+moon test  --target all      # 0 failed，四目标全绿
 ```

@@ -361,8 +361,10 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   `async fn` 只允许一个 `raise` 类型，多错误组合装不进签名，所以这里是刻意的收敛。
 - Milvus 老式 RPC 把错误放在响应体的 `common.Status` 里，而不是 gRPC status。
   每个响应都要过一遍 `check_status`，OK 返回 `None`。
-- `ClientError` 的四个分类处置不同：`Transport` 可原样重试，`Server` 看
+- `ClientError` 五个分类里，**只有两个**可重试：`Transport` 原样重试，`Server` 看
   `@errors.is_retryable_err`（只看服务端下发的 `retriable`，不做本地猜测）。
+  另外三个（`Schema` / `Encode` / `Decode`）重试多少次都是同一个结果 ——
+  前一个是本地模型过时，后两个是客户端自己的 bug，处置是改代码而不是再发一次。
 - 不缓存集合 schema：insert / upsert 的 `schema_timestamp` 留 0，
   没有上游那套 schema-mismatch 自动重试。这是 R6 里写明的取舍，改它要连带
   补一个 schema 缓存。
@@ -424,6 +426,11 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
   还会用 `search_params_of` 覆盖整套键。
 - `SearchIterator` 走到末尾会自己发一次收尾请求。服务端侧游标不会自己过期，
   「不泄漏服务端资源」是 #18 的验收标准之一。
+- `SearchIterator::close` 的 `Bool` 报的是**收尾那一发的结果**（`true` 也包含
+  「本来就不用收」），失败不抛、只翻成 `false`。本地状态与它解耦：`false`
+  之后 `is_closed()` 照样为真。别把返回值改成恒 `true` —— 那就没有通道能
+  证明服务端会话没漏。`is_closed()` 的判据是 `closed || exhausted`，
+  两条迭代器一致：翻完也算关了。
 - `limit` 的判定是 `remaining <= 0` 而不是 `== 0`，而且越界的那一批**要切短**
   （`keep_within_limit`，两条迭代器都有）。原因写在 `iterator.mbt` 文件头
   第 2 条：`remaining` 按整批扣减，非整数倍上限会跨过零点，等号判定等于

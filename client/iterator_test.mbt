@@ -1031,10 +1031,10 @@ async test "search_iterator 没取过一批时 Close 不发请求" {
 }
 
 ///|
-/// 收尾那一发失败**不影响** `close` 的返回值：它说的是「本地已关」，
-/// 而服务端侧的 v2 游标有 TTL 兜底会自己回收。早先这里回 `false`，
-/// 调用方（多半在 `defer` 里）只会以为自己用错了。
-async test "search_iterator 收尾请求失败时 Close 仍然返回 true" {
+/// 收尾那一发失败时 `close` 回 `false`，但**不抛**：调用方多半把它挂在
+/// `defer` 里，这时候再抬一个错误只会盖掉原本的错误。返回值与本地状态
+/// 解耦 —— `false` 之后 `is_closed()` 照样为真，`next` 照样报 `Closed`。
+async test "search_iterator 收尾请求失败时 Close 返回 false 且不抛" {
   let (client, _, _) = iter_client([
     (
       @client.describe_collection_path,
@@ -1056,8 +1056,19 @@ async test "search_iterator 收尾请求失败时 Close 仍然返回 true" {
   let closed_cleanly = iterator.close() catch {
     _ => fail("close should not raise")
   }
-  assert_true(closed_cleanly)
+  assert_false(closed_cleanly)
+  // 服务端会话没关成，不该把本地「已经关了」也一并否掉。
   assert_true(iterator.is_closed())
+  let outcome : Result[Unit, @client.IteratorError] = try {
+    ignore(iterator.next())
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected Closed")
+    Err(err) => assert_true(err.is_closed())
+  }
 }
 
 ///|
