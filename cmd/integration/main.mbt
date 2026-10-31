@@ -349,6 +349,10 @@ async fn check_steps(client : @client.Client) -> String {
   //     这一屏是为了两条踩过的坑：`nq = 0` 的收尾被 v3.0.2 拒（`close`
   //     于是每次都报假失败），以及非整数倍 `limit` 让迭代器跑满全表。
   //     两条都不会在 mock 上暴露 —— mock 永远回整批、也永远“成功”。
+  //
+  //     第二段断言 `close` 回 `true`，断的是「服务端真受理了收尾」。这条
+  //     只有在 `close` 把收尾结果如实报出来的时候才有意义 —— 返回值若塌成
+  //     恒 `true`，这一屏就退化成「调了一次函数」。
   let iterator_outcome : Result[Unit, String] = try {
     search_iterator_screen(client, vectors[row_count - 1])
     Ok(())
@@ -474,10 +478,11 @@ async fn search_iterator_screen(
   if first.hits.length() == 0 {
     raise @client.IteratorError::Setup("迭代器第一批是空的")
   }
+  // 收尾那一发失败**不抛**，只落在返回值里；这里把它当成失败判据。
   let closed = live.close() catch { _ => false }
   if !closed {
     raise @client.IteratorError::Setup(
-      "close 返回了 false；收尾那一发多半没被服务端受理",
+      "close 返回了 false；收尾那一发没被服务端受理（会话只能等 TTL 回收）",
     )
   }
   ()
