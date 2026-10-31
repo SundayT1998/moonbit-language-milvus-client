@@ -21,19 +21,25 @@
 // 响应反序列化，本地不做任何向量计算。这里保持同样的形状。
 
 ///|
-/// 一次 unary 调用的形状：给路径和已编码的 protobuf body，拿回已解码前的
-/// 响应字节。
+/// 一次 unary 调用的形状：给路径、已编码的 protobuf body 和这次调用的超时，
+/// 拿回已解码前的响应字节。
 ///
 /// 把它抽成函数值而不是直接依赖 `@transport/native`，是因为模块
 /// `preferred_target = "wasm"`：`client` 这层必须在 wasm / js 下编得过，
 /// 而真连 socket 的实现是 native 专属的（见 `client/native`）。
-pub type Unary = async (String, Bytes) -> Bytes raise @transport.RpcError
+///
+/// **超时走参数而不是闭包**：`Client::new` 收的 `config` 与调用方给的这条
+/// `Unary` 未必同源（可以直接传一条连到别处的函数值进来），闭包里记住的
+/// 那份 `timeout_millis` 跟 `Client` 手上这份对不上时，`Config` 上的超时
+/// 就被静默丢掉了。让 `call_service` 每次把 `self.config.timeout_millis`
+/// 显式传下去，`Client` 的配置才是唯一事实源。
+pub type Unary = async (String, Bytes, Int32) -> Bytes raise @transport.RpcError
 
 ///|
 /// 连到 Milvus 的客户端。
 ///
-/// `config` 只用来取 dbName、超时、metadata 之类的默认值；真正把字
-/// 节发出去的是 `call`。
+/// `config` 决定 dbName、**每次调用的超时**、metadata 之类的默认值；
+/// 真正把字节发出去的是 `call`，它只负责把超时落到连接上。
 pub struct Client {
   config : @transport.Config
   call : Unary
@@ -148,7 +154,8 @@ async fn[Req : @lib.Write, Resp : @lib.Read + Default] Client::call_service(
   request : Req,
 ) -> Resp raise ClientError {
   let body = encode_request(request)
-  let response = (self.call)(path, body) catch {
+  // 超时从 `self.config` 走，不指望 `call` 自己记住 —— 两者可以不同源。
+  let response = (self.call)(path, body, self.config.timeout_millis) catch {
     err => raise ClientError::Transport(err)
   }
   decode_response(response)

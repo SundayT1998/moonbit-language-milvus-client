@@ -36,7 +36,7 @@ fn fake_transport(
   responses : Array[(String, Bytes)],
   recorded : Ref[Array[Recorded]],
 ) -> @client.Unary {
-  (path, body) => {
+  (path, body, _) => {
     let log = recorded.val
     log.push({ path, body, })
     recorded.val = log
@@ -1147,7 +1147,7 @@ async test "服务端拒绝变成 Server 错误" {
 ///|
 async test "传输失败原样透传" {
   let config = @transport.Config::new("127.0.0.1:19530")
-  let call : @client.Unary = (_, _) => {
+  let call : @client.Unary = (_, _, _) => {
     raise @transport.RpcError::new(
       @transport.Code::Unavailable.to_int(),
       "connection refused",
@@ -1338,4 +1338,46 @@ async test "insert 二进制向量按 bit 数校宽度" {
     Err(_) => fail("expected Encode")
   }
   assert_eq(recorded2.val.length(), 0)
+}
+
+///|
+/// `Config` 上的超时必须真的落到那条 `Unary` 上。
+///
+/// 这条缝曾经存在过：`Unary` 只有 `(path, body)`，超时全靠闭包里记住的
+/// 那份 `config`，而 `Client::new` 收的 `config` 跟调用方给的 `Unary`
+/// 可以不同源 —— 于是 `Config::with_timeout_millis(5000)` 在 `client`
+/// 这一层被静默丢掉，落回底层连接的 30s 默认值。README 的快速上手第 1 步
+/// 就写着 `.with_timeout_millis(5000)`，读过的人会以为它在生效。
+async test "call_service 把 config 的超时透传给 Unary" {
+  let seen : Ref[Array[Int32]] = Ref([])
+  let call : @client.Unary = (path, _, timeout_millis) => {
+    ignore(path)
+    let log = seen.val
+    log.push(timeout_millis)
+    seen.val = log
+    raise @transport.RpcError::new(
+      @transport.Code::Unavailable.to_int(),
+      "recorded",
+    )
+  }
+  // 刻意给一条与 `Client` 配置不同的连接：超时若还藏在闭包里，这里就会
+  // 记下 `default_timeout_millis` 而不是 5000。
+  let config = @transport.Config::new("127.0.0.1:19530").with_timeout_millis(
+    5_000,
+  )
+  let client = @client.Client::new(config, call)
+  let outcome : Result[Unit, @client.ClientError] = try {
+    ignore(client.drop_collection(@client.new_drop_collection_option("x")))
+    Ok(())
+  } catch {
+    err => Err(err)
+  }
+  match outcome {
+    Ok(_) => fail("expected a transport error")
+    Err(Transport(_)) => ()
+    Err(_) => fail("expected Transport")
+  }
+  assert_eq(seen.val.length(), 1)
+  assert_eq(seen.val[0], 5_000)
+  assert_eq(config.timeout_millis, 5_000)
 }

@@ -27,7 +27,7 @@ pub fn is_retryable(@transport.RpcError) -> Bool
 
 pub fn is_transport_failure(@client.ClientError) -> Bool
 
-pub fn new_client(@transport.Config, async (String, Bytes) -> Bytes raise @transport.RpcError) -> @client.Client
+pub fn new_client(@transport.Config, async (String, Bytes, Int32) -> Bytes raise @transport.RpcError) -> @client.Client
 
 pub fn with_address(String) -> @transport.Config
 
@@ -110,7 +110,7 @@ pub using @client {type SearchOption}
 
 pub using @client {type SearchResult}
 
-pub type Unary = async (String, Bytes) -> Bytes raise @transport.RpcError
+pub type Unary = async (String, Bytes, Int32) -> Bytes raise @transport.RpcError
 
 pub using @client {type WriteColumn}
 

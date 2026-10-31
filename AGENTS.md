@@ -355,8 +355,13 @@ Milvus 客户端门面与核心 RPC 编排，对应上游 `client/milvusclient/`
 - `client/native/connect.mbt` —— native 专属：把 `Unary` 接到 `@channel.Client::unary`
 
 约定：
-- 发字节抽成 `pub type Unary = async (String, Bytes) -> Bytes raise @transport.RpcError`，
-  所以 `client/` 在 wasm / js 下也编得过；真连 socket 的只有 `client/native`。
+- 发字节抽成 `pub type Unary = async (String, Bytes, Int32) -> Bytes raise @transport.RpcError`
+  （第三参是这次调用的超时），所以 `client/` 在 wasm / js 下也编得过；
+  真连 socket 的只有 `client/native`。
+- **超时由 `call_service` 把 `self.config.timeout_millis` 显式传下去**，不靠
+  `Unary` 闭包里记住的那份 `config`：`Client::new` 收的 `config` 与调用方给的
+  `Unary` 可以不同源，两边的超时对不上时 `Config` 上那个就被静默丢掉了。
+  `Config::with_timeout_millis` 因此是唯一事实源，改这条链要先想清楚这一点。
 - `ClientError` 是**单一** suberror：`Transport` / `Server` / `Schema` / `Encode` / `Decode`。
   `async fn` 只允许一个 `raise` 类型，多错误组合装不进签名，所以这里是刻意的收敛。
 - Milvus 老式 RPC 把错误放在响应体的 `common.Status` 里，而不是 gRPC status。
