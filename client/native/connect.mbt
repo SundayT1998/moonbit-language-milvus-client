@@ -30,6 +30,10 @@ pub async fn connect(
   config : @transport.Config,
 ) -> (@client.Client, @channel.Client) {
   let channel = @channel.Client::connect(config)
-  let call : @client.Unary = (path, body) => channel.unary(path, body)
+  // 超时由 `Client` 那一层每次显式传进来，这里不再回退到 `config` ——
+  // 两边各留一份默认值，迟早对不上。
+  let call : @client.Unary = (path, body, timeout_millis) => {
+    channel.unary(path, body, timeout_millis~)
+  }
   (@client.Client::new(config, call), channel)
 }

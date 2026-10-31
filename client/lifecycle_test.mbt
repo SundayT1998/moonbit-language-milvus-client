@@ -343,7 +343,7 @@ fn sequence_transport(
   seq : Ref[Int32],
   responses : Array[Bytes],
 ) -> @client.Unary {
-  (path, body) => {
+  (path, body, _) => {
     ignore((path, body))
     let i = seq.val
     seq.val = i + 1

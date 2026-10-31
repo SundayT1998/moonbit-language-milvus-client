@@ -32,7 +32,7 @@ fn queued_transport(
   responses : Ref[Array[(String, Bytes)]],
   recorded : Ref[Array[Recorded]],
 ) -> @client.Unary {
-  (path, body) => {
+  (path, body, _) => {
     let log = recorded.val
     log.push({ path, body, })
     recorded.val = log
@@ -761,7 +761,7 @@ async test "query_iterator Close 之后报 Closed" {
 async test "query_iterator 传输失败原样抬成 Rpc" {
   let config = @transport.Config::new("127.0.0.1:19530")
   // 第一次 DescribeCollection 就断线
-  let call : @client.Unary = (_, _) => {
+  let call : @client.Unary = (_, _, _) => {
     raise @transport.RpcError::new(
       @transport.Code::Unavailable.to_int(),
       "connection refused",

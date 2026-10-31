@@ -207,7 +207,7 @@ pub impl Show for IteratorError
 // Types and methods
 pub struct Client {
   config : @transport.Config
-  call : async (String, Bytes) -> Bytes raise @transport.RpcError
+  call : async (String, Bytes, Int32) -> Bytes raise @transport.RpcError
 }
 pub fn Client::config(Self) -> @transport.Config
 pub async fn Client::create_collection(Self, CreateCollectionOption) -> Unit raise ClientError
@@ -229,7 +229,7 @@ pub async fn Client::list_collections(Self, ListCollectionsOption) -> Array[Stri
 pub async fn Client::list_partitions(Self, ListPartitionsOption) -> Array[String] raise ClientError
 pub async fn Client::load_collection(Self, LoadCollectionOption) -> LoadTask raise ClientError
 pub async fn Client::load_partitions(Self, LoadPartitionsOption) -> LoadTask raise ClientError
-pub fn Client::new(@transport.Config, async (String, Bytes) -> Bytes raise @transport.RpcError) -> Self
+pub fn Client::new(@transport.Config, async (String, Bytes, Int32) -> Bytes raise @transport.RpcError) -> Self
 pub async fn Client::query(Self, QueryOption) -> QueryResult raise ClientError
 pub async fn Client::query_iterator(Self, QueryIteratorOption) -> QueryIterator raise IteratorError
 pub async fn Client::release_collection(Self, ReleaseCollectionOption) -> Unit raise ClientError
@@ -603,6 +603,6 @@ pub fn WriteOption::with_partial_update(Self, partial_update? : Bool) -> Self
 pub fn WriteOption::with_partition(Self, String) -> Self
 
 // Type aliases
-pub type Unary = async (String, Bytes) -> Bytes raise @transport.RpcError
+pub type Unary = async (String, Bytes, Int32) -> Bytes raise @transport.RpcError
 
 // Traits

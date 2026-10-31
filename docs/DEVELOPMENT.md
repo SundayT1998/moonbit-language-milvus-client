@@ -320,7 +320,9 @@ README。写代码和查问题时从这里找。
   ```
 
 - 上层调用只要给一个 `Unary` 函数值就能跑，所以测试与 wasm 下不需要真连接：
-  `@milvus_client.new_client(cfg, my_unary)`。
+  `@milvus_client.new_client(cfg, my_unary)`。`Unary` 的第三个参数是这次调用的
+  超时，由 `call_service` 从 `self.config.timeout_millis` 取；自己写实现时照着接
+  就行，别在闭包里再记一份 `config`。
 
 ## 归档：几处被推翻或需要特别注意的选择
 
